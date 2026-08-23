@@ -532,6 +532,25 @@ class SearchItem {
   final int width;
   final int height;
 
+  // Everything below comes from the same extmetadata block the fields
+  // above are already pulled from — same iiprop=extmetadata request, no
+  // extra network call. Commons doesn't guarantee any given key is
+  // present on any given file, so these all default to '' rather than
+  // being nullable; callers just check .isEmpty like the fields above.
+  final String categories; // semicolon-separated, flat (not deepcat-aware)
+  final String assessments; // e.g. "featured", "quality", "valued"
+  final String imageDescriptionHtml;
+  final String objectName;
+  final String creditHtml;
+  final String usageTerms;
+  final String copyrighted;
+  final String restrictions;
+  final String uploadDateTime; // upload time — distinct from dateTimeOriginal (capture time)
+  final String gpsLatitude;
+  final String gpsLongitude;
+  final String permissionHtml;
+  final String attributionRequired;
+
   const SearchItem({
     required this.title,
     required this.url,
@@ -549,6 +568,19 @@ class SearchItem {
     this.uploader = '',
     this.width = 0,
     this.height = 0,
+    this.categories = '',
+    this.assessments = '',
+    this.imageDescriptionHtml = '',
+    this.objectName = '',
+    this.creditHtml = '',
+    this.usageTerms = '',
+    this.copyrighted = '',
+    this.restrictions = '',
+    this.uploadDateTime = '',
+    this.gpsLatitude = '',
+    this.gpsLongitude = '',
+    this.permissionHtml = '',
+    this.attributionRequired = '',
   });
 
   String get extension {

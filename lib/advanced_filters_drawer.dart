@@ -811,7 +811,6 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
                   ),
                   const SizedBox(height: 24),
 
-
                   _buildSectionHeader('QUALITY ASSESSMENT'),
                   DropdownButtonFormField<QualityFilter>(
                     dropdownColor: const Color(0xFF1E1E1E),

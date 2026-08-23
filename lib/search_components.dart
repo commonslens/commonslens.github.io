@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:commonslens/search_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 import 'search_models.dart';
+import 'search_service.dart';
 import 'search_url_codec.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,31 +29,67 @@ class SearchTopBar extends StatefulWidget {
 }
 
 class _SearchTopBarState extends State<SearchTopBar> {
-  late TextEditingController _controller;
+  final SearchService _service = SearchService();
+
+  // The Autocomplete widget owns its internal TextEditingController; we
+  // grab a reference in fieldViewBuilder so we can (a) push external
+  // updates to widget.initialQuery into it — e.g. after a chip is removed
+  // or a URL is hydrated — and (b) read/rewrite its text on suggestion
+  // select, same pattern the drawer's category/depicts pickers use.
+  TextEditingController? _fieldController;
   VoidCallback? _listener;
+  Timer? _debounce;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialQuery);
-    _listener = () => setState(() {});
-    _controller.addListener(_listener!);
+  void dispose() {
+    _debounce?.cancel();
+    if (_listener != null) _fieldController?.removeListener(_listener!);
+    super.dispose();
   }
 
   @override
   void didUpdateWidget(SearchTopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialQuery != widget.initialQuery &&
-        _controller.text != widget.initialQuery) {
-      _controller.text = widget.initialQuery;
+        _fieldController != null &&
+        _fieldController!.text != widget.initialQuery) {
+      _fieldController!.text = widget.initialQuery;
     }
   }
 
-  @override
-  void dispose() {
-    if (_listener != null) _controller.removeListener(_listener!);
-    _controller.dispose();
-    super.dispose();
+  /// The "+"-segment the user is currently typing — i.e. everything after
+  /// the last "cat + " separator, or the whole string if there isn't one.
+  /// Mirrors SearchService.multiQuerySeparator exactly, so this can never
+  /// disagree with how fetchPage itself splits the query.
+  String _activeSegment(String fullText) {
+    final matches = SearchService.multiQuerySeparator.allMatches(fullText);
+    if (matches.isEmpty) return fullText;
+    return fullText.substring(matches.last.end);
+  }
+
+  /// Splices a chosen suggestion into just the active segment, leaving
+  /// every earlier "segment + segment" part untouched — including its
+  /// exact original spacing around each "+".
+  String _applySuggestion(String fullText, String suggestion) {
+    final matches = SearchService.multiQuerySeparator.allMatches(fullText);
+    if (matches.isEmpty) return suggestion;
+    return fullText.substring(0, matches.last.end) + suggestion;
+  }
+
+  FutureOr<Iterable<String>> _optionsBuilder(TextEditingValue value) {
+    final segment = _activeSegment(value.text).trim();
+    if (segment.isEmpty) return const Iterable<String>.empty();
+
+    // Debounce network calls while the user is still typing. Autocomplete
+    // itself discards stale results by call order, but that only protects
+    // correctness — this avoids firing a request per keystroke.
+    _debounce?.cancel();
+    final completer = Completer<Iterable<String>>();
+    _debounce = Timer(const Duration(milliseconds: 220), () async {
+      final results = await _service.searchTitleSuggestions(segment);
+      if (!completer.isCompleted) completer.complete(results);
+    });
+    return completer.future;
   }
 
   @override
@@ -68,45 +107,103 @@ class _SearchTopBarState extends State<SearchTopBar> {
             Expanded(
               child: SizedBox(
                 height: 38,
-                child: TextField(
-                  keyboardType: (kIsWeb &&
-                          (defaultTargetPlatform == TargetPlatform.iOS ||
-                              defaultTargetPlatform == TargetPlatform.android))
-                      ? TextInputType.text
-                      : TextInputType.url,
-                  textInputAction: TextInputAction.search,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  spellCheckConfiguration:
-                      const SpellCheckConfiguration.disabled(),
-                  controller: _controller,
-                  style: const TextStyle(fontSize: 14, color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Search media…',
-                    hintStyle:
-                        const TextStyle(color: Color(0xFF3A3A3A), fontSize: 14),
-                    filled: true,
-                    fillColor: const Color(0xFF181818),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                    border: OutlineInputBorder(
+                child: Autocomplete<String>(
+                  optionsBuilder: _optionsBuilder,
+                  onSelected: (String suggestion) {
+                    final newText =
+                        _applySuggestion(_fieldController?.text ?? '', suggestion);
+                    _fieldController?.value = TextEditingValue(
+                      text: newText,
+                      selection: TextSelection.collapsed(offset: newText.length),
+                    );
+                    widget.onSearch(newText);
+                  },
+                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                    if (_fieldController != controller) {
+                      if (_listener != null) {
+                        _fieldController?.removeListener(_listener!);
+                      }
+                      _fieldController = controller;
+                      if (controller.text != widget.initialQuery) {
+                        controller.text = widget.initialQuery;
+                      }
+                      _listener = () => setState(() {});
+                      controller.addListener(_listener!);
+                    }
+
+                    return TextField(
+                      keyboardType: (kIsWeb &&
+                              (defaultTargetPlatform == TargetPlatform.iOS ||
+                                  defaultTargetPlatform == TargetPlatform.android))
+                          ? TextInputType.text
+                          : TextInputType.url,
+                      textInputAction: TextInputAction.search,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      spellCheckConfiguration:
+                          const SpellCheckConfiguration.disabled(),
+                      controller: controller,
+                      focusNode: focusNode,
+                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'What would you like to find? Dropdown previews direct file matches. Press enter to query the complete ecosystem',
+                        hintStyle: const TextStyle(
+                            color: Colors.grey, fontSize: 14),
+                        filled: true,
+                        fillColor: const Color(0xFF181818),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 9),
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: BorderSide.none),
+                        focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(6),
+                            borderSide: const BorderSide(
+                                color: Color(0xFF3D7EFF), width: 1)),
+                        suffixIcon: controller.text.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  controller.clear();
+                                  widget.onSearch('');
+                                },
+                                child: const Icon(Icons.close,
+                                    size: 15, color: Color(0xFF3A3A3A)))
+                            : null,
+                      ),
+                      onSubmitted: (_) => widget.onSearch(controller.text),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        color: const Color(0xFF1E1E1E),
+                        elevation: 4,
                         borderRadius: BorderRadius.circular(6),
-                        borderSide: BorderSide.none),
-                    focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(
-                            color: Color(0xFF3D7EFF), width: 1)),
-                    suffixIcon: _controller.text.isNotEmpty
-                        ? GestureDetector(
-                            onTap: () {
-                              _controller.clear();
-                              widget.onSearch('');
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(maxHeight: 260, maxWidth: 460),
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            shrinkWrap: true,
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              final option = options.elementAt(index);
+                              return ListTile(
+                                dense: true,
+                                leading: const Icon(Icons.image_search,
+                                    size: 16, color: Color(0xFF3D7EFF)),
+                                title: Text(option,
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 13)),
+                                onTap: () => onSelected(option),
+                              );
                             },
-                            child: const Icon(Icons.close,
-                                size: 15, color: Color(0xFF3A3A3A)))
-                        : null,
-                  ),
-                  onSubmitted: widget.onSearch,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -137,7 +234,7 @@ class _SearchTopBarState extends State<SearchTopBar> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6)),
                     padding: const EdgeInsets.symmetric(horizontal: 18)),
-                onPressed: () => widget.onSearch(_controller.text),
+                onPressed: () => widget.onSearch(_fieldController?.text ?? ''),
                 child: const Text('Search',
                     style:
                         TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

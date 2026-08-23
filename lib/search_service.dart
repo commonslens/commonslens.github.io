@@ -9,6 +9,20 @@ class SearchService {
 
   static final RegExp _htmlTagRegex = RegExp(r'<[^>]*>');
 
+  /// Single accessor for every extmetadata field SearchItem pulls out —
+  /// used by all three fetch paths below so Artist/License/Categories/etc.
+  /// are all read the exact same way in exactly one place.
+  static String _extValue(Map<String, dynamic> ext, String key) {
+    return ext[key]?['value']?.toString() ?? '';
+  }
+
+  /// Splits a "cat + dog" query into independent segments — the single
+  /// source of truth for what counts as a "+"-separator. fetchPage uses
+  /// this to fan out parallel searches; SearchTopBar's autocomplete uses
+  /// the exact same pattern to find the segment currently being typed, so
+  /// the two can never drift out of sync with each other.
+  static final RegExp multiQuerySeparator = RegExp(r'\s+\+\s+');
+
   
   static const Map<LicensePreset, String> _licenseClauses = {
     LicensePreset.cc0: 'haswbstatement:P275=Q6938433', // ~9.9M hits
@@ -78,10 +92,10 @@ class SearchService {
       final rawTitle = page['title'] as String? ?? '';
       
       final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
-      final artistHtml = ext['Artist']?['value']?.toString() ?? '';
-      final licenseShort = ext['LicenseShortName']?['value']?.toString() ?? '';
-      final licenseUrl = ext['LicenseUrl']?['value']?.toString() ?? '';
-      final dateTimeOriginal = ext['DateTimeOriginal']?['value']?.toString() ?? '';
+      final artistHtml = _extValue(ext, 'Artist');
+      final licenseShort = _extValue(ext, 'LicenseShortName');
+      final licenseUrl = _extValue(ext, 'LicenseUrl');
+      final dateTimeOriginal = _extValue(ext, 'DateTimeOriginal');
       
       final uploader = info['user']?.toString() ?? '';
       final width = info['width'] as int? ?? 0;
@@ -105,6 +119,19 @@ class SearchService {
         uploader: uploader,
         width: width,
         height: height,
+        categories: _extValue(ext, 'Categories'),
+        assessments: _extValue(ext, 'Assessments'),
+        imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
+        objectName: _extValue(ext, 'ObjectName'),
+        creditHtml: _extValue(ext, 'Credit'),
+        usageTerms: _extValue(ext, 'UsageTerms'),
+        copyrighted: _extValue(ext, 'Copyrighted'),
+        restrictions: _extValue(ext, 'Restrictions'),
+        uploadDateTime: _extValue(ext, 'DateTime'),
+        gpsLatitude: _extValue(ext, 'GPSLatitude'),
+        gpsLongitude: _extValue(ext, 'GPSLongitude'),
+        permissionHtml: _extValue(ext, 'Permission'),
+        attributionRequired: _extValue(ext, 'AttributionRequired'),
       );
     } catch (_) {
       return null;
@@ -203,6 +230,48 @@ class SearchService {
       final data = jsonDecode(res.body);
       final cats = data['query']['allcategories'] as List? ?? [];
       return cats.map((c) => c['*'] as String).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Type-ahead suggestions for the main search bar, via MediaWiki's
+  /// `action=opensearch` — the same endpoint that powers the suggestion
+  /// dropdown on wikipedia.org/commons.wikimedia.org's own search box.
+  /// Restricted to namespace 6 (File:) since this app only searches media.
+  /// Callers pass in a single query *segment* (see
+  /// [SearchService.multiQuerySeparator]) — this method has no opinion on
+  /// "+"-splitting, that's the caller's job.
+  Future<List<String>> searchTitleSuggestions(String text, {int limit = 8}) async {
+    final query = text.trim();
+    if (query.isEmpty) return [];
+    try {
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'opensearch',
+        'search': query,
+        'namespace': '6',
+        'limit': '$limit',
+        'redirects': 'resolve',
+        'format': 'json',
+        'origin': '*',
+      });
+
+      final response = await _client.get(uri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode != 200) return [];
+
+      // opensearch's response shape is a fixed-position array, not an
+      // object: [searchTerm, [titles...], [descriptions...], [urls...]].
+      final data = jsonDecode(response.body) as List;
+      if (data.length < 2) return [];
+
+      final titles = data[1] as List? ?? [];
+      return titles
+          .map((t) => (t as String).replaceFirst('File:', '').trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
     } catch (_) {
       return [];
     }
@@ -615,11 +684,10 @@ class SearchService {
         final thumb = thumburl.isNotEmpty ? thumburl : originalUrl;
 
         final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
-        final artistHtml = ext['Artist']?['value']?.toString() ?? '';
-        final licenseShort = ext['LicenseShortName']?['value']?.toString() ?? '';
-        final licenseUrl = ext['LicenseUrl']?['value']?.toString() ?? '';
-        final dateTimeOriginal =
-            ext['DateTimeOriginal']?['value']?.toString() ?? '';
+        final artistHtml = _extValue(ext, 'Artist');
+        final licenseShort = _extValue(ext, 'LicenseShortName');
+        final licenseUrl = _extValue(ext, 'LicenseUrl');
+        final dateTimeOriginal = _extValue(ext, 'DateTimeOriginal');
 
         final uploader = info['user']?.toString() ?? user;
         final width = info['width'] as int? ?? 0;
@@ -642,6 +710,19 @@ class SearchService {
           uploader: uploader,
           width: width,
           height: height,
+          categories: _extValue(ext, 'Categories'),
+          assessments: _extValue(ext, 'Assessments'),
+          imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
+          objectName: _extValue(ext, 'ObjectName'),
+          creditHtml: _extValue(ext, 'Credit'),
+          usageTerms: _extValue(ext, 'UsageTerms'),
+          copyrighted: _extValue(ext, 'Copyrighted'),
+          restrictions: _extValue(ext, 'Restrictions'),
+          uploadDateTime: _extValue(ext, 'DateTime'),
+          gpsLatitude: _extValue(ext, 'GPSLatitude'),
+          gpsLongitude: _extValue(ext, 'GPSLongitude'),
+          permissionHtml: _extValue(ext, 'Permission'),
+          attributionRequired: _extValue(ext, 'AttributionRequired'),
         ));
       }
 
@@ -702,7 +783,7 @@ class SearchService {
   }) async {
     final queryText = state.queryText.trim();
     final segments = queryText
-        .split(RegExp(r'\s+\+\s+'))
+        .split(multiQuerySeparator)
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
@@ -1091,10 +1172,10 @@ class SearchService {
         final rawTitle = page['title'] as String? ?? '';
         
         final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
-        final artistHtml = ext['Artist']?['value']?.toString() ?? '';
-        final licenseShort = ext['LicenseShortName']?['value']?.toString() ?? '';
-        final licenseUrl = ext['LicenseUrl']?['value']?.toString() ?? '';
-        final dateTimeOriginal = ext['DateTimeOriginal']?['value']?.toString() ?? '';
+        final artistHtml = _extValue(ext, 'Artist');
+        final licenseShort = _extValue(ext, 'LicenseShortName');
+        final licenseUrl = _extValue(ext, 'LicenseUrl');
+        final dateTimeOriginal = _extValue(ext, 'DateTimeOriginal');
         
         final uploader = info['user']?.toString() ?? '';
         final width = info['width'] as int? ?? 0;
@@ -1118,6 +1199,19 @@ class SearchService {
             uploader: uploader,
             width: width,
             height: height,
+            categories: _extValue(ext, 'Categories'),
+            assessments: _extValue(ext, 'Assessments'),
+            imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
+            objectName: _extValue(ext, 'ObjectName'),
+            creditHtml: _extValue(ext, 'Credit'),
+            usageTerms: _extValue(ext, 'UsageTerms'),
+            copyrighted: _extValue(ext, 'Copyrighted'),
+            restrictions: _extValue(ext, 'Restrictions'),
+            uploadDateTime: _extValue(ext, 'DateTime'),
+            gpsLatitude: _extValue(ext, 'GPSLatitude'),
+            gpsLongitude: _extValue(ext, 'GPSLongitude'),
+            permissionHtml: _extValue(ext, 'Permission'),
+            attributionRequired: _extValue(ext, 'AttributionRequired'),
           ),
         );
       }

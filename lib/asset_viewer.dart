@@ -666,7 +666,81 @@ class _MetadataInspector extends StatelessWidget {
             height: 1.6,
           ),
         ),
+        _buildAdditionalDetailsSection(),
       ],
+    );
+  }
+
+  /// Everything Commons' extmetadata returns that doesn't earn a permanent
+  /// spot above — collapsed by default since most files won't populate
+  /// most of these, and even the ones that do are secondary to the core
+  /// fields already on display.
+  Widget _buildAdditionalDetailsSection() {
+    final coordinates = (item.gpsLatitude.trim().isNotEmpty &&
+            item.gpsLongitude.trim().isNotEmpty)
+        ? '${item.gpsLatitude}, ${item.gpsLongitude}'
+        : '';
+
+    final rows = <Widget>[
+      _buildPropertyRow('OBJECT NAME', item.objectName.trim()),
+      _buildPropertyRow(
+          'IMAGE DESCRIPTION', _cleanHtml(item.imageDescriptionHtml)),
+      _buildPropertyRow('CATEGORIES', item.categories.trim()),
+      _buildPropertyRow('ASSESSMENTS', item.assessments.trim()),
+      _buildPropertyRow('CREDIT', _cleanHtml(item.creditHtml)),
+      _buildPropertyRow('USAGE TERMS', item.usageTerms.trim()),
+      _buildPropertyRow('COPYRIGHT STATUS', item.copyrighted.trim()),
+      _buildPropertyRow('RESTRICTIONS', item.restrictions.trim()),
+      _buildPropertyRow('UPLOAD DATE/TIME', item.uploadDateTime.trim()),
+      _buildPropertyRow('GPS COORDINATES', coordinates),
+      _buildPropertyRow('PERMISSION', _cleanHtml(item.permissionHtml)),
+      _buildPropertyRow(
+          'ATTRIBUTION REQUIRED', item.attributionRequired.trim()),
+    ];
+
+    // _buildPropertyRow already collapses an empty value to
+    // SizedBox.shrink(); if every row did that, there's nothing to show
+    // and the section header itself shouldn't render either.
+    final hasAnyValue = [
+      item.objectName,
+      item.imageDescriptionHtml,
+      item.categories,
+      item.assessments,
+      item.creditHtml,
+      item.usageTerms,
+      item.copyrighted,
+      item.restrictions,
+      item.uploadDateTime,
+      coordinates,
+      item.permissionHtml,
+      item.attributionRequired,
+    ].any((v) => v.trim().isNotEmpty);
+
+    if (!hasAnyValue) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(color: Color(0xFF222222)),
+          const SizedBox(height: 14),
+          const Text(
+            'ADDITIONAL DETAILS',
+            style: TextStyle(
+              color: Color(0xFF666666),
+              fontSize: 10,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: rows,
+          ),
+        ],
+      ),
     );
   }
 

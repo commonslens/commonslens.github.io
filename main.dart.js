@@ -51397,7 +51397,7 @@ return B.c.bp(a,s.gY(0).gbn(0))},
 acc(a,b){var s=$.aK1().la(0,a)
 if(!s.gac(0).t())return b
 return B.c.a_(a,0,s.gY(0).gbn(0))+b},
-adK(a){var s=A.bk("\\.(jpg|png|svg|jpeg|gif)$",!1,!1,!1)
+adK(a){var s=A.bk("\\.(jpg|png|svg|jpeg|gif|webm|tiff|djvu|pdf|oga|ogg|tif|webp)$",!1,!1,!1)
 return A.dC(a,s,"")},
 anI(a){var s,r=this,q=B.c.aF(r.abB(a.a))
 if(q.length===0)return B.oO

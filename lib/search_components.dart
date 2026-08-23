@@ -76,6 +76,13 @@ class _SearchTopBarState extends State<SearchTopBar> {
     return fullText.substring(0, matches.last.end) + suggestion;
   }
 
+  String _cleanSuggestionLabel(String value) {
+    return value.replaceAll(
+      RegExp(r'\.(jpg|png|svg|jpeg|gif)$', caseSensitive: false),
+      '',
+    );
+  }
+
   FutureOr<Iterable<String>> _optionsBuilder(TextEditingValue value) {
     final segment = _activeSegment(value.text).trim();
     if (segment.isEmpty) return const Iterable<String>.empty();
@@ -89,7 +96,13 @@ class _SearchTopBarState extends State<SearchTopBar> {
       final results = await _service.searchTitleSuggestions(segment);
       if (!completer.isCompleted) completer.complete(results);
     });
-    return completer.future;
+    return completer.future.then(
+      (results) => results
+          .map(_cleanSuggestionLabel)
+          .where((title) => title.isNotEmpty)
+          .toSet()
+          .toList(),
+    );
   }
 
   @override
@@ -146,7 +159,7 @@ class _SearchTopBarState extends State<SearchTopBar> {
                       focusNode: focusNode,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'What would you like to find? Dropdown previews direct file matches. Press enter to query the complete ecosystem',
+                        hintText: 'What would you like to find? Dropdown previews direct file matches. Press enter to query the complete ecosystem.',
                         hintStyle: const TextStyle(
                             color: Colors.grey, fontSize: 14),
                         filled: true,

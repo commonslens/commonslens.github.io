@@ -656,7 +656,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           height: 1.1)),
                   const SizedBox(height: 16),
                   const Text(
-                      'A place to explore the Wikimedia Commons collection, the world\'s largest free media archive.\nStart your search in the textbox above! No sign-up and payment needed.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.',
+                      'A place to explore the world\'s largest free media archive: Wikimedia Commons\nStart your search using the textbox and filter above! No sign-up or payment needed; this tool is open-source and free forever.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Color(0xFFCCCCCC),

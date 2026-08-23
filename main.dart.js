@@ -50157,7 +50157,7 @@ b1.cf(0,b.gcP(),t.d).mU(0,a8.a,a8)
 b=a9.c
 b.toString
 A.mX(b,!1).eW()},
-I(a){var s,r,q,p,o=this,n=null,m="Intersection (AND)",l="Union (OR)",k="\u2022",j=o.gcp().jn($.eK(),t._p).a,i=t.p,h=A.c7(A.b([B.a1a,A.lo(n,n,n,B.Le,n,n,new A.au4(a),n,n,n,n)],i),B.z,B.mr,B.A,0),g=A.c7(A.b([B.ea,new A.bB(B.dn,A.b8("IMAGE CLASSIFICATION",n,n,n,B.nM,n,n),n),B.ea],i),B.z,B.p,B.A,0),f=A.b8("DEPICTS (SUBJECT)",n,n,n,B.cn,n,n),e=A.c7(A.b([A.c4(o.qO(m,new A.au5(o),!o.fx),1),B.bg,A.c4(o.qO(l,new A.au6(o),o.fx),1)],i),B.z,B.p,B.A,0)
+I(a){var s,r,q,p,o=this,n=null,m="Intersection (AND)",l="Union (OR)",k="\u2022",j=o.gcp().jn($.eK(),t._p).a,i=t.p,h=A.c7(A.b([B.a19,A.lo(n,n,n,B.Le,n,n,new A.au4(a),n,n,n,n)],i),B.z,B.mr,B.A,0),g=A.c7(A.b([B.ea,new A.bB(B.dn,A.b8("IMAGE CLASSIFICATION",n,n,n,B.nM,n,n),n),B.ea],i),B.z,B.p,B.A,0),f=A.b8("DEPICTS (SUBJECT)",n,n,n,B.cn,n,n),e=A.c7(A.b([A.c4(o.qO(m,new A.au5(o),!o.fx),1),B.bg,A.c4(o.qO(l,new A.au6(o),o.fx),1)],i),B.z,B.p,B.A,0)
 g=A.b([g,B.nr,new A.bB(B.bN,f,n),e,B.eE,A.b8(o.fx?'Matches files depicting ANY selected subject below (this OR this), still excluding anything marked "not".':'Matches files depicting ALL selected subjects below (this AND this), and excludes anything marked "not".',n,n,n,B.nL,n,n),B.cl],i)
 f=o.dx
 if(f.a!==0||o.dy.a!==0){f=A.T(new A.bA(f,new A.auh(o),A.l(f).h("bA<1,e>")),t.l7)
@@ -51100,7 +51100,7 @@ if(s.b.test(q))return A.aJR(q,s,new A.axU(a),null)
 return r.b},
 I(a){var s,r=this,q=null,p=r.c,o=p.glw()===B.mv||p.glw()===B.mw
 p=t.p
-s=A.b([A.Cg(B.Li,B.a1d,new A.axV(r,a),A.ow(q,q,B.y,q,q,q,0,q,q,B.j,q,q,B.qk,q,new A.cL(A.cG(8),B.l),q,q,q,q,q))],p)
+s=A.b([A.Cg(B.Li,B.a1c,new A.axV(r,a),A.ow(q,q,B.y,q,q,q,0,q,q,B.j,q,q,B.qk,q,new A.cL(A.cG(8),B.l),q,q,q,q,q))],p)
 if(o)B.b.L(s,A.b([B.eD,A.c7(A.b([A.c4(new A.zU("SMALL",new A.axW(r,a),q),1),B.bg,A.c4(new A.zU("MEDIUM",new A.axX(r,a),q),1),B.bg,A.c4(new A.zU("LARGE",new A.axY(r,a),q),1)],p),B.z,B.p,B.A,0)],p))
 s.push(B.eD)
 s.push(A.aLB(B.Ln,B.a1g,r.d,A.aj0(q,q,q,q,q,q,q,q,q,B.kE,q,q,B.qj,q,new A.cL(A.cG(8),B.l),B.ow,q,q,q,q)))
@@ -51407,7 +51407,7 @@ s=new A.aE($.aw,t.vN)
 r.r=A.cs(B.JQ,new A.aFt(r,q,new A.bv(s,t.UQ)))
 return s.bA(new A.aFu(r),t.kT)},
 I(a){var s=this,r=null
-return A.dc(r,A.pu(!1,A.c7(A.b([A.c4(A.eW(A.a6w(A.aVP(),new A.aFB(s),r,new A.aFC(s),s.ganH(),new A.aFD(),t.N),38,r),1),B.ji,A.eW(new A.Ek(!1,new A.aFE(a),r,r,r,A.aj0(r,r,r,r,r,r,r,r,r,B.hz,r,r,B.Kf,r,new A.cL(A.cG(6),B.l),B.ow,r,r,r,r),r,r,!1,r,!0,r,B.a1b,r),38,r),B.bg,A.eW(A.aKO(B.a1i,new A.aFF(s),A.ow(r,r,B.y,r,r,r,0,r,r,B.j,r,r,B.Km,r,new A.cL(A.cG(6),B.l),r,r,r,r,r)),38,r)],t.p),B.z,B.p,B.A,0),B.ai,!0),B.o,r,r,B.oD,r,r,r,B.qp,r,r,r)}}
+return A.dc(r,A.pu(!1,A.c7(A.b([A.c4(A.eW(A.a6w(A.aVP(),new A.aFB(s),r,new A.aFC(s),s.ganH(),new A.aFD(),t.N),38,r),1),B.ji,A.eW(new A.Ek(!1,new A.aFE(a),r,r,r,A.aj0(r,r,r,r,r,r,r,r,r,B.hz,r,r,B.Kf,r,new A.cL(A.cG(6),B.l),B.ow,r,r,r,r),r,r,!1,r,!0,r,B.a1a,r),38,r),B.bg,A.eW(A.aKO(B.a1i,new A.aFF(s),A.ow(r,r,B.y,r,r,r,0,r,r,B.j,r,r,B.Km,r,new A.cL(A.cG(6),B.l),r,r,r,r,r)),38,r)],t.p),B.z,B.p,B.A,0),B.ai,!0),B.o,r,r,B.oD,r,r,r,B.qp,r,r,r)}}
 A.aFt.prototype={
 $0(){var s=0,r=A.M(t.H),q=this,p,o
 var $async$$0=A.N(function(a,b){if(a===1)return A.J(b,r)
@@ -52126,7 +52126,7 @@ n=A.bs(n,q,t.w).w
 s=t.UR
 s=A.T(new A.U(B.NM,new A.aEW(this),s),s.h("aj.E"))
 r=t.p
-return A.jP(B.bH,A.b([p,o,A.eu(A.aSA(new A.dH(new A.a9(0,n.a.a*0.95,0,1/0),A.df(A.b([B.a36,B.ns,B.a1t,B.h3,B.a18,B.CY,A.Hg(B.o3,s,12,12),B.Wh,A.QN(new A.aEX()),B.nt,B.a15,B.CY],r),B.z,B.p,B.aV),q),B.Ks),q,q)],r),B.v,B.nB,q)},
+return A.jP(B.bH,A.b([p,o,A.eu(A.aSA(new A.dH(new A.a9(0,n.a.a*0.95,0,1/0),A.df(A.b([B.a36,B.ns,B.a1t,B.h3,B.a1d,B.CY,A.Hg(B.o3,s,12,12),B.Wh,A.QN(new A.aEX()),B.nt,B.a15,B.CY],r),B.z,B.p,B.aV),q),B.Ks),q,q)],r),B.v,B.nB,q)},
 acP(a,b){var s,r,q,p,o=null
 if(a.e)return B.p7
 s=a.r
@@ -52301,7 +52301,7 @@ $0(){return this.a.gcp().cf(0,$.eK().gcP(),t.d).yw(0,this.b)},
 $S:0}
 A.aEX.prototype={
 $2(a,b){var s=null,r=b.b<600?1/0:270,q=new A.aEY(),p=t.Bd
-return A.df(A.b([q.$2("SEMANTIC & METADATA SEARCH",A.b([new A.f_("Wikidata Depicts Search","Search by exact visual subject via Wikidata Q-codes, with independent include and exclude sets.",r,s),new A.f_("Category Include / Exclude","Multi-select Commons categories \u2014 isolate or eliminate entire category trees, deep-traversal included.",r,s),new A.f_("Multi-Term OR Search",'Combine unrelated searches into one query with "+", e.g. "eiffel tower + colosseum".',r,s),new A.f_("Filter-Only Search","Run a full search from filters alone \u2014 depicts, category, license \u2014 no text query required.",r,s)],p)),q.$2("PRECISION FILTERING",A.b([new A.f_("License Filtering","Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, or Public Domain.",r,s),new A.f_("Quality Assessment","Isolate Commons-reviewed Quality Images and Valued Images.",r,s),new A.f_("Geolocation Search","Find media captured near an exact latitude and longitude, with adjustable radius.",r,s),new A.f_("Date Range Filtering","Filter by creation date and last-edited date, independently.",r,s),new A.f_("File-Type Precision","Isolate exact formats \u2014 images, vectors, audio, video, documents.",r,s)],p)),q.$2("DISCOVERY",A.b([new A.f_("Author Portfolios","Browse every upload from a single contributor, fully paginated.",r,s),new A.f_("Shareable Search State","Every query, filter combination, and asset view is a URL you can send.",r,s)],p)),q.$2("RESEARCH WORKFLOW",A.b([new A.f_("Bulk Export","Select any subset of results and download as one .zip, entirely in-browser.",r,s),new A.f_("High-Volume Rendering","Staggered lazy-loading handles large result sets without UI lockup.",r,s)],p))],t.p),B.z,B.p,B.A)},
+return A.df(A.b([q.$2("SEMANTIC & METADATA SEARCH",A.b([new A.f_("Wikidata Depicts Search","Search by exact visual subject via Wikidata Q-codes, with independent include and exclude sets.",r,s),new A.f_("Category Include / Exclude","Multi-select Commons categories: isolate or eliminate entire category trees, deep-traversal included.",r,s),new A.f_("Multi-Term OR Search",'Combine unrelated searches into one query with "+", e.g. "eiffel tower + colosseum".',r,s),new A.f_("Filter-Only Search","Run a full search from filters alone: depicts, category, license, etc. No text query required.",r,s)],p)),q.$2("PRECISION FILTERING",A.b([new A.f_("License Filtering","Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, or Public Domain.",r,s),new A.f_("Quality Assessment","Isolate Commons-reviewed Quality Images and Valued Images.",r,s),new A.f_("Geolocation Search","Find media captured near an exact latitude and longitude, with adjustable radius.",r,s),new A.f_("Date Range Filtering","Filter by creation date and last-edited date, independently.",r,s),new A.f_("File-Type Precision","Isolate exact formats: images, vectors, audio, video, documents.",r,s)],p)),q.$2("DISCOVERY",A.b([new A.f_("Author Portfolios","Browse every upload from a single contributor, fully paginated.",r,s),new A.f_("Shareable Search State","Every query, filter combination, and asset view is a URL you can send.",r,s)],p)),q.$2("RESEARCH WORKFLOW",A.b([new A.f_("Bulk Export","Select any subset of results and download as one .zip, entirely in-browser.",r,s),new A.f_("High-Volume Rendering","Staggered lazy-loading handles large result sets without UI lockup.",r,s)],p))],t.p),B.z,B.p,B.A)},
 $S:310}
 A.aEY.prototype={
 $2(a,b){var s=null
@@ -101357,7 +101357,7 @@ A.a1f.prototype={}
 A.we.prototype={
 I(a){var s=null,r=this.c
 r=r==null?s:"GoException: "+r.a
-return A.pu(!0,A.eu(A.df(A.b([B.a1f,B.h3,A.b8(r==null?"page not found":r,s,s,s,s,s,s),B.h3,new A.Hy(new A.abg(a),B.a19,s)],t.p),B.z,B.iE,B.A),s,s),B.ai,!0)}}
+return A.pu(!0,A.eu(A.df(A.b([B.a1f,B.h3,A.b8(r==null?"page not found":r,s,s,s,s,s,s),B.h3,new A.Hy(new A.abg(a),B.a18,s)],t.p),B.z,B.iE,B.A),s,s),B.ai,!0)}}
 A.abg.prototype={
 $0(){return A.iJ(this.a).qy(0,"/",null)},
 $S:0}
@@ -109018,8 +109018,8 @@ B.a1e=new A.cz("Relevance",null,null,null,null,null,null,null,null)
 B.Tf=new A.lH(B.cG,B.a1e,null,t.Sw)
 B.a1r=new A.cz("Title A\u2013Z",null,null,null,null,null,null,null,null)
 B.Td=new A.lH(B.jj,B.a1r,null,t.Sw)
-B.a1c=new A.cz("Recently edited",null,null,null,null,null,null,null,null)
-B.Tg=new A.lH(B.ny,B.a1c,null,t.Sw)
+B.a1b=new A.cz("Recently edited",null,null,null,null,null,null,null,null)
+B.Tg=new A.lH(B.ny,B.a1b,null,t.Sw)
 B.a1m=new A.cz("Least recently edited",null,null,null,null,null,null,null,null)
 B.Tb=new A.lH(B.D1,B.a1m,null,t.Sw)
 B.a1j=new A.cz("Recently created",null,null,null,null,null,null,null,null)
@@ -110913,16 +110913,16 @@ B.a14=new A.cz("Open Media / Download",null,B.Z1,null,null,null,null,null,null)
 B.a_9=new A.o(!0,B.f2,null,null,null,null,12,null,null,null,null,null,1.6,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.a15=new A.cz("CommonsLens is a non-commercial, fair-use research tool. All media and data are sourced directly from Wikimedia Commons. CommonsLens does not make, host, own, or claim copyright over any of the displayed content.",null,B.a_9,B.d5,null,null,null,null,null)
 B.Dw=new A.cz("Select All",null,null,null,null,null,null,null,null)
-B.Yt=new A.o(!0,B.kG,null,null,null,null,18,B.t,null,null,null,null,1.6,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a18=new A.cz("A place to explore the world's largest free media archive.\nEngineered specifically for scientists and researchers to navigate, filter, and extract media intuitively and effortlessly.",null,B.Yt,B.d5,null,null,null,null,null)
-B.a19=new A.cz("Go to home page",null,B.ap,null,null,null,null,null,null)
+B.a18=new A.cz("Go to home page",null,B.ap,null,null,null,null,null,null)
 B.Xx=new A.o(!0,B.j,null,null,null,null,12,B.eh,null,2,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a1a=new A.cz("FILTERS",null,B.Xx,null,null,null,null,null,null)
+B.a19=new A.cz("FILTERS",null,B.Xx,null,null,null,null,null,null)
 B.a0i=new A.o(!0,null,null,null,null,null,12.5,B.bb,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a1b=new A.cz("Filters",null,B.a0i,null,null,null,null,null,null)
+B.a1a=new A.cz("Filters",null,B.a0i,null,null,null,null,null,null)
 B.Dx=new A.cz("Cancel",null,null,null,null,null,null,null,null)
 B.Yo=new A.o(!0,null,null,null,null,null,13,B.bb,null,0.5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a1d=new A.cz("Download Original",null,B.Yo,null,null,null,null,null,null)
+B.a1c=new A.cz("Download Original",null,B.Yo,null,null,null,null,null,null)
+B.Yt=new A.o(!0,B.kG,null,null,null,null,18,B.t,null,null,null,null,1.6,null,null,null,null,null,null,null,null,null,null,null,null,null)
+B.a1d=new A.cz("A place to explore the Wikimedia Commons collection, the world's largest free media archive.\nStart your search in the textbox above! No sign-up and payment needed.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.",null,B.Yt,B.d5,null,null,null,null,null)
 B.a1f=new A.cz("Page Not Found",null,B.js,null,null,null,null,null,null)
 B.a1g=new A.cz("View Source Page",null,B.Dr,null,null,null,null,null,null)
 B.a1h=new A.cz("Home",null,null,null,null,null,null,null,null)

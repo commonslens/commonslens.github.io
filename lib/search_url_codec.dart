@@ -31,6 +31,10 @@ class SearchUrlCodec {
       if (cats.isNotEmpty) params['catsExclude'] = cats.join('|');
     }
 
+    if (state.categoriesUnion) {
+      params['catsUnion'] = '1';
+    }
+
     if (state.depictsInclude.isNotEmpty) {
       final entries = state.depictsInclude.map((d) => '${d.qid}~${d.label}').toList()..sort();
       params['depictsIn'] = entries.join('|');
@@ -39,6 +43,10 @@ class SearchUrlCodec {
     if (state.depictsExclude.isNotEmpty) {
       final entries = state.depictsExclude.map((d) => '${d.qid}~${d.label}').toList()..sort();
       params['depictsEx'] = entries.join('|');
+    }
+
+    if (state.depictsUnion) {
+      params['depictsUnion'] = '1';
     }
 
     if (state.statementsInclude.isNotEmpty) {
@@ -262,6 +270,7 @@ class SearchUrlCodec {
       statementsExclude: statementsExclude,
       statementsUnion: params['statementsUnion'] == '1',
       deepCategoryMode: params['deepcat'] == '1',
+      categoriesUnion: params['catsUnion'] == '1',
       titleOnly: params['titleOnly'] == '1',
       localOnly: params['local'] == '1',
       languageCode: params['lang'],
@@ -280,6 +289,7 @@ class SearchUrlCodec {
       nearTitle: nearTitle,
       clearNearTitle: nearTitle == null,
       excludeTerms: excludeTerms,
+      depictsUnion: params['depictsUnion'] == '1',
     );
   }
 

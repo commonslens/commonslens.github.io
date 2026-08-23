@@ -21,6 +21,8 @@ class _DownloadJob {
   int total;
   List<String> failed = [];
   bool done = false;
+  bool cancelled = false;
+  final DownloadCancelToken cancelToken = DownloadCancelToken();
 
   _DownloadJob({required this.id, required this.total});
 }
@@ -155,7 +157,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
     // Capture the current selection into this job, then clear it — so the
     // person can immediately select a fresh batch and start another
-    // download without having to hit Cancel first. This job keeps running
+    // download without waiting on this one. This job keeps running
     // independently of whatever gets selected next.
     ref.read(selectedItemsProvider.notifier).state = {};
 
@@ -163,6 +165,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       items,
       zipName: 'selected_commons_media.zip',
       maxWidth: _downloadFullRes ? null : 1280,
+      cancelToken: job.cancelToken,
       onProgress: (completed, total, failedTitles) {
         if (!mounted) return;
         setState(() {
@@ -174,16 +177,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     ).then((_) {
       if (!mounted) return;
       setState(() => job.done = true);
-      // Successful jobs clear themselves after a few seconds; failed ones
-      // stay visible until the person dismisses them, since "silently
-      // vanished after failing" is exactly what looked broken before.
-      if (job.failed.isEmpty) {
+      // Successful jobs clear themselves after a few seconds; failed and
+      // cancelled ones stay visible until the person dismisses them, since
+      // "silently vanished" is exactly what looked broken before — and a
+      // cancelled job disappearing on its own would hide the confirmation
+      // that it actually stopped.
+      if (job.failed.isEmpty && !job.cancelled) {
         Future.delayed(const Duration(seconds: 4), () {
           if (!mounted) return;
           setState(() => _downloadJobs.remove(job));
         });
       }
     });
+  }
+
+  void _cancelDownload(_DownloadJob job) {
+    job.cancelToken.cancel();
+    setState(() => job.cancelled = true);
   }
 
   Widget _buildResolutionButton({
@@ -220,36 +230,71 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget _buildJobProgressRow(_DownloadJob job) {
     final fraction = job.total == 0 ? null : job.completed / job.total;
     final hasFailed = job.failed.isNotEmpty;
+    final isActive = !job.done && !job.cancelled;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Column(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: job.done ? 1.0 : fraction,
-              minHeight: 5,
-              backgroundColor: const Color(0xFF2A2A2A),
-              valueColor: AlwaysStoppedAnimation(
-                hasFailed ? const Color(0xFFFF6B6B) : const Color(0xFF3D7EFF),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (job.done || job.cancelled) ? 1.0 : fraction,
+                    minHeight: 5,
+                    backgroundColor: const Color(0xFF2A2A2A),
+                    valueColor: AlwaysStoppedAnimation(
+                      job.cancelled
+                          ? const Color(0xFF888888)
+                          : hasFailed
+                              ? const Color(0xFFFF6B6B)
+                              : const Color(0xFF3D7EFF),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  job.cancelled
+                      ? 'Cancelled — ${job.completed} of ${job.total} downloaded'
+                      : job.done
+                          ? (hasFailed
+                              ? 'Done — ${job.failed.length} of ${job.total} failed'
+                              : 'Done — ${job.total} files')
+                          : 'Downloading ${job.completed} / ${job.total}'
+                              '${hasFailed ? ' — ${job.failed.length} failed' : ''}…',
+                  style: TextStyle(
+                    color: job.cancelled
+                        ? const Color(0xFF888888)
+                        : hasFailed
+                            ? const Color(0xFFFF6B6B)
+                            : const Color(0xFF888888),
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Only shown while the job is actually running — a finished,
+          // failed, or already-cancelled job has nothing left to stop.
+          if (isActive)
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.close, size: 16, color: Color(0xFF888888)),
+                  tooltip: 'Cancel download',
+                  onPressed: () => _cancelDownload(job),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            job.done
-                ? (hasFailed
-                    ? 'Done — ${job.failed.length} of ${job.total} failed'
-                    : 'Done — ${job.total} files')
-                : 'Downloading ${job.completed} / ${job.total}'
-                    '${hasFailed ? ' — ${job.failed.length} failed' : ''}…',
-            style: TextStyle(
-              color: hasFailed ? const Color(0xFFFF6B6B) : const Color(0xFF888888),
-              fontSize: 11,
-            ),
-          ),
         ],
       ),
     );

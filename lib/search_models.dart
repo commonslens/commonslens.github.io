@@ -200,6 +200,11 @@ class SearchState {
   final Set<FileFormat> formats;
   final Set<String> categories;
   final bool deepCategoryMode;
+  // false (default) = intersection: a file must be in ALL included
+  // categories (AND). true = union: a file in ANY included category
+  // qualifies (OR). Same convention as statementsUnion below — excluded
+  // categories are always subtracted regardless of this mode.
+  final bool categoriesUnion;
   final bool titleOnly;
   final bool localOnly;
   final String? languageCode;
@@ -213,6 +218,10 @@ class SearchState {
   final int? minHeight;
   final Set<DepictsEntity> depictsInclude;
   final Set<DepictsEntity> depictsExclude;
+  // Same convention as categoriesUnion/statementsUnion: false = a file must
+  // depict ALL included subjects (AND); true = depicting ANY one qualifies
+  // (OR). depictsExclude is always subtracted regardless of this mode.
+  final bool depictsUnion;
   final Set<String> excludeCategories;
   final NearCoordFilter? nearCoord;
   final NearTitleFilter? nearTitle;
@@ -232,6 +241,7 @@ class SearchState {
     this.formats = const {},
     this.categories = const {},
     this.deepCategoryMode = false,
+    this.categoriesUnion = false,
     this.titleOnly = false,
     this.localOnly = false,
     this.languageCode,
@@ -245,6 +255,7 @@ class SearchState {
     this.minHeight,
     this.depictsInclude = const {},
     this.depictsExclude = const {},
+    this.depictsUnion = false,
     this.excludeCategories = const {},
     this.nearCoord,
     this.nearTitle,
@@ -260,6 +271,7 @@ class SearchState {
     Set<FileFormat>? formats,
     Set<String>? categories,
     bool? deepCategoryMode,
+    bool? categoriesUnion,
     bool? titleOnly,
     bool? localOnly,
     String? languageCode,
@@ -273,6 +285,7 @@ class SearchState {
     int? minHeight,
     Set<DepictsEntity>? depictsInclude,
     Set<DepictsEntity>? depictsExclude,
+    bool? depictsUnion,
     Set<String>? excludeCategories,
     NearCoordFilter? nearCoord,
     NearTitleFilter? nearTitle,
@@ -295,6 +308,7 @@ class SearchState {
       formats: formats ?? this.formats,
       categories: categories ?? this.categories,
       deepCategoryMode: deepCategoryMode ?? this.deepCategoryMode,
+      categoriesUnion: categoriesUnion ?? this.categoriesUnion,
       titleOnly: titleOnly ?? this.titleOnly,
       localOnly: localOnly ?? this.localOnly,
       languageCode:
@@ -312,6 +326,7 @@ class SearchState {
       minHeight: clearMinHeight ? null : (minHeight ?? this.minHeight),
       depictsInclude: depictsInclude ?? this.depictsInclude,
       depictsExclude: depictsExclude ?? this.depictsExclude,
+      depictsUnion: depictsUnion ?? this.depictsUnion,
       excludeCategories: excludeCategories ?? this.excludeCategories,
       nearCoord: clearNearCoord ? null : (nearCoord ?? this.nearCoord),
       nearTitle: clearNearTitle ? null : (nearTitle ?? this.nearTitle),

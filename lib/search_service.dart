@@ -267,17 +267,31 @@ class SearchService {
       parts.add('filemime:"${_getMimeString(overrideFormat)}"');
     }
 
-    for (final category in state.categories.toList()..sort()) {
-      final safe = category.trim();
-      if (safe.isEmpty) continue;
+    // Union mode (OR) for categories works exactly like statementsUnion
+    // below: this join is just an honest preview of intent for the display
+    // query / chips. The actual OR execution — same precedence problem as
+    // statements have when mixed into one big AND'd query string — happens
+    // via per-category fan-out in _fetchPageForCategory further down.
+    final includeCategories = (state.categories.toList()..sort())
+        .map((c) => c.trim())
+        .where((c) => c.isNotEmpty)
+        .toList();
 
-      if (state.deepCategoryMode) {
-        parts.add('deepcat:"$safe"');
-        chips.add(QueryChipData(id: 'category:$safe', label: 'Deep category: $safe'));
-      } else {
-        parts.add('incategory:"$safe"');
-        chips.add(QueryChipData(id: 'category:$safe', label: 'Category: $safe'));
+    if (state.categoriesUnion && includeCategories.length > 1) {
+      final clauses = includeCategories
+          .map((c) => state.deepCategoryMode ? 'deepcat:"$c"' : 'incategory:"$c"')
+          .toList();
+      parts.add(clauses.join(' OR '));
+    } else {
+      for (final c in includeCategories) {
+        parts.add(state.deepCategoryMode ? 'deepcat:"$c"' : 'incategory:"$c"');
       }
+    }
+    for (final c in includeCategories) {
+      chips.add(QueryChipData(
+        id: 'category:$c',
+        label: state.deepCategoryMode ? 'Deep category: $c' : 'Category: $c',
+      ));
     }
 
     for (final category in state.excludeCategories.toList()..sort()) {
@@ -371,9 +385,23 @@ class SearchService {
       ));
     }
 
-    for (final entity in state.depictsInclude.toList()
-      ..sort((a, b) => a.qid.compareTo(b.qid))) {
-      parts.add('haswbstatement:P180=${entity.qid}');
+    // Union mode for depicts — same pattern and same reasoning as
+    // categoriesUnion/statementsUnion: this is a preview join for the
+    // display query / chips, real OR execution happens via per-entity
+    // fan-out in _fetchPageForDepicts further down.
+    final includeDepicts = state.depictsInclude.toList()
+      ..sort((a, b) => a.qid.compareTo(b.qid));
+
+    if (state.depictsUnion && includeDepicts.length > 1) {
+      final clauses =
+          includeDepicts.map((e) => 'haswbstatement:P180=${e.qid}').toList();
+      parts.add(clauses.join(' OR '));
+    } else {
+      for (final entity in includeDepicts) {
+        parts.add('haswbstatement:P180=${entity.qid}');
+      }
+    }
+    for (final entity in includeDepicts) {
       chips.add(QueryChipData(
         id: 'depicts:${entity.qid}',
         label: 'Depicts: ${entity.label}',
@@ -634,6 +662,7 @@ class SearchService {
       'formats=${formats.join(",")}',
       'categories=${categories.join(",")}',
       'deep=${state.deepCategoryMode}',
+      'categoriesUnion=${state.categoriesUnion}',
       'titleOnly=${state.titleOnly}',
       'localOnly=${state.localOnly}',
       'lang=${state.languageCode ?? ""}',
@@ -650,6 +679,7 @@ class SearchService {
       'excludeCategories=${(state.excludeCategories.toList()..sort()).join(",")}',
       'depictsInclude=${(state.depictsInclude.map((e) => e.qid).toList()..sort()).join(",")}',
       'depictsExclude=${(state.depictsExclude.map((e) => e.qid).toList()..sort()).join(",")}',
+      'depictsUnion=${state.depictsUnion}',
       'statementsInclude=${(state.statementsInclude.map((s) => "${s.property.qid}=${s.value.qid}").toList()..sort()).join(",")}',
       'statementsExclude=${(state.statementsExclude.map((s) => "${s.property.qid}=${s.value.qid}").toList()..sort()).join(",")}',
       'statementsUnion=${state.statementsUnion}',
@@ -745,7 +775,7 @@ class SearchService {
     final includeStatements = state.statementsInclude.toList();
 
     if (!state.statementsUnion || includeStatements.length <= 1) {
-      return _fetchPageForFormat(state, continueParams: continueParams);
+      return _fetchPageForCategory(state, continueParams: continueParams);
     }
 
     final streams = <String, List<SearchItem>>{};
@@ -767,7 +797,7 @@ class SearchService {
       final branchState = state.copyWith(statementsInclude: {stmt});
 
       futures.add(() async {
-        final result = await _fetchPageForFormat(branchState,
+        final result = await _fetchPageForCategory(branchState,
             continueParams: branchContinue);
         if (result != null) {
           anySuccess = true;
@@ -795,6 +825,140 @@ class SearchService {
       items: deduped,
       continueParams:
           newMultiContinue.isNotEmpty ? {'_stmt': newMultiContinue} : null,
+    );
+  }
+
+  Future<SearchResponse?> _fetchPageForCategory(
+    SearchState state, {
+    required Map<String, dynamic>? continueParams,
+  }) async {
+    // Union mode with 2+ include categories: same problem and same fix as
+    // the statement fan-out above — Cirrus can't reliably OR a category
+    // clause together with the rest of the active filters in one query
+    // string, so each category runs as its own independent search (with
+    // every other filter, including exclude-categories, deepCategoryMode,
+    // etc. still applied identically) and results are merged client-side.
+    final includeCategories = state.categories
+        .map((c) => c.trim())
+        .where((c) => c.isNotEmpty)
+        .toList();
+
+    if (!state.categoriesUnion || includeCategories.length <= 1) {
+      return _fetchPageForDepicts(state, continueParams: continueParams);
+    }
+
+    final streams = <String, List<SearchItem>>{};
+    final newMultiContinue = <String, dynamic>{};
+    bool anySuccess = false;
+
+    final branchTokens = continueParams?['_cat'] as Map<String, dynamic>?;
+    final futures = <Future<void>>[];
+
+    for (final cat in includeCategories) {
+      if (continueParams != null &&
+          branchTokens != null &&
+          !branchTokens.containsKey(cat)) {
+        continue;
+      }
+
+      final branchContinue = branchTokens?[cat] as Map<String, dynamic>?;
+      // Single-category branch state — deepCategoryMode, excludeCategories,
+      // and everything else carry over unchanged onto each branch.
+      final branchState = state.copyWith(categories: {cat});
+
+      futures.add(() async {
+        final result = await _fetchPageForDepicts(branchState,
+            continueParams: branchContinue);
+        if (result != null) {
+          anySuccess = true;
+          streams[cat] = result.items;
+          if (result.continueParams != null) {
+            newMultiContinue[cat] = result.continueParams;
+          }
+        }
+      }());
+    }
+
+    await Future.wait(futures);
+
+    if (!anySuccess) return null;
+
+    final interleaved = _multiSort<String>(streams, state.sortMode);
+    final seen = <String>{};
+    final deduped = <SearchItem>[];
+    for (final item in interleaved) {
+      // Same file can genuinely be in more than one branch's category.
+      if (seen.add(item.url)) deduped.add(item);
+    }
+
+    return SearchResponse(
+      items: deduped,
+      continueParams:
+          newMultiContinue.isNotEmpty ? {'_cat': newMultiContinue} : null,
+    );
+  }
+
+  Future<SearchResponse?> _fetchPageForDepicts(
+    SearchState state, {
+    required Map<String, dynamic>? continueParams,
+  }) async {
+    // Same fan-out pattern again for depicts union mode.
+    final includeDepicts = state.depictsInclude.toList();
+
+    if (!state.depictsUnion || includeDepicts.length <= 1) {
+      return _fetchPageForFormat(state, continueParams: continueParams);
+    }
+
+    final streams = <String, List<SearchItem>>{};
+    final newMultiContinue = <String, dynamic>{};
+    bool anySuccess = false;
+
+    final branchTokens = continueParams?['_depicts'] as Map<String, dynamic>?;
+    final futures = <Future<void>>[];
+
+    for (final entity in includeDepicts) {
+      final key = entity.qid;
+      if (continueParams != null &&
+          branchTokens != null &&
+          !branchTokens.containsKey(key)) {
+        continue;
+      }
+
+      final branchContinue = branchTokens?[key] as Map<String, dynamic>?;
+      // Single-entity branch state — depictsExclude and everything else
+      // carry over unchanged onto each branch.
+      final branchState = state.copyWith(depictsInclude: {entity});
+
+      futures.add(() async {
+        final result = await _fetchPageForFormat(branchState,
+            continueParams: branchContinue);
+        if (result != null) {
+          anySuccess = true;
+          streams[key] = result.items;
+          if (result.continueParams != null) {
+            newMultiContinue[key] = result.continueParams;
+          }
+        }
+      }());
+    }
+
+    await Future.wait(futures);
+
+    if (!anySuccess) return null;
+
+    final interleaved = _multiSort<String>(streams, state.sortMode);
+    final seen = <String>{};
+    final deduped = <SearchItem>[];
+    for (final item in interleaved) {
+      // Same file can genuinely depict more than one branch's subject.
+      if (seen.add(item.url)) deduped.add(item);
+    }
+
+    return SearchResponse(
+      items: deduped,
+      continueParams: newMultiContinue.isNotEmpty
+          ? {'_depicts': newMultiContinue}
+          : null,
     );
   }
 

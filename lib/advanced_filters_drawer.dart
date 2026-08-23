@@ -29,11 +29,14 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
   Set<String> _categoriesInclude = {};
   Set<String> _categoriesExclude = {};
   bool _categoryExcludeMode = false;
+  bool _deepCategoryMode = false;
+  bool _categoriesUnionMode = false;
   TextEditingController? _categoryFieldController;
 
   Set<DepictsEntity> _depictsInclude = {};
   Set<DepictsEntity> _depictsExclude = {};
   bool _depictsExcludeMode = false;
+  bool _depictsUnionMode = false;
   TextEditingController? _depictsFieldController;
 
   Set<WikidataStatement> _statementsInclude = {};
@@ -72,8 +75,11 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
 
     _categoriesInclude = Set.from(state.categories);
     _categoriesExclude = Set.from(state.excludeCategories);
+    _deepCategoryMode = state.deepCategoryMode;
+    _categoriesUnionMode = state.categoriesUnion;
     _depictsInclude = Set.from(state.depictsInclude);
     _depictsExclude = Set.from(state.depictsExclude);
+    _depictsUnionMode = state.depictsUnion;
     _statementsInclude = Set.from(state.statementsInclude);
     _statementsExclude = Set.from(state.statementsExclude);
     _statementsUnionMode = state.statementsUnion;
@@ -152,8 +158,11 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
       clearNearTitle: titleFilter == null,
       categories: _categoriesInclude,
       excludeCategories: _categoriesExclude,
+      deepCategoryMode: _deepCategoryMode,
+      categoriesUnion: _categoriesUnionMode,
       depictsInclude: _depictsInclude,
       depictsExclude: _depictsExclude,
+      depictsUnion: _depictsUnionMode,
       statementsInclude: _statementsInclude,
       statementsExclude: _statementsExclude,
       statementsUnion: _statementsUnionMode,
@@ -210,7 +219,54 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
                 padding: const EdgeInsets.all(20),
                 children: [
 
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('IMAGE CLASSIFICATION',
+                            style: const TextStyle(
+                                color: Color(0xFF3D7EFF),
+                                fontSize: 12,
+                                letterSpacing: 1.8,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                      const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
                   _buildSectionHeader('DEPICTS (SUBJECT)'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCombineModeButton(
+                          label: 'Intersection (AND)',
+                          selected: !_depictsUnionMode,
+                          onTap: () =>
+                              setState(() => _depictsUnionMode = false),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCombineModeButton(
+                          label: 'Union (OR)',
+                          selected: _depictsUnionMode,
+                          onTap: () =>
+                              setState(() => _depictsUnionMode = true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _depictsUnionMode
+                        ? 'Matches files depicting ANY selected subject below (this OR this), still excluding anything marked "not".'
+                        : 'Matches files depicting ALL selected subjects below (this AND this), and excludes anything marked "not".',
+                    style: const TextStyle(
+                        color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
                   if (_depictsInclude.isNotEmpty || _depictsExclude.isNotEmpty) ...[
                     Wrap(
                       spacing: 6,
@@ -529,51 +585,38 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
 
                   const SizedBox(height: 24),
 
-                  _buildSectionHeader('LICENSE / RIGHTS'),
-                  DropdownButtonFormField<LicensePreset>(
-                    dropdownColor: const Color(0xFF1E1E1E),
-                    decoration: _inputDecoration(),
-                    value: state.licensePreset,
-                    items: LicensePreset.values.map((preset) {
-                      return DropdownMenuItem(
-                          value: preset,
-                          child: Text(licensePresetLabel(preset),
-                              style: const TextStyle(color: Colors.white)));
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        final nextState = state.copyWith(licensePreset: val);
-                        ref.read(searchControllerProvider.notifier).search(
-                            nextState.queryText,
-                            overrideState: nextState);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-
-                  _buildSectionHeader('QUALITY ASSESSMENT'),
-                  DropdownButtonFormField<QualityFilter>(
-                    dropdownColor: const Color(0xFF1E1E1E),
-                    decoration: _inputDecoration(),
-                    value: state.qualityFilter,
-                    items: QualityFilter.values.map((q) {
-                      return DropdownMenuItem(
-                          value: q,
-                          child: Text(qualityFilterLabel(q),
-                              style: const TextStyle(color: Colors.white)));
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        final nextState = state.copyWith(qualityFilter: val);
-                        ref.read(searchControllerProvider.notifier).search(
-                            nextState.queryText,
-                            overrideState: nextState);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
 
                   _buildSectionHeader('CATEGORIES'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCombineModeButton(
+                          label: 'Intersection (AND)',
+                          selected: !_categoriesUnionMode,
+                          onTap: () =>
+                              setState(() => _categoriesUnionMode = false),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCombineModeButton(
+                          label: 'Union (OR)',
+                          selected: _categoriesUnionMode,
+                          onTap: () =>
+                              setState(() => _categoriesUnionMode = true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _categoriesUnionMode
+                        ? 'Matches files in ANY selected category below (this OR this), still excluding anything marked "not".'
+                        : 'Matches files in ALL selected categories below (this AND this), and excludes anything marked "not".',
+                    style: const TextStyle(
+                        color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
                   if (_categoriesInclude.isNotEmpty ||
                       _categoriesExclude.isNotEmpty) ...[
                     Wrap(
@@ -706,7 +749,146 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+
+                  // deepcat: vs incategory: — strict mode only matches files
+                  // filed directly in the exact category node; deep mode
+                  // tells CirrusSearch to recurse into every subcategory
+                  // branching beneath it too. Scoped right under the
+                  // category picker since it changes how EVERY category
+                  // above (include and exclude alike) gets matched.
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A1A),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: _deepCategoryMode
+                            ? const Color(0xFF3D7EFF).withOpacity(0.4)
+                            : const Color(0xFF262626),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Include subcategories',
+                                style: TextStyle(
+                                  color: _deepCategoryMode
+                                      ? Colors.white
+                                      : Colors.white70,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _deepCategoryMode
+                                    ? 'Deep: also pulls files from every subcategory nested beneath the categories above.'
+                                    : 'Strict: only files filed directly in the exact categories above — nested subcategories are skipped.',
+                                style: const TextStyle(
+                                  color: Color(0xFF888888),
+                                  fontSize: 11,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Switch(
+                          value: _deepCategoryMode,
+                          activeColor: const Color(0xFF3D7EFF),
+                          onChanged: (val) =>
+                              setState(() => _deepCategoryMode = val),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 24),
+
+
+                  _buildSectionHeader('QUALITY ASSESSMENT'),
+                  DropdownButtonFormField<QualityFilter>(
+                    dropdownColor: const Color(0xFF1E1E1E),
+                    decoration: _inputDecoration(),
+                    value: state.qualityFilter,
+                    items: QualityFilter.values.map((q) {
+                      return DropdownMenuItem(
+                          value: q,
+                          child: Text(qualityFilterLabel(q),
+                              style: const TextStyle(color: Colors.white)));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        final nextState = state.copyWith(qualityFilter: val);
+                        ref.read(searchControllerProvider.notifier).search(
+                            nextState.queryText,
+                            overrideState: nextState);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('LICENSE',
+                            style: const TextStyle(
+                                color: Color(0xFF3D7EFF),
+                                fontSize: 12,
+                                letterSpacing: 1.8,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                      const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  _buildSectionHeader('LICENSE / RIGHTS'),
+                  DropdownButtonFormField<LicensePreset>(
+                    dropdownColor: const Color(0xFF1E1E1E),
+                    decoration: _inputDecoration(),
+                    value: state.licensePreset,
+                    items: LicensePreset.values.map((preset) {
+                      return DropdownMenuItem(
+                          value: preset,
+                          child: Text(licensePresetLabel(preset),
+                              style: const TextStyle(color: Colors.white)));
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        final nextState = state.copyWith(licensePreset: val);
+                        ref.read(searchControllerProvider.notifier).search(
+                            nextState.queryText,
+                            overrideState: nextState);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('METADATA AND LOCATION',
+                            style: const TextStyle(
+                                color: Color(0xFF3D7EFF),
+                                fontSize: 12,
+                                letterSpacing: 1.8,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                      const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
 
                   _buildSectionHeader('LANGUAGE & CONTENT'),
                   Row(

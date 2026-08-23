@@ -656,7 +656,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           height: 1.1)),
                   const SizedBox(height: 16),
                   const Text(
-                      'A place to explore the world\'s largest free media archive.\nEngineered specifically for scientists and researchers to navigate, filter, and extract media intuitively and effortlessly.',
+                      'A place to explore the Wikimedia Commons collection, the world\'s largest free media archive.\nStart your search in the textbox above! No sign-up and payment needed.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Color(0xFFCCCCCC),
@@ -726,7 +726,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                 icon: Icons.category_outlined,
                                 title: 'Category Include / Exclude',
                                 description:
-                                    'Multi-select Commons categories — isolate or eliminate entire category trees, deep-traversal included.',
+                                    'Multi-select Commons categories: isolate or eliminate entire category trees, deep-traversal included.',
                                 width: cardWidth,
                               ),
                               _FeatureCard(
@@ -740,7 +740,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                 icon: Icons.filter_alt_outlined,
                                 title: 'Filter-Only Search',
                                 description:
-                                    'Run a full search from filters alone — depicts, category, license — no text query required.',
+                                    'Run a full search from filters alone: depicts, category, license, etc. No text query required.',
                                 width: cardWidth,
                               ),
                             ]),
@@ -777,7 +777,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                                 icon: Icons.perm_media_outlined,
                                 title: 'File-Type Precision',
                                 description:
-                                    'Isolate exact formats — images, vectors, audio, video, documents.',
+                                    'Isolate exact formats: images, vectors, audio, video, documents.',
                                 width: cardWidth,
                               ),
                             ]),

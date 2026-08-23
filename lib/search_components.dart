@@ -78,7 +78,7 @@ class _SearchTopBarState extends State<SearchTopBar> {
 
   String _cleanSuggestionLabel(String value) {
     return value.replaceAll(
-      RegExp(r'\.(jpg|png|svg|jpeg|gif)$', caseSensitive: false),
+      RegExp(r'\.(jpg|png|svg|jpeg|gif|webm|tiff|djvu|pdf|oga|ogg|tif|webp)$', caseSensitive: false),
       '',
     );
   }

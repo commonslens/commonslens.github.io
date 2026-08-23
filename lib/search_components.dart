@@ -159,7 +159,7 @@ class _SearchTopBarState extends State<SearchTopBar> {
                       focusNode: focusNode,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'What would you like to find? The dropdown previews direct file matches. For general searches, please press enter/search.',
+                        hintText: 'What would you like to find? The dropdown suggestions show direct file matches. To see all results for the search, press enter/search.',
                         hintStyle: const TextStyle(
                             color: Colors.grey, fontSize: 14),
                         filled: true,

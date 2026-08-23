@@ -52126,7 +52126,7 @@ n=A.bs(n,q,t.w).w
 s=t.UR
 s=A.T(new A.U(B.NM,new A.aEW(this),s),s.h("aj.E"))
 r=t.p
-return A.jP(B.bH,A.b([p,o,A.eu(A.aSA(new A.dH(new A.a9(0,n.a.a*0.95,0,1/0),A.df(A.b([B.a36,B.ns,B.a1t,B.h3,B.a1d,B.CY,A.Hg(B.o3,s,12,12),B.Wh,A.QN(new A.aEX()),B.nt,B.a15,B.CY],r),B.z,B.p,B.aV),q),B.Ks),q,q)],r),B.v,B.nB,q)},
+return A.jP(B.bH,A.b([p,o,A.eu(A.aSA(new A.dH(new A.a9(0,n.a.a*0.95,0,1/0),A.df(A.b([B.a36,B.ns,B.a1t,B.h3,B.a1e,B.CY,A.Hg(B.o3,s,12,12),B.Wh,A.QN(new A.aEX()),B.nt,B.a15,B.CY],r),B.z,B.p,B.aV),q),B.Ks),q,q)],r),B.v,B.nB,q)},
 acP(a,b){var s,r,q,p,o=null
 if(a.e)return B.p7
 s=a.r
@@ -109014,8 +109014,8 @@ B.mB=new A.iU(6,"scrollLockModifier")
 B.mC=new A.iU(7,"functionModifier")
 B.y2=new A.iU(8,"symbolModifier")
 B.rL=s([B.el,B.em,B.en,B.eo,B.mz,B.mA,B.mB,B.mC,B.y2],A.aq("z<iU>"))
-B.a1e=new A.cz("Relevance",null,null,null,null,null,null,null,null)
-B.Tf=new A.lH(B.cG,B.a1e,null,t.Sw)
+B.a1d=new A.cz("Relevance",null,null,null,null,null,null,null,null)
+B.Tf=new A.lH(B.cG,B.a1d,null,t.Sw)
 B.a1r=new A.cz("Title A\u2013Z",null,null,null,null,null,null,null,null)
 B.Td=new A.lH(B.jj,B.a1r,null,t.Sw)
 B.a1b=new A.cz("Recently edited",null,null,null,null,null,null,null,null)
@@ -110922,7 +110922,7 @@ B.Dx=new A.cz("Cancel",null,null,null,null,null,null,null,null)
 B.Yo=new A.o(!0,null,null,null,null,null,13,B.bb,null,0.5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.a1c=new A.cz("Download Original",null,B.Yo,null,null,null,null,null,null)
 B.Yt=new A.o(!0,B.kG,null,null,null,null,18,B.t,null,null,null,null,1.6,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a1d=new A.cz("A place to explore the Wikimedia Commons collection, the world's largest free media archive.\nStart your search in the textbox above! No sign-up and payment needed.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.",null,B.Yt,B.d5,null,null,null,null,null)
+B.a1e=new A.cz("A place to explore the world's largest free media archive: Wikimedia Commons\nStart your search using the textbox and filter above! No sign-up or payment needed; this tool is open-source and free forever.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.",null,B.Yt,B.d5,null,null,null,null,null)
 B.a1f=new A.cz("Page Not Found",null,B.js,null,null,null,null,null,null)
 B.a1g=new A.cz("View Source Page",null,B.Dr,null,null,null,null,null,null)
 B.a1h=new A.cz("Home",null,null,null,null,null,null,null,null)

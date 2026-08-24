@@ -1279,6 +1279,8 @@ class SearchService {
       case FileFormat.djvu: return 'image/vnd.djvu'; 
       case FileFormat.ogg:
       case FileFormat.oga: return 'audio/ogg';
+      case FileFormat.ogv: return 'video/ogg';
+      case FileFormat.mp3: return 'audio/mpeg';
       case FileFormat.wav: return 'audio/wav';
       case FileFormat.webm: return 'video/webm';
       case FileFormat.mp4: return 'video/mp4';
@@ -1304,6 +1306,8 @@ class SearchService {
         case FileFormat.djvu: if (ext == 'djvu') return true; break;
         case FileFormat.ogg: if (ext == 'ogg' || mime.contains('ogg')) return true; break;
         case FileFormat.oga: if (ext == 'oga' || mime.contains('ogg')) return true; break;
+        case FileFormat.ogv: if (ext == 'ogv' || mime.contains('ogg')) return true; break;
+        case FileFormat.mp3: if (ext == 'mp3' || mime.contains('mpeg') || mime.contains('mp3')) return true; break;
         case FileFormat.wav: if (ext == 'wav' || mime.contains('wav')) return true; break;
         case FileFormat.webm: if (ext == 'webm' || mime.contains('webm')) return true; break;
         case FileFormat.mp4: if (ext == 'mp4' || mime.contains('mp4')) return true; break;

@@ -1,8 +1,10 @@
+// ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'dart:ui';
 import 'download_service.dart';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -440,6 +442,26 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
   late final String _viewId;
   bool _isNativeHtml = false;
 
+  bool _isSafariWeb() {
+    final userAgent = html.window.navigator.userAgent.toLowerCase();
+    final hasSafari = userAgent.contains('safari');
+    final hasChromeLike = userAgent.contains('chrome') ||
+        userAgent.contains('chromium') ||
+        userAgent.contains('crios');
+    return hasSafari && !hasChromeLike;
+  }
+
+  bool _shouldRenderPdfInBrowser() {
+    if (!kIsWeb) return false;
+
+    final isPdf = widget.item.extension.toLowerCase() == 'pdf' ||
+        widget.item.mime.toLowerCase() == 'application/pdf';
+    final isDjVu = widget.item.extension.toLowerCase() == 'djvu' ||
+        widget.item.mime.toLowerCase() == 'image/vnd.djvu';
+
+    return isPdf && !isDjVu && !_isSafariWeb();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -448,16 +470,15 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
 
     final isVideo = widget.item.mediaKind == MediaKind.video;
     final isAudio = widget.item.mediaKind == MediaKind.audio;
-
     final isImage = widget.item.mediaKind == MediaKind.image ||
         widget.item.mediaKind == MediaKind.vector;
+    final shouldRenderPdf = widget.item.mediaKind == MediaKind.document &&
+        _shouldRenderPdfInBrowser();
 
-    // PDF is deliberately excluded from native rendering: Safari (iOS and
-    // macOS) does not reliably render cross-origin PDFs inside an iframe —
-    // it silently shows blank content instead of erroring, so there's no
-    // good way to detect and recover from it client-side. Falls through to
-    // the thumbnail+icon fallback below instead, which works everywhere.
-    if (isVideo || isAudio || isImage) {
+    // PDFs are safe to inline in Chrome/Web, but Safari does not reliably
+    // render cross-origin PDFs inside a browser iframe. DjVu remains blocked
+    // because the browser fallback is unreliable there.
+    if (isVideo || isAudio || isImage || shouldRenderPdf) {
       _isNativeHtml = true;
 
       ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
@@ -477,6 +498,14 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
             ..style.width = '100%'
             ..style.height = '100%'
             ..style.objectFit = 'contain'
+            ..style.backgroundColor = '#070707'
+            ..style.outline = 'none';
+        } else if (shouldRenderPdf) {
+          return html.IFrameElement()
+            ..src = widget.item.url
+            ..style.width = '100%'
+            ..style.height = '100%'
+            ..style.border = 'none'
             ..style.backgroundColor = '#070707'
             ..style.outline = 'none';
         } else {

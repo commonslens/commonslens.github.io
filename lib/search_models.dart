@@ -22,6 +22,8 @@ enum FileFormat {
   djvu,
   ogg,
   oga,
+  ogv,
+  mp3,
   wav,
   webm,
   mp4,
@@ -369,6 +371,8 @@ const mediaTabs = [
       FileFormat.djvu,
       FileFormat.ogg,
       FileFormat.oga,
+      FileFormat.ogv,
+      FileFormat.mp3,
       FileFormat.wav,
       FileFormat.webm,
       FileFormat.mp4,
@@ -403,6 +407,7 @@ const mediaTabs = [
     allowedFormats: {
       FileFormat.ogg,
       FileFormat.oga,
+      FileFormat.mp3,
       FileFormat.wav,
     },
     emptyMessage: 'No audio found.',
@@ -412,6 +417,7 @@ const mediaTabs = [
     label: 'Video',
     allowedFormats: {
       FileFormat.webm,
+      FileFormat.ogv,
       FileFormat.mp4,
     },
     emptyMessage: 'No videos found.',
@@ -457,6 +463,10 @@ String fileFormatLabel(FileFormat format) {
       return 'OGG';
     case FileFormat.oga:
       return 'OGA';
+    case FileFormat.ogv:
+      return 'OGV';
+    case FileFormat.mp3:
+      return 'MP3';
     case FileFormat.wav:
       return 'WAV';
     case FileFormat.webm:
@@ -480,9 +490,11 @@ MediaKind mediaKindFromFormat(FileFormat format) {
       return MediaKind.vector;
     case FileFormat.ogg:
     case FileFormat.oga:
+    case FileFormat.mp3:
     case FileFormat.wav:
       return MediaKind.audio;
     case FileFormat.webm:
+    case FileFormat.ogv:
     case FileFormat.mp4:
       return MediaKind.video;
     case FileFormat.pdf:
@@ -624,12 +636,19 @@ class SearchItem {
       case 'application/vnd.djvu':
         return 'DJVU';
       case 'audio/ogg':
+      case 'audio/ogg; codecs=opus':
         return 'OGG';
+      case 'audio/mpeg':
+      case 'audio/mp3':
+        return 'MP3';
       case 'audio/wav':
       case 'audio/x-wav':
         return 'WAV';
       case 'video/webm':
         return 'WEBM';
+      case 'video/ogg':
+      case 'video/ogg; codecs=theora':
+        return 'OGV';
       case 'video/mp4':
         return 'MP4';
     }
@@ -639,17 +658,31 @@ class SearchItem {
 
   MediaKind get mediaKind {
     final m = mime.toLowerCase();
+    final normalizedExtension = extension.toLowerCase();
+
+    final isPdf = m == 'application/pdf' || normalizedExtension == 'pdf';
+    final isDjVu = m == 'image/vnd.djvu' ||
+        m == 'application/vnd.djvu' ||
+        normalizedExtension == 'djvu';
+
+    if (isPdf || isDjVu) return MediaKind.document;
     if (m.startsWith('image/')) {
       if (m.contains('svg')) return MediaKind.vector;
       return MediaKind.image;
     }
-    if (m.startsWith('video/') || extension == 'webm' || extension == 'mp4') {
+    if (m.startsWith('video/') ||
+        normalizedExtension == 'webm' ||
+        normalizedExtension == 'ogv' ||
+        normalizedExtension == 'mp4') {
       return MediaKind.video;
     }
-    if (m.startsWith('audio/') || extension == 'ogg' || extension == 'wav') {
+    if (m.startsWith('audio/') ||
+        normalizedExtension == 'ogg' ||
+        normalizedExtension == 'oga' ||
+        normalizedExtension == 'mp3' ||
+        normalizedExtension == 'wav') {
       return MediaKind.audio;
     }
-    if (m == 'application/pdf' || extension == 'djvu') return MediaKind.document;
     return MediaKind.unknown;
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'search_models.dart';
+import 'search_url_codec.dart';
 
 class SearchService {
   static const int pageSize = 50;
@@ -14,6 +15,64 @@ class SearchService {
   /// are all read the exact same way in exactly one place.
   static String _extValue(Map<String, dynamic> ext, String key) {
     return ext[key]?['value']?.toString() ?? '';
+  }
+
+  /// Builds a [SearchItem] from one `imageinfo` entry (the shape returned
+  /// by `iiprop=url|size|mime|extmetadata|user|dimensions`, regardless of
+  /// which of the three call sites below fetched it — a single lookup, a
+  /// search page, or an author's upload list all return this same shape).
+  /// Every extmetadata field lives behind [_extValue] so Artist/License/
+  /// Categories/etc. are read identically everywhere. Returns null when
+  /// there's no usable original URL, mirroring what each call site already
+  /// treated as "skip this result".
+  static SearchItem? _itemFromImageInfo(
+    Map<String, dynamic> info, {
+    required String rawTitle,
+    required String snippet,
+    String? timestamp,
+    String? descriptionUrl,
+    String? uploaderFallback,
+  }) {
+    final originalUrl = info['url'] as String? ?? '';
+    if (originalUrl.isEmpty) return null;
+
+    final mime = (info['mime'] as String? ?? '').toLowerCase();
+    final thumburl = info['thumburl'] as String? ?? '';
+    final thumb = thumburl.isNotEmpty ? thumburl : originalUrl;
+    final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
+
+    return SearchItem(
+      title: rawTitle.replaceFirst('File:', ''),
+      url: originalUrl,
+      thumb: thumb,
+      commonsUrl:
+          'https://commons.wikimedia.org/wiki/${Uri.encodeComponent(rawTitle)}',
+      snippet: snippet,
+      mime: mime,
+      isSvg: mime == 'image/svg+xml',
+      timestamp: timestamp,
+      descriptionUrl: descriptionUrl,
+      artistHtml: _extValue(ext, 'Artist'),
+      licenseShortName: _extValue(ext, 'LicenseShortName'),
+      licenseUrl: _extValue(ext, 'LicenseUrl'),
+      dateTimeOriginal: _extValue(ext, 'DateTimeOriginal'),
+      uploader: info['user']?.toString() ?? (uploaderFallback ?? ''),
+      width: info['width'] as int? ?? 0,
+      height: info['height'] as int? ?? 0,
+      categories: _extValue(ext, 'Categories'),
+      assessments: _extValue(ext, 'Assessments'),
+      imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
+      objectName: _extValue(ext, 'ObjectName'),
+      creditHtml: _extValue(ext, 'Credit'),
+      usageTerms: _extValue(ext, 'UsageTerms'),
+      copyrighted: _extValue(ext, 'Copyrighted'),
+      restrictions: _extValue(ext, 'Restrictions'),
+      uploadDateTime: _extValue(ext, 'DateTime'),
+      gpsLatitude: _extValue(ext, 'GPSLatitude'),
+      gpsLongitude: _extValue(ext, 'GPSLongitude'),
+      permissionHtml: _extValue(ext, 'Permission'),
+      attributionRequired: _extValue(ext, 'AttributionRequired'),
+    );
   }
 
   /// Splits a "cat + dog" query into independent segments — the single
@@ -79,59 +138,14 @@ class SearchService {
       if (infoList == null || infoList.isEmpty) return null;
 
       final info = infoList.first as Map<String, dynamic>;
-      final mime = (info['mime'] as String? ?? '').toLowerCase();
-      final isSvg = mime == 'image/svg+xml';
-
-      final thumburl = info['thumburl'] as String? ?? '';
-      final originalUrl = info['url'] as String? ?? '';
-      final descriptionUrl = page['fullurl'] as String?;
-      final thumb = thumburl.isNotEmpty ? thumburl : originalUrl;
-
-      if (originalUrl.isEmpty) return null;
-
       final rawTitle = page['title'] as String? ?? '';
-      
-      final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
-      final artistHtml = _extValue(ext, 'Artist');
-      final licenseShort = _extValue(ext, 'LicenseShortName');
-      final licenseUrl = _extValue(ext, 'LicenseUrl');
-      final dateTimeOriginal = _extValue(ext, 'DateTimeOriginal');
-      
-      final uploader = info['user']?.toString() ?? '';
-      final width = info['width'] as int? ?? 0;
-      final height = info['height'] as int? ?? 0;
 
-      return SearchItem(
-        title: rawTitle.replaceFirst('File:', ''),
-        url: originalUrl,
-        thumb: thumb,
-        commonsUrl: 'https://commons.wikimedia.org/wiki/${Uri.encodeComponent(rawTitle)}',
-       
-        snippet: rawTitle, 
-        mime: mime,
-        isSvg: isSvg,
+      return _itemFromImageInfo(
+        info,
+        rawTitle: rawTitle,
+        snippet: rawTitle,
         timestamp: page['timestamp'] as String?,
-        descriptionUrl: descriptionUrl,
-        artistHtml: artistHtml,
-        licenseShortName: licenseShort,
-        licenseUrl: licenseUrl,
-        dateTimeOriginal: dateTimeOriginal,
-        uploader: uploader,
-        width: width,
-        height: height,
-        categories: _extValue(ext, 'Categories'),
-        assessments: _extValue(ext, 'Assessments'),
-        imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
-        objectName: _extValue(ext, 'ObjectName'),
-        creditHtml: _extValue(ext, 'Credit'),
-        usageTerms: _extValue(ext, 'UsageTerms'),
-        copyrighted: _extValue(ext, 'Copyrighted'),
-        restrictions: _extValue(ext, 'Restrictions'),
-        uploadDateTime: _extValue(ext, 'DateTime'),
-        gpsLatitude: _extValue(ext, 'GPSLatitude'),
-        gpsLongitude: _extValue(ext, 'GPSLongitude'),
-        permissionHtml: _extValue(ext, 'Permission'),
-        attributionRequired: _extValue(ext, 'AttributionRequired'),
+        descriptionUrl: page['fullurl'] as String?,
       );
     } catch (_) {
       return null;
@@ -676,54 +690,14 @@ class SearchService {
         if (infoList == null || infoList.isEmpty) continue;
         final info = infoList.first as Map<String, dynamic>;
 
-        final mime = (info['mime'] as String? ?? '').toLowerCase();
-        final isSvg = mime == 'image/svg+xml';
-        final thumburl = info['thumburl'] as String? ?? '';
-        final originalUrl = info['url'] as String? ?? '';
-        if (originalUrl.isEmpty) continue;
-        final thumb = thumburl.isNotEmpty ? thumburl : originalUrl;
-
-        final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
-        final artistHtml = _extValue(ext, 'Artist');
-        final licenseShort = _extValue(ext, 'LicenseShortName');
-        final licenseUrl = _extValue(ext, 'LicenseUrl');
-        final dateTimeOriginal = _extValue(ext, 'DateTimeOriginal');
-
-        final uploader = info['user']?.toString() ?? user;
-        final width = info['width'] as int? ?? 0;
-        final height = info['height'] as int? ?? 0;
-
-        items.add(SearchItem(
-          title: title.replaceFirst('File:', ''),
-          url: originalUrl,
-          thumb: thumb,
-          commonsUrl:
-              'https://commons.wikimedia.org/wiki/${Uri.encodeComponent(title)}',
+        final item = _itemFromImageInfo(
+          info,
+          rawTitle: title,
           snippet: title,
-          mime: mime,
-          isSvg: isSvg,
           timestamp: timestamps[title],
-          artistHtml: artistHtml,
-          licenseShortName: licenseShort,
-          licenseUrl: licenseUrl,
-          dateTimeOriginal: dateTimeOriginal,
-          uploader: uploader,
-          width: width,
-          height: height,
-          categories: _extValue(ext, 'Categories'),
-          assessments: _extValue(ext, 'Assessments'),
-          imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
-          objectName: _extValue(ext, 'ObjectName'),
-          creditHtml: _extValue(ext, 'Credit'),
-          usageTerms: _extValue(ext, 'UsageTerms'),
-          copyrighted: _extValue(ext, 'Copyrighted'),
-          restrictions: _extValue(ext, 'Restrictions'),
-          uploadDateTime: _extValue(ext, 'DateTime'),
-          gpsLatitude: _extValue(ext, 'GPSLatitude'),
-          gpsLongitude: _extValue(ext, 'GPSLongitude'),
-          permissionHtml: _extValue(ext, 'Permission'),
-          attributionRequired: _extValue(ext, 'AttributionRequired'),
-        ));
+          uploaderFallback: user,
+        );
+        if (item != null) items.add(item);
       }
 
       return SearchResponse(items: items, continueParams: nextContinue);
@@ -733,41 +707,102 @@ class SearchService {
   }
 
 
+  /// A stable signature for [state] — identical filters always produce the
+  /// same signature, safe to use as a cache/session key.
+  ///
+  /// Derived from [SearchUrlCodec.toQueryParams] rather than maintaining
+  /// its own hand-written list of fields: that codec already has to stay
+  /// complete (it's how filters survive a shared URL), so reusing it here
+  /// means a newly added [SearchState] field can't silently be missing
+  /// from signatures the way a second, independently-maintained field list
+  /// could.
   String buildQuerySignature(SearchState state) {
-    final built = buildQuery(state);
-    final formats = state.formats.map((f) => f.name).toList()..sort();
-    final categories = state.categories.toList()..sort();
+    final params = SearchUrlCodec.toQueryParams(state);
+    final sortedKeys = params.keys.toList()..sort();
+    return jsonEncode({for (final k in sortedKeys) k: params[k]});
+  }
 
-    return [
-      built.srsearch,
-      'formats=${formats.join(",")}',
-      'categories=${categories.join(",")}',
-      'deep=${state.deepCategoryMode}',
-      'categoriesUnion=${state.categoriesUnion}',
-      'titleOnly=${state.titleOnly}',
-      'localOnly=${state.localOnly}',
-      'lang=${state.languageCode ?? ""}',
-      'model=${state.contentModel ?? ""}',
-      'createdFrom=${state.createdDate?.from ?? ""}',
-      'createdTo=${state.createdDate?.to ?? ""}',
-      'editedFrom=${state.editedDate?.from ?? ""}',
-      'editedTo=${state.editedDate?.to ?? ""}',
-      'sort=${state.sortMode.name}',
-      'license=${state.licensePreset.name}',
-      'quality=${state.qualityFilter.name}',
-      'minW=${state.minWidth ?? ""}',
-      'minH=${state.minHeight ?? ""}',
-      'excludeCategories=${(state.excludeCategories.toList()..sort()).join(",")}',
-      'depictsInclude=${(state.depictsInclude.map((e) => e.qid).toList()..sort()).join(",")}',
-      'depictsExclude=${(state.depictsExclude.map((e) => e.qid).toList()..sort()).join(",")}',
-      'depictsUnion=${state.depictsUnion}',
-      'statementsInclude=${(state.statementsInclude.map((s) => "${s.property.qid}=${s.value.qid}").toList()..sort()).join(",")}',
-      'statementsExclude=${(state.statementsExclude.map((s) => "${s.property.qid}=${s.value.qid}").toList()..sort()).join(",")}',
-      'statementsUnion=${state.statementsUnion}',
-      'near=${state.nearCoord != null ? "${state.nearCoord!.lat},${state.nearCoord!.lng},${state.nearCoord!.radiusKm}" : ""}',
-      'nearTitle=${state.nearTitle != null ? "${state.nearTitle!.title},${state.nearTitle!.radiusKm}" : ""}',
-      'exclude=${(state.excludeTerms.toList()..sort()).join(",")}',
-    ].join('|');
+  /// Shared shape behind every fan-out stage below (query segments,
+  /// statements, categories, depicts, formats): split [branches] into
+  /// independent parallel searches, each identified by [keyOf] and
+  /// resolved to its own [SearchState] via [stateFor], run them all
+  /// concurrently via [nextFetch], then merge the results — interleaved by
+  /// [sortMode] the same way relevance results always were — and dedupe by
+  /// URL, since the same file can genuinely satisfy more than one branch.
+  ///
+  /// [continueBucketKey] namespaces this stage's continuation tokens inside
+  /// the opaque [continueParams] map (e.g. `_stmt`, `_cat`, `_depicts`,
+  /// `_multi`) so a `loadMore` only re-fetches branches that still have a
+  /// page left, and never confuses one stage's tokens for another's when
+  /// stages are nested (as they always are here — query segments contain
+  /// statement branches, which contain category branches, and so on).
+  ///
+  /// This is pure plumbing extracted from five call sites that were
+  /// otherwise identical apart from what they branch on — the actual
+  /// CirrusSearch query strings built at the bottom of the chain
+  /// ([buildQuery]) are completely untouched by this.
+  Future<SearchResponse?> _fanOutFetch<T>({
+    required List<T> branches,
+    required String Function(T branch) keyOf,
+    required SearchState Function(T branch) stateFor,
+    required Future<SearchResponse?> Function(
+            T branch, SearchState state, Map<String, dynamic>? continueParams)
+        nextFetch,
+    required Map<String, dynamic>? continueParams,
+    required String continueBucketKey,
+    required SortMode sortMode,
+  }) async {
+    final streams = <String, List<SearchItem>>{};
+    final newMultiContinue = <String, dynamic>{};
+    bool anySuccess = false;
+
+    final branchTokens =
+        continueParams?[continueBucketKey] as Map<String, dynamic>?;
+    final futures = <Future<void>>[];
+
+    for (final branch in branches) {
+      final key = keyOf(branch);
+
+      // Once a branch runs out of pages (no continuation token left for
+      // it), stop re-fetching it on subsequent loadMore calls.
+      if (continueParams != null &&
+          branchTokens != null &&
+          !branchTokens.containsKey(key)) {
+        continue;
+      }
+
+      final branchContinue = branchTokens?[key] as Map<String, dynamic>?;
+
+      futures.add(() async {
+        final result =
+            await nextFetch(branch, stateFor(branch), branchContinue);
+        if (result != null) {
+          anySuccess = true;
+          streams[key] = result.items;
+          if (result.continueParams != null) {
+            newMultiContinue[key] = result.continueParams;
+          }
+        }
+      }());
+    }
+
+    await Future.wait(futures);
+
+    if (!anySuccess) return null;
+
+    final interleaved = _multiSort<String>(streams, sortMode);
+    final seen = <String>{};
+    final deduped = <SearchItem>[];
+    for (final item in interleaved) {
+      if (seen.add(item.url)) deduped.add(item);
+    }
+
+    return SearchResponse(
+      items: deduped,
+      continueParams: newMultiContinue.isNotEmpty
+          ? {continueBucketKey: newMultiContinue}
+          : null,
+    );
   }
 
   /// "hrithik roshan + shahid kapoor" cannot be expressed as a single
@@ -775,8 +810,8 @@ class SearchService {
   /// on "+", run each segment as its own fully independent search (with
   /// every other filter — category, depicts, license, format, etc. — still
   /// applied identically to each), then merge and dedupe client-side. This
-  /// nests naturally with the format fan-out in [_fetchPageForQuery] below:
-  /// each segment's own request still fans out per selected format there.
+  /// nests naturally with every stage below it: each segment's own request
+  /// still fans out per statement/category/depicts/format further down.
   Future<SearchResponse?> fetchPage(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
@@ -792,54 +827,15 @@ class SearchService {
       return _fetchPageForQuery(state, continueParams: continueParams);
     }
 
-    final streams = <String, List<SearchItem>>{};
-    final newMultiContinue = <String, dynamic>{};
-    bool anySuccess = false;
-
-    final segmentTokens = continueParams?['_query'] as Map<String, dynamic>?;
-    final futures = <Future<void>>[];
-
-    for (final segment in segments) {
-      // Once a segment runs out of pages (no continuation token left for
-      // it), stop re-fetching it on subsequent loadMore calls.
-      if (continueParams != null &&
-          segmentTokens != null &&
-          !segmentTokens.containsKey(segment)) {
-        continue;
-      }
-
-      final segmentContinue = segmentTokens?[segment] as Map<String, dynamic>?;
-      final segmentState = state.copyWith(queryText: segment);
-
-      futures.add(() async {
-        final result = await _fetchPageForQuery(segmentState,
-            continueParams: segmentContinue);
-        if (result != null) {
-          anySuccess = true;
-          streams[segment] = result.items;
-          if (result.continueParams != null) {
-            newMultiContinue[segment] = result.continueParams;
-          }
-        }
-      }());
-    }
-
-    await Future.wait(futures);
-
-    if (!anySuccess) return null;
-
-    final interleaved = _multiSort<String>(streams, state.sortMode);
-    final seen = <String>{};
-    final deduped = <SearchItem>[];
-    for (final item in interleaved) {
-      // Same file can genuinely match more than one segment; keep it once.
-      if (seen.add(item.url)) deduped.add(item);
-    }
-
-    return SearchResponse(
-      items: deduped,
-      continueParams:
-          newMultiContinue.isNotEmpty ? {'_query': newMultiContinue} : null,
+    return _fanOutFetch<String>(
+      branches: segments,
+      keyOf: (segment) => segment,
+      stateFor: (segment) => state.copyWith(queryText: segment),
+      nextFetch: (_, branchState, branchContinue) =>
+          _fetchPageForQuery(branchState, continueParams: branchContinue),
+      continueParams: continueParams,
+      continueBucketKey: '_query',
+      sortMode: state.sortMode,
     );
   }
 
@@ -847,65 +843,26 @@ class SearchService {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
   }) async {
-    // Union mode with 2+ include statements: same problem and same fix as
-    // the "+"-query fan-out above — Cirrus can't reliably OR a statement
-    // clause together with the rest of the active filters in one query
-    // string, so each statement runs as its own independent search (with
-    // every other filter, including exclude-statements, still applied) and
-    // results are merged client-side.
+    // Union mode with 2+ include statements: Cirrus can't reliably OR a
+    // statement clause together with the rest of the active filters in one
+    // query string, so each statement runs as its own independent search
+    // (with every other filter, including exclude-statements, still
+    // applied) and results are merged client-side — see _fanOutFetch.
     final includeStatements = state.statementsInclude.toList();
 
     if (!state.statementsUnion || includeStatements.length <= 1) {
       return _fetchPageForCategory(state, continueParams: continueParams);
     }
 
-    final streams = <String, List<SearchItem>>{};
-    final newMultiContinue = <String, dynamic>{};
-    bool anySuccess = false;
-
-    final branchTokens = continueParams?['_stmt'] as Map<String, dynamic>?;
-    final futures = <Future<void>>[];
-
-    for (final stmt in includeStatements) {
-      final key = '${stmt.property.qid}=${stmt.value.qid}';
-      if (continueParams != null &&
-          branchTokens != null &&
-          !branchTokens.containsKey(key)) {
-        continue;
-      }
-
-      final branchContinue = branchTokens?[key] as Map<String, dynamic>?;
-      final branchState = state.copyWith(statementsInclude: {stmt});
-
-      futures.add(() async {
-        final result = await _fetchPageForCategory(branchState,
-            continueParams: branchContinue);
-        if (result != null) {
-          anySuccess = true;
-          streams[key] = result.items;
-          if (result.continueParams != null) {
-            newMultiContinue[key] = result.continueParams;
-          }
-        }
-      }());
-    }
-
-    await Future.wait(futures);
-
-    if (!anySuccess) return null;
-
-    final interleaved = _multiSort<String>(streams, state.sortMode);
-    final seen = <String>{};
-    final deduped = <SearchItem>[];
-    for (final item in interleaved) {
-      // Same file can genuinely satisfy more than one statement branch.
-      if (seen.add(item.url)) deduped.add(item);
-    }
-
-    return SearchResponse(
-      items: deduped,
-      continueParams:
-          newMultiContinue.isNotEmpty ? {'_stmt': newMultiContinue} : null,
+    return _fanOutFetch<WikidataStatement>(
+      branches: includeStatements,
+      keyOf: (stmt) => '${stmt.property.qid}=${stmt.value.qid}',
+      stateFor: (stmt) => state.copyWith(statementsInclude: {stmt}),
+      nextFetch: (_, branchState, branchContinue) =>
+          _fetchPageForCategory(branchState, continueParams: branchContinue),
+      continueParams: continueParams,
+      continueBucketKey: '_stmt',
+      sortMode: state.sortMode,
     );
   }
 
@@ -913,12 +870,9 @@ class SearchService {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
   }) async {
-    // Union mode with 2+ include categories: same problem and same fix as
-    // the statement fan-out above — Cirrus can't reliably OR a category
-    // clause together with the rest of the active filters in one query
-    // string, so each category runs as its own independent search (with
-    // every other filter, including exclude-categories, deepCategoryMode,
-    // etc. still applied identically) and results are merged client-side.
+    // Same fan-out pattern for category union mode — deepCategoryMode,
+    // excludeCategories, and everything else carry over unchanged onto
+    // each single-category branch.
     final includeCategories = state.categories
         .map((c) => c.trim())
         .where((c) => c.isNotEmpty)
@@ -928,54 +882,15 @@ class SearchService {
       return _fetchPageForDepicts(state, continueParams: continueParams);
     }
 
-    final streams = <String, List<SearchItem>>{};
-    final newMultiContinue = <String, dynamic>{};
-    bool anySuccess = false;
-
-    final branchTokens = continueParams?['_cat'] as Map<String, dynamic>?;
-    final futures = <Future<void>>[];
-
-    for (final cat in includeCategories) {
-      if (continueParams != null &&
-          branchTokens != null &&
-          !branchTokens.containsKey(cat)) {
-        continue;
-      }
-
-      final branchContinue = branchTokens?[cat] as Map<String, dynamic>?;
-      // Single-category branch state — deepCategoryMode, excludeCategories,
-      // and everything else carry over unchanged onto each branch.
-      final branchState = state.copyWith(categories: {cat});
-
-      futures.add(() async {
-        final result = await _fetchPageForDepicts(branchState,
-            continueParams: branchContinue);
-        if (result != null) {
-          anySuccess = true;
-          streams[cat] = result.items;
-          if (result.continueParams != null) {
-            newMultiContinue[cat] = result.continueParams;
-          }
-        }
-      }());
-    }
-
-    await Future.wait(futures);
-
-    if (!anySuccess) return null;
-
-    final interleaved = _multiSort<String>(streams, state.sortMode);
-    final seen = <String>{};
-    final deduped = <SearchItem>[];
-    for (final item in interleaved) {
-      // Same file can genuinely be in more than one branch's category.
-      if (seen.add(item.url)) deduped.add(item);
-    }
-
-    return SearchResponse(
-      items: deduped,
-      continueParams:
-          newMultiContinue.isNotEmpty ? {'_cat': newMultiContinue} : null,
+    return _fanOutFetch<String>(
+      branches: includeCategories,
+      keyOf: (cat) => cat,
+      stateFor: (cat) => state.copyWith(categories: {cat}),
+      nextFetch: (_, branchState, branchContinue) =>
+          _fetchPageForDepicts(branchState, continueParams: branchContinue),
+      continueParams: continueParams,
+      continueBucketKey: '_cat',
+      sortMode: state.sortMode,
     );
   }
 
@@ -983,63 +898,24 @@ class SearchService {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
   }) async {
-    // Same fan-out pattern again for depicts union mode.
+    // Same fan-out pattern again for depicts union mode — depictsExclude
+    // and everything else carry over unchanged onto each single-entity
+    // branch.
     final includeDepicts = state.depictsInclude.toList();
 
     if (!state.depictsUnion || includeDepicts.length <= 1) {
       return _fetchPageForFormat(state, continueParams: continueParams);
     }
 
-    final streams = <String, List<SearchItem>>{};
-    final newMultiContinue = <String, dynamic>{};
-    bool anySuccess = false;
-
-    final branchTokens = continueParams?['_depicts'] as Map<String, dynamic>?;
-    final futures = <Future<void>>[];
-
-    for (final entity in includeDepicts) {
-      final key = entity.qid;
-      if (continueParams != null &&
-          branchTokens != null &&
-          !branchTokens.containsKey(key)) {
-        continue;
-      }
-
-      final branchContinue = branchTokens?[key] as Map<String, dynamic>?;
-      // Single-entity branch state — depictsExclude and everything else
-      // carry over unchanged onto each branch.
-      final branchState = state.copyWith(depictsInclude: {entity});
-
-      futures.add(() async {
-        final result = await _fetchPageForFormat(branchState,
-            continueParams: branchContinue);
-        if (result != null) {
-          anySuccess = true;
-          streams[key] = result.items;
-          if (result.continueParams != null) {
-            newMultiContinue[key] = result.continueParams;
-          }
-        }
-      }());
-    }
-
-    await Future.wait(futures);
-
-    if (!anySuccess) return null;
-
-    final interleaved = _multiSort<String>(streams, state.sortMode);
-    final seen = <String>{};
-    final deduped = <SearchItem>[];
-    for (final item in interleaved) {
-      // Same file can genuinely depict more than one branch's subject.
-      if (seen.add(item.url)) deduped.add(item);
-    }
-
-    return SearchResponse(
-      items: deduped,
-      continueParams: newMultiContinue.isNotEmpty
-          ? {'_depicts': newMultiContinue}
-          : null,
+    return _fanOutFetch<DepictsEntity>(
+      branches: includeDepicts,
+      keyOf: (entity) => entity.qid,
+      stateFor: (entity) => state.copyWith(depictsInclude: {entity}),
+      nextFetch: (_, branchState, branchContinue) =>
+          _fetchPageForFormat(branchState, continueParams: branchContinue),
+      continueParams: continueParams,
+      continueBucketKey: '_depicts',
+      sortMode: state.sortMode,
     );
   }
 
@@ -1048,47 +924,26 @@ class SearchService {
     required Map<String, dynamic>? continueParams,
   }) async {
     if (state.formats.isEmpty) {
-      return _fetchSingle(state, continueParams: continueParams, overrideFormat: null);
+      return _fetchSingle(state,
+          continueParams: continueParams, overrideFormat: null);
     }
 
-    final streams = <FileFormat, List<SearchItem>>{};
-    final newMultiContinue = <String, dynamic>{};
-    bool anySuccess = false;
-
-    final multiTokens = continueParams?['_multi'] as Map<String, dynamic>?;
-
-    final futures = <Future<void>>[];
-
-    for (final format in state.formats) {
-      final formatKey = format.name;
-
-      if (continueParams != null && multiTokens != null && !multiTokens.containsKey(formatKey)) {
-        continue;
-      }
-
-      final formatContinue = multiTokens?[formatKey] as Map<String, dynamic>?;
-
-      futures.add(() async {
-        final result = await _fetchSingle(state, continueParams: formatContinue, overrideFormat: format);
-        if (result != null) {
-          anySuccess = true;
-          streams[format] = result.items;
-          if (result.continueParams != null) {
-            newMultiContinue[formatKey] = result.continueParams;
-          }
-        }
-      }());
-    }
-
-    await Future.wait(futures);
-
-    if (!anySuccess && streams.isEmpty) return null;
-
-    final sortedItems = _multiSort(streams, state.sortMode);
-
-    return SearchResponse(
-      items: sortedItems,
-      continueParams: newMultiContinue.isNotEmpty ? {'_multi': newMultiContinue} : null,
+    // Same fan-out pattern once more, this time branching on selected file
+    // format rather than a SearchState field — the format is applied via
+    // _fetchSingle's overrideFormat argument instead of a copyWith, so
+    // stateFor leaves the shared state untouched and nextFetch uses the
+    // branch (the format itself) directly.
+    return _fanOutFetch<FileFormat>(
+      branches: state.formats.toList(),
+      keyOf: (format) => format.name,
+      stateFor: (_) => state,
+      nextFetch: (format, branchState, branchContinue) => _fetchSingle(
+          branchState,
+          continueParams: branchContinue,
+          overrideFormat: format),
+      continueParams: continueParams,
+      continueBucketKey: '_multi',
+      sortMode: state.sortMode,
     );
   }
 
@@ -1153,74 +1008,42 @@ class SearchService {
       final nextContinue = data['continue'] as Map<String, dynamic>?;
       final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
 
+      // Requested via gsrinfo above; was previously fetched and silently
+      // discarded. Only meaningful here, at the leaf request — see the
+      // note on SearchResponse.totalHits for why fan-out doesn't try to
+      // combine these across branches.
+      final searchInfo = data['query']?['searchinfo'] as Map<String, dynamic>?;
+      final totalHits = searchInfo?['totalhits'] as int?;
+      final suggestion = searchInfo?['suggestion'] as String?;
+
       final items = <SearchItem>[];
       for (final page in pages.values) {
         final infoList = page['imageinfo'] as List?;
         if (infoList == null || infoList.isEmpty) continue;
 
         final info = infoList.first as Map<String, dynamic>;
-        final mime = (info['mime'] as String? ?? '').toLowerCase();
-        final isSvg = mime == 'image/svg+xml';
-
-        final thumburl = info['thumburl'] as String? ?? '';
-        final originalUrl = info['url'] as String? ?? '';
-        final descriptionUrl = page['fullurl'] as String?;
-        final thumb = thumburl.isNotEmpty ? thumburl : originalUrl;
-
-        if (originalUrl.isEmpty) continue;
-
         final rawTitle = page['title'] as String? ?? '';
-        
-        final ext = info['extmetadata'] as Map<String, dynamic>? ?? {};
-        final artistHtml = _extValue(ext, 'Artist');
-        final licenseShort = _extValue(ext, 'LicenseShortName');
-        final licenseUrl = _extValue(ext, 'LicenseUrl');
-        final dateTimeOriginal = _extValue(ext, 'DateTimeOriginal');
-        
-        final uploader = info['user']?.toString() ?? '';
-        final width = info['width'] as int? ?? 0;
-        final height = info['height'] as int? ?? 0;
 
-        items.add(
-          SearchItem(
-            title: rawTitle.replaceFirst('File:', ''),
-            url: originalUrl,
-            thumb: thumb,
-            commonsUrl: 'https://commons.wikimedia.org/wiki/${Uri.encodeComponent(rawTitle)}',
-            snippet: _stripHtml(page['snippet'] as String? ?? rawTitle),
-            mime: mime,
-            isSvg: isSvg,
-            timestamp: page['timestamp'] as String?,
-            descriptionUrl: descriptionUrl,
-            artistHtml: artistHtml,
-            licenseShortName: licenseShort,
-            licenseUrl: licenseUrl,
-            dateTimeOriginal: dateTimeOriginal,
-            uploader: uploader,
-            width: width,
-            height: height,
-            categories: _extValue(ext, 'Categories'),
-            assessments: _extValue(ext, 'Assessments'),
-            imageDescriptionHtml: _extValue(ext, 'ImageDescription'),
-            objectName: _extValue(ext, 'ObjectName'),
-            creditHtml: _extValue(ext, 'Credit'),
-            usageTerms: _extValue(ext, 'UsageTerms'),
-            copyrighted: _extValue(ext, 'Copyrighted'),
-            restrictions: _extValue(ext, 'Restrictions'),
-            uploadDateTime: _extValue(ext, 'DateTime'),
-            gpsLatitude: _extValue(ext, 'GPSLatitude'),
-            gpsLongitude: _extValue(ext, 'GPSLongitude'),
-            permissionHtml: _extValue(ext, 'Permission'),
-            attributionRequired: _extValue(ext, 'AttributionRequired'),
-          ),
+        final item = _itemFromImageInfo(
+          info,
+          rawTitle: rawTitle,
+          snippet: _stripHtml(page['snippet'] as String? ?? rawTitle),
+          timestamp: page['timestamp'] as String?,
+          descriptionUrl: page['fullurl'] as String?,
         );
+        if (item != null) items.add(item);
       }
 
       final filteredItems = overrideFormat == null
           ? items.where((item) => _matchesMacroFormat(item, state.formats)).toList()
           : items;
 
-      return SearchResponse(items: filteredItems, continueParams: nextContinue);
+      return SearchResponse(
+        items: filteredItems,
+        continueParams: nextContinue,
+        totalHits: totalHits,
+        suggestion: suggestion,
+      );
     } catch (_) {
       return null;
     }

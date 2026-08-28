@@ -1,5 +1,8 @@
 import 'search_models.dart';
 
+/// Flat Map<String,String> codec for a SearchState. Despite the name, this
+/// is just a flat key/value serialization — it's equally useful as a URL
+/// querystring, a JSON-able map for an API/agent payload, or a cache key.
 class SearchUrlCodec {
   const SearchUrlCodec._();
 
@@ -294,11 +297,6 @@ class SearchUrlCodec {
   }
 
   static bool hasSearchContext(Map<String, String> params) {
-    // Any param besides "id" means this /view link came from an actual
-    // search session (query text OR filters alone — depicts/category/etc.
-    // are valid searches with no "q" present) and should restore full
-    // gallery pagination. Only a bare "id" with nothing else is a genuine
-    // standalone direct link.
     final relevant = Map<String, String>.from(params)..remove('id');
     return relevant.isNotEmpty;
   }

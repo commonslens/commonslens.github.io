@@ -1,4 +1,28 @@
-import 'package:flutter/foundation.dart';
+import 'package:meta/meta.dart';
+
+/// Parses [raw] as one of [values] by name, falling back to [fallback] for
+/// anything missing, wrong-typed, or unrecognized — used by every
+/// `fromJson` below so malformed input from an external caller (a JSON
+/// server's request body, an agent's tool call) degrades to a sane default
+/// instead of throwing and taking the whole parse down with it.
+T _enumFromJson<T extends Enum>(List<T> values, dynamic raw, T fallback) {
+  if (raw is! String) return fallback;
+  for (final v in values) {
+    if (v.name == raw) return v;
+  }
+  return fallback;
+}
+
+/// Same as [_enumFromJson] but for list contexts (e.g. `formats`) where an
+/// unrecognized entry should just be dropped from the set rather than
+/// silently replaced with some fallback value.
+T? _enumFromJsonOrNull<T extends Enum>(List<T> values, dynamic raw) {
+  if (raw is! String) return null;
+  for (final v in values) {
+    if (v.name == raw) return v;
+  }
+  return null;
+}
 
 enum MediaTabType {
   allMedia,
@@ -111,6 +135,13 @@ class DateFilter {
       to: clearTo ? null : (to ?? this.to),
     );
   }
+
+  Map<String, dynamic> toJson() => {'from': from, 'to': to};
+
+  static DateFilter fromJson(Map<String, dynamic> json) => DateFilter(
+        from: json['from'] as String?,
+        to: json['to'] as String?,
+      );
 }
 
 class NearCoordFilter {
@@ -131,6 +162,14 @@ class NearCoordFilter {
       radiusKm: radiusKm ?? this.radiusKm,
     );
   }
+
+  Map<String, dynamic> toJson() => {'lat': lat, 'lng': lng, 'radiusKm': radiusKm};
+
+  static NearCoordFilter fromJson(Map<String, dynamic> json) => NearCoordFilter(
+        lat: (json['lat'] as num?)?.toDouble() ?? 0,
+        lng: (json['lng'] as num?)?.toDouble() ?? 0,
+        radiusKm: (json['radiusKm'] as num?)?.toDouble() ?? 10,
+      );
 }
 
 /// Geosearch near a page/entity title instead of raw coordinates — CirrusSearch's
@@ -153,6 +192,13 @@ class NearTitleFilter {
       radiusKm: radiusKm ?? this.radiusKm,
     );
   }
+
+  Map<String, dynamic> toJson() => {'title': title, 'radiusKm': radiusKm};
+
+  static NearTitleFilter fromJson(Map<String, dynamic> json) => NearTitleFilter(
+        title: json['title'] as String? ?? '',
+        radiusKm: (json['radiusKm'] as num?)?.toDouble() ?? 10,
+      );
 }
 
 class DepictsEntity {
@@ -172,6 +218,18 @@ class DepictsEntity {
 
   @override
   int get hashCode => qid.hashCode;
+
+  Map<String, dynamic> toJson() =>
+      {'qid': qid, 'label': label, 'description': description};
+
+  static DepictsEntity fromJson(Map<String, dynamic> json) {
+    final qid = json['qid'] as String? ?? '';
+    return DepictsEntity(
+      qid: qid,
+      label: json['label'] as String? ?? qid,
+      description: json['description'] as String?,
+    );
+  }
 }
 
 /// An arbitrary Wikidata property=value pair, for haswbstatement: search
@@ -194,6 +252,16 @@ class WikidataStatement {
 
   @override
   int get hashCode => Object.hash(property.qid, value.qid);
+
+  Map<String, dynamic> toJson() =>
+      {'property': property.toJson(), 'value': value.toJson()};
+
+  static WikidataStatement fromJson(Map<String, dynamic> json) =>
+      WikidataStatement(
+        property:
+            DepictsEntity.fromJson(Map<String, dynamic>.from(json['property'] as Map)),
+        value: DepictsEntity.fromJson(Map<String, dynamic>.from(json['value'] as Map)),
+      );
 }
 
 class SearchState {
@@ -336,6 +404,117 @@ class SearchState {
       statementsExclude: statementsExclude ?? this.statementsExclude,
       statementsUnion: statementsUnion ?? this.statementsUnion,
       excludeTerms: excludeTerms ?? this.excludeTerms,
+    );
+  }
+
+  /// Full, typed JSON representation — every field always present (with
+  /// its default if unset), so a JSON server's response shape is stable
+  /// and self-documenting rather than varying with which filters happen to
+  /// be active. For a compact, defaults-omitted representation (e.g. for a
+  /// URL), use [SearchUrlCodec] instead.
+  Map<String, dynamic> toJson() => {
+        'queryText': queryText,
+        'tab': tab.name,
+        'formats': formats.map((f) => f.name).toList(),
+        'categories': categories.toList(),
+        'deepCategoryMode': deepCategoryMode,
+        'categoriesUnion': categoriesUnion,
+        'titleOnly': titleOnly,
+        'localOnly': localOnly,
+        'languageCode': languageCode,
+        'contentModel': contentModel,
+        'createdDate': createdDate?.toJson(),
+        'editedDate': editedDate?.toJson(),
+        'sortMode': sortMode.name,
+        'licensePreset': licensePreset.name,
+        'qualityFilter': qualityFilter.name,
+        'minWidth': minWidth,
+        'minHeight': minHeight,
+        'depictsInclude': depictsInclude.map((e) => e.toJson()).toList(),
+        'depictsExclude': depictsExclude.map((e) => e.toJson()).toList(),
+        'depictsUnion': depictsUnion,
+        'excludeCategories': excludeCategories.toList(),
+        'nearCoord': nearCoord?.toJson(),
+        'nearTitle': nearTitle?.toJson(),
+        'statementsInclude': statementsInclude.map((s) => s.toJson()).toList(),
+        'statementsExclude': statementsExclude.map((s) => s.toJson()).toList(),
+        'statementsUnion': statementsUnion,
+        'excludeTerms': excludeTerms.toList(),
+      };
+
+  /// Parses a JSON request body (already `jsonDecode`d into
+  /// `Map<String, dynamic>`) into a [SearchState]. Every field is read
+  /// defensively — missing, wrong-typed, or unrecognized values fall back
+  /// to [SearchState]'s own defaults rather than throwing, so one bad field
+  /// in a caller's payload doesn't take down the whole parse. Unknown
+  /// top-level keys are simply ignored.
+  static SearchState fromJson(Map<String, dynamic> json) {
+    Set<String> stringSet(dynamic raw) => raw is List
+        ? raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toSet()
+        : const {};
+
+    Set<DepictsEntity> depictsSet(dynamic raw) => raw is List
+        ? raw
+            .whereType<Map>()
+            .map((m) => DepictsEntity.fromJson(Map<String, dynamic>.from(m)))
+            .toSet()
+        : const {};
+
+    Set<WikidataStatement> statementsSet(dynamic raw) => raw is List
+        ? raw
+            .whereType<Map>()
+            .map((m) => WikidataStatement.fromJson(Map<String, dynamic>.from(m)))
+            .toSet()
+        : const {};
+
+    Set<FileFormat> formatsSet(dynamic raw) => raw is List
+        ? raw
+            .map((f) => _enumFromJsonOrNull(FileFormat.values, f))
+            .whereType<FileFormat>()
+            .toSet()
+        : const {};
+
+    final createdDateRaw = json['createdDate'];
+    final editedDateRaw = json['editedDate'];
+    final nearCoordRaw = json['nearCoord'];
+    final nearTitleRaw = json['nearTitle'];
+
+    return SearchState(
+      queryText: json['queryText'] as String? ?? '',
+      tab: _enumFromJson(MediaTabType.values, json['tab'], MediaTabType.allMedia),
+      formats: formatsSet(json['formats']),
+      categories: stringSet(json['categories']),
+      deepCategoryMode: json['deepCategoryMode'] as bool? ?? false,
+      categoriesUnion: json['categoriesUnion'] as bool? ?? false,
+      titleOnly: json['titleOnly'] as bool? ?? false,
+      localOnly: json['localOnly'] as bool? ?? false,
+      languageCode: json['languageCode'] as String?,
+      contentModel: json['contentModel'] as String?,
+      createdDate: createdDateRaw is Map
+          ? DateFilter.fromJson(Map<String, dynamic>.from(createdDateRaw))
+          : null,
+      editedDate: editedDateRaw is Map
+          ? DateFilter.fromJson(Map<String, dynamic>.from(editedDateRaw))
+          : null,
+      sortMode: _enumFromJson(SortMode.values, json['sortMode'], SortMode.relevance),
+      licensePreset:
+          _enumFromJson(LicensePreset.values, json['licensePreset'], LicensePreset.any),
+      qualityFilter:
+          _enumFromJson(QualityFilter.values, json['qualityFilter'], QualityFilter.any),
+      minWidth: (json['minWidth'] as num?)?.toInt(),
+      minHeight: (json['minHeight'] as num?)?.toInt(),
+      depictsInclude: depictsSet(json['depictsInclude']),
+      depictsExclude: depictsSet(json['depictsExclude']),
+      depictsUnion: json['depictsUnion'] as bool? ?? false,
+      excludeCategories: stringSet(json['excludeCategories']),
+      nearCoord:
+          nearCoordRaw is Map ? NearCoordFilter.fromJson(Map<String, dynamic>.from(nearCoordRaw)) : null,
+      nearTitle:
+          nearTitleRaw is Map ? NearTitleFilter.fromJson(Map<String, dynamic>.from(nearTitleRaw)) : null,
+      statementsInclude: statementsSet(json['statementsInclude']),
+      statementsExclude: statementsSet(json['statementsExclude']),
+      statementsUnion: json['statementsUnion'] as bool? ?? false,
+      excludeTerms: stringSet(json['excludeTerms']),
     );
   }
 }
@@ -511,6 +690,8 @@ class QueryChipData {
     required this.id,
     required this.label,
   });
+
+  Map<String, dynamic> toJson() => {'id': id, 'label': label};
 }
 
 class QueryBuildResult {
@@ -523,6 +704,12 @@ class QueryBuildResult {
     required this.chips,
     required this.debugPreview,
   });
+
+  Map<String, dynamic> toJson() => {
+        'srsearch': srsearch,
+        'chips': chips.map((c) => c.toJson()).toList(),
+        'debugPreview': debugPreview,
+      };
 }
 
 class SearchItem {
@@ -535,7 +722,7 @@ class SearchItem {
   final bool isSvg;
   final String? timestamp;
   final String? descriptionUrl;
-  
+
   final String artistHtml;
   final String licenseShortName;
   final String licenseUrl;
@@ -594,6 +781,72 @@ class SearchItem {
     this.permissionHtml = '',
     this.attributionRequired = '',
   });
+
+  /// Flat map of every field — every value here is already a JSON-native
+  /// primitive (String/bool/int), no nested encoding needed.
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'url': url,
+        'thumb': thumb,
+        'commonsUrl': commonsUrl,
+        'snippet': snippet,
+        'mime': mime,
+        'isSvg': isSvg,
+        'timestamp': timestamp,
+        'descriptionUrl': descriptionUrl,
+        'artistHtml': artistHtml,
+        'licenseShortName': licenseShortName,
+        'licenseUrl': licenseUrl,
+        'dateTimeOriginal': dateTimeOriginal,
+        'uploader': uploader,
+        'width': width,
+        'height': height,
+        'categories': categories,
+        'assessments': assessments,
+        'imageDescriptionHtml': imageDescriptionHtml,
+        'objectName': objectName,
+        'creditHtml': creditHtml,
+        'usageTerms': usageTerms,
+        'copyrighted': copyrighted,
+        'restrictions': restrictions,
+        'uploadDateTime': uploadDateTime,
+        'gpsLatitude': gpsLatitude,
+        'gpsLongitude': gpsLongitude,
+        'permissionHtml': permissionHtml,
+        'attributionRequired': attributionRequired,
+      };
+
+  static SearchItem fromJson(Map<String, dynamic> json) => SearchItem(
+        title: json['title'] as String? ?? '',
+        url: json['url'] as String? ?? '',
+        thumb: json['thumb'] as String? ?? '',
+        commonsUrl: json['commonsUrl'] as String? ?? '',
+        snippet: json['snippet'] as String? ?? '',
+        mime: json['mime'] as String? ?? '',
+        isSvg: json['isSvg'] as bool? ?? false,
+        timestamp: json['timestamp'] as String?,
+        descriptionUrl: json['descriptionUrl'] as String?,
+        artistHtml: json['artistHtml'] as String? ?? '',
+        licenseShortName: json['licenseShortName'] as String? ?? '',
+        licenseUrl: json['licenseUrl'] as String? ?? '',
+        dateTimeOriginal: json['dateTimeOriginal'] as String? ?? '',
+        uploader: json['uploader'] as String? ?? '',
+        width: (json['width'] as num?)?.toInt() ?? 0,
+        height: (json['height'] as num?)?.toInt() ?? 0,
+        categories: json['categories'] as String? ?? '',
+        assessments: json['assessments'] as String? ?? '',
+        imageDescriptionHtml: json['imageDescriptionHtml'] as String? ?? '',
+        objectName: json['objectName'] as String? ?? '',
+        creditHtml: json['creditHtml'] as String? ?? '',
+        usageTerms: json['usageTerms'] as String? ?? '',
+        copyrighted: json['copyrighted'] as String? ?? '',
+        restrictions: json['restrictions'] as String? ?? '',
+        uploadDateTime: json['uploadDateTime'] as String? ?? '',
+        gpsLatitude: json['gpsLatitude'] as String? ?? '',
+        gpsLongitude: json['gpsLongitude'] as String? ?? '',
+        permissionHtml: json['permissionHtml'] as String? ?? '',
+        attributionRequired: json['attributionRequired'] as String? ?? '',
+      );
 
   String get extension {
     final path = Uri.tryParse(url)?.path;
@@ -691,9 +944,23 @@ class SearchResponse {
   final List<SearchItem> items;
   final Map<String, dynamic>? continueParams;
 
+  /// Wikimedia's own estimate of total matches for this query. Only ever
+  /// set by the leaf request that actually hits the search API — a
+  /// "+"-query or a union-mode filter fans out into several independent
+  /// underlying searches merged together (see [SearchService._fanOutFetch]),
+  /// and there's no single accurate total to report for those, so this
+  /// stays null rather than showing a misleading number.
+  final int? totalHits;
+
+  /// CirrusSearch's "did you mean" spelling suggestion, if any. Same
+  /// single-request caveat as [totalHits].
+  final String? suggestion;
+
   const SearchResponse({
     required this.items,
     required this.continueParams,
+    this.totalHits,
+    this.suggestion,
   });
 }
 
@@ -728,6 +995,12 @@ class SearchSession {
   final String? error;
   final double scrollOffset;
 
+  /// See [SearchResponse.totalHits] — carried through here so a
+  /// [CommonsSearchSession] consumer gets the same data a direct
+  /// [CommonsBackend] caller would, not just the stateless path.
+  final int? totalHits;
+  final String? suggestion;
+
   const SearchSession({
     this.items = const [],
     this.continueParams,
@@ -737,6 +1010,8 @@ class SearchSession {
     this.loadingMore = false,
     this.error,
     this.scrollOffset = 0,
+    this.totalHits,
+    this.suggestion,
   });
 
   SearchSession copyWith({
@@ -748,6 +1023,8 @@ class SearchSession {
     bool? loadingMore,
     String? error,
     double? scrollOffset,
+    int? totalHits,
+    String? suggestion,
     bool clearContinueParams = false,
     bool clearError = false,
   }) {
@@ -761,6 +1038,44 @@ class SearchSession {
       loadingMore: loadingMore ?? this.loadingMore,
       error: clearError ? null : (error ?? this.error),
       scrollOffset: scrollOffset ?? this.scrollOffset,
+      totalHits: totalHits ?? this.totalHits,
+      suggestion: suggestion ?? this.suggestion,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'items': items.map((i) => i.toJson()).toList(),
+        'continueParams': continueParams,
+        'hasMore': hasMore,
+        'hasSearched': hasSearched,
+        'loading': loading,
+        'loadingMore': loadingMore,
+        'error': error,
+        'scrollOffset': scrollOffset,
+        'totalHits': totalHits,
+        'suggestion': suggestion,
+      };
+
+  static SearchSession fromJson(Map<String, dynamic> json) {
+    final itemsRaw = json['items'];
+    final continueParamsRaw = json['continueParams'];
+    return SearchSession(
+      items: itemsRaw is List
+          ? itemsRaw
+              .whereType<Map>()
+              .map((m) => SearchItem.fromJson(Map<String, dynamic>.from(m)))
+              .toList()
+          : const [],
+      continueParams:
+          continueParamsRaw is Map ? Map<String, dynamic>.from(continueParamsRaw) : null,
+      hasMore: json['hasMore'] as bool? ?? false,
+      hasSearched: json['hasSearched'] as bool? ?? false,
+      loading: json['loading'] as bool? ?? false,
+      loadingMore: json['loadingMore'] as bool? ?? false,
+      error: json['error'] as String?,
+      scrollOffset: (json['scrollOffset'] as num?)?.toDouble() ?? 0,
+      totalHits: (json['totalHits'] as num?)?.toInt(),
+      suggestion: json['suggestion'] as String?,
     );
   }
 }

@@ -321,6 +321,49 @@ class _ExampleChipState extends State<ExampleChip> {
 // Media Card Ecosystem
 // -----------------------------------------------------------------------------
 
+final RegExp _cardHtmlTagRegex = RegExp(r'<[^>]*>');
+
+String _stripHtmlForCard(String value) =>
+    value.isEmpty ? '' : value.replaceAll(_cardHtmlTagRegex, '').trim();
+
+/// Image Description when available, falling back to the filename.
+String _displayTitle(SearchItem item) {
+  final desc = _stripHtmlForCard(item.imageDescriptionHtml);
+  return desc.isNotEmpty ? desc : item.title;
+}
+
+const _cardMonthAbbrev = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// "29 Aug '26" — prefers the extmetadata upload timestamp (the actual
+/// "published to Commons" date) over the page's last-revision timestamp,
+/// since the latter can move forward on a later, unrelated metadata edit
+/// (a category fix, a description tweak) without the file itself ever
+/// being re-uploaded. Falls back to the revision timestamp only when
+/// extmetadata didn't supply one.
+String _formatPublishedDate(SearchItem item) {
+  final raw = item.uploadDateTime.trim().isNotEmpty
+      ? item.uploadDateTime.trim()
+      : (item.timestamp ?? '').trim();
+  if (raw.isEmpty) return '';
+  final dt = DateTime.tryParse(raw);
+  if (dt == null) return '';
+  final yy = (dt.year % 100).toString().padLeft(2, '0');
+  return "${dt.day} ${_cardMonthAbbrev[dt.month - 1]} '$yy";
+}
+
+/// Date · License, falling back to the original snippet/mime subtitle
+/// when neither is available.
+String _displaySubtitle(SearchItem item) {
+  final date = _formatPublishedDate(item);
+  final license = _stripHtmlForCard(item.licenseShortName);
+  final parts = [if (date.isNotEmpty) date, if (license.isNotEmpty) license];
+  if (parts.isEmpty) return item.snippet.isEmpty ? item.mime : item.snippet;
+  return parts.join(' | ');
+}
+
 class MediaCard extends ConsumerStatefulWidget {
   final SearchItem item;
   final ValueNotifier<List<SearchItem>> searchResultsNotifier;
@@ -481,7 +524,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.title,
+                    Text(_displayTitle(item),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -490,7 +533,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                             fontWeight: FontWeight.w600,
                             height: 1.25)),
                     const SizedBox(height: 4),
-                    Text(item.snippet.isEmpty ? item.mime : item.snippet,
+                    Text(_displaySubtitle(item),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -538,24 +581,27 @@ class _MediaPreviewState extends State<MediaPreview> {
     super.dispose();
   }
 
-  bool _isSafeImageUrl(String url) {
-    if (url.isEmpty) return false;
-    final path = Uri.tryParse(url)?.path.toLowerCase() ?? '';
-    return path.endsWith('.jpg') ||
-        path.endsWith('.jpeg') ||
-        path.endsWith('.png') ||
-        path.endsWith('.gif') ||
-        path.endsWith('.webp');
+  /// Whether item.thumb is an actual rendered thumbnail worth showing as
+  /// an image, rather than the raw original file. Commons' imageinfo API
+  /// returns a real scaled thumburl for essentially every media type,
+  /// including PDFs (page-1 render) and SVGs (rasterized) — SearchService
+  /// only falls back to the original `url` when thumbnail generation
+  /// itself failed for the whole batch (see the urlparamnormal retry in
+  /// search_service.dart), so `thumb == url` is the correct signal to
+  /// fall back to the icon UI — not the file extension.
+  bool _hasRenderableThumb(SearchItem item) {
+    if (item.thumb.isEmpty) return false;
+    if (item.mediaKind == MediaKind.audio) return false;
+    if (item.mediaKind == MediaKind.unknown) return false;
+    if (item.thumb == item.url) return false;
+    return true;
   }
 
   @override
   Widget build(BuildContext context) {
     if (!_shouldLoad) return const PreviewLoading();
     final item = widget.item;
-    final kind = item.mediaKind;
-    if (kind == MediaKind.audio ||
-        kind == MediaKind.unknown ||
-        !_isSafeImageUrl(item.thumb)) return PreviewFallback(item: item);
+    if (!_hasRenderableThumb(item)) return PreviewFallback(item: item);
     return Image.network(item.thumb,
         fit: BoxFit.cover,
         errorBuilder: (_, __, ___) => PreviewFallback(item: item),

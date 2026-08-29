@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Redirecting…</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages — MIT License
+      // https://github.com/rafgraph/spa-github-pages
+      //
+      // Counterpart to the decode script already in web/index.html's
+      // <head>. GH Pages serves THIS file for any path it doesn't
+      // recognize (e.g. /commons_lens/view?id=...). It repackages that
+      // path+query into a single ?/... query string on the app's real
+      // root (which does exist as a file), then redirects there. The
+      // existing index.html script unpacks it and restores the original
+      // URL via history.replaceState before GoRouter/Flutter boot.
+      //
+      // Encoding must be ?/path&query — NOT ?p=/path&q=query — to match
+      // the l.search[1] === '/' check already in index.html.
+
+      var pathSegmentsToKeep = 1; // "commons_lens" — the GH Pages project prefix
+
+      var l = window.location;
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
+    </script>
+  </head>
+  <body>
+    Redirecting…
+  </body>
+</html>

@@ -782,6 +782,24 @@ class SearchService {
           if (result.continueParams != null) {
             newMultiContinue[key] = result.continueParams;
           }
+          // else: this branch is genuinely exhausted (a real, successful
+          // response with no further pages) — correctly left out of
+          // newMultiContinue so it's not retried again.
+        } else {
+          // This branch's fetch failed THIS round (network blip, a
+          // transient API error that survived _fetchSingleAttempt's own
+          // retries, etc.) — that is NOT the same thing as "no more
+          // results for this branch." Previously, a failed branch was
+          // silently dropped from newMultiContinue, which permanently
+          // removed it from every future loadMore — discarding every item
+          // still behind it with no error ever surfacing. Instead,
+          // preserve its continuation token unchanged (or an empty map as
+          // a "retry from page 1" marker, if this was itself page 1) so
+          // the next loadMore retries this exact page for this branch
+          // rather than abandoning it.
+          newMultiContinue[key] = branchContinue ?? <String, dynamic>{};
+          // ignore: avoid_print
+          print('🔍 [BRANCH FAILED] key=$key — will retry on next loadMore instead of dropping it');
         }
       }());
     }
@@ -824,8 +842,13 @@ class SearchService {
         .toList();
 
     if (segments.length <= 1) {
+      // ignore: avoid_print
+      print('🔍 [FETCHPAGE] single-segment path, queryText="${state.queryText}" tab=${state.tab.name} formats=${state.formats}');
       return _fetchPageForQuery(state, continueParams: continueParams);
     }
+
+    // ignore: avoid_print
+    print('🔍 [FETCHPAGE] multi-segment "+" path, segments=$segments');
 
     return _fanOutFetch<String>(
       branches: segments,
@@ -951,6 +974,41 @@ class SearchService {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
+  }) {
+    return _fetchSingleAttempt(
+      state,
+      continueParams: continueParams,
+      overrideFormat: overrideFormat,
+      includeThumbWidth: true,
+    );
+  }
+
+  /// [includeThumbWidth] controls whether `iiurlwidth` is sent.
+  ///
+  /// MediaWiki's `generator=search` + `prop=imageinfo` batches every file in
+  /// the page through ONE thumbnail-scaling pass. If scaling to
+  /// `iiurlwidth` fails for even a single file in that batch — confirmed in
+  /// practice with an oversized/malformed TIFF — the API doesn't just skip
+  /// that file: the ENTIRE response comes back as a top-level `error`
+  /// object (code `urlparamnormal`), still with HTTP 200, and with no
+  /// `query` key at all. Previously nothing here checked for that `error`
+  /// key, so `data['query']?['pages'] ?? {}` silently evaluated to `{}` —
+  /// indistinguishable from a real "0 results" search. One unrelated broken
+  /// file could wipe out an entire otherwise-valid page of results with no
+  /// error surfaced anywhere.
+  ///
+  /// Fix: detect that specific error and retry the identical query once
+  /// with `iiurlwidth` omitted entirely. With no scaling requested, nothing
+  /// needs to be normalized, so nothing can fail this way — every file in
+  /// the batch comes back with its full-resolution `url` and no `thumburl`.
+  /// `_itemFromImageInfo` already falls back to the original url whenever
+  /// `thumburl` is absent, so no items are lost; only that one page's grid
+  /// thumbnails are briefly full-res instead of scaled.
+  Future<SearchResponse?> _fetchSingleAttempt(
+    SearchState state, {
+    required Map<String, dynamic>? continueParams,
+    FileFormat? overrideFormat,
+    required bool includeThumbWidth,
   }) async {
     try {
       final built = buildQuery(state, overrideFormat: overrideFormat);
@@ -969,7 +1027,7 @@ class SearchService {
         'inprop': 'url',
         'gsrnamespace': '6',
         'iiprop': 'url|size|mime|extmetadata|user|dimensions',
-        'iiurlwidth': '320',
+        if (includeThumbWidth) 'iiurlwidth': '320',
       };
 
       switch (state.sortMode) {
@@ -997,14 +1055,80 @@ class SearchService {
       }
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+
+      // ignore: avoid_print
+      print('🔍 [REQUEST] tab=${state.tab.name} formats=${state.formats} overrideFormat=$overrideFormat\n🔍 [REQUEST URL] $uri');
+
+      // Transient failures (dropped connection, timeout, a momentary 5xx
+      // from the API cluster) are common enough on a public API under load
+      // that treating the first failure as final would routinely and
+      // needlessly cost real results. Retry a couple of times with a short
+      // backoff before giving up — only genuine, repeated failures fall
+      // through to null (which _fanOutFetch now preserves for a later
+      // retry rather than discarding, and a non-fan-out single search
+      // surfaces as a real error rather than a false "no results").
+      http.Response? response;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        try {
+          final candidate = await _client.get(uri, headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          }).timeout(const Duration(seconds: 15));
+
+          if (candidate.statusCode == 200 || candidate.statusCode < 500) {
+            response = candidate;
+            break;
+          }
+          // ignore: avoid_print
+          print('🔍 [RETRY $attempt/3] HTTP ${candidate.statusCode} — retrying');
+        } catch (e) {
+          // ignore: avoid_print
+          print('🔍 [RETRY $attempt/3] network error: $e');
+        }
+        if (attempt < 3) {
+          await Future.delayed(Duration(milliseconds: 400 * attempt));
+        }
+      }
+
+      if (response == null) {
+        // ignore: avoid_print
+        print('🔍 [GIVE UP] all 3 attempts failed');
+        return null;
+      }
+
+      // ignore: avoid_print
+      print('🔍 [RESPONSE ${response.statusCode}] ${response.body}');
 
       if (response.statusCode != 200) return null;
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
+
+      final apiError = data['error'] as Map<String, dynamic>?;
+      if (apiError != null) {
+        final errorCode = apiError['code'] as String?;
+
+        // ignore: avoid_print
+        print('🔍 [API ERROR] code=$errorCode info=${apiError['info']} includeThumbWidth=$includeThumbWidth');
+
+        // The one specific, recoverable case: retry once with thumbnail
+        // scaling turned off entirely, so nothing can fail to normalize.
+        if (errorCode == 'urlparamnormal' && includeThumbWidth) {
+          // ignore: avoid_print
+          print('🔍 [RETRY] retrying without iiurlwidth');
+          return _fetchSingleAttempt(
+            state,
+            continueParams: continueParams,
+            overrideFormat: overrideFormat,
+            includeThumbWidth: false,
+          );
+        }
+
+        // Any other API-level error (or a repeat failure even without
+        // thumbnails) is a genuine failure, not an empty result — return
+        // null so the caller surfaces a real error instead of a false
+        // "no media found".
+        return null;
+      }
+
       final nextContinue = data['continue'] as Map<String, dynamic>?;
       final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
 
@@ -1016,10 +1140,17 @@ class SearchService {
       final totalHits = searchInfo?['totalhits'] as int?;
       final suggestion = searchInfo?['suggestion'] as String?;
 
+      // ignore: avoid_print
+      print('🔍 [PARSE] pages.length=${pages.length} totalhits=$totalHits suggestion=$suggestion');
+
       final items = <SearchItem>[];
       for (final page in pages.values) {
         final infoList = page['imageinfo'] as List?;
-        if (infoList == null || infoList.isEmpty) continue;
+        if (infoList == null || infoList.isEmpty) {
+          // ignore: avoid_print
+          print('🔍 [SKIP] title=${page['title']} — no imageinfo (missing=${page['missing']}, invalid=${page['invalid']})');
+          continue;
+        }
 
         final info = infoList.first as Map<String, dynamic>;
         final rawTitle = page['title'] as String? ?? '';
@@ -1038,13 +1169,18 @@ class SearchService {
           ? items.where((item) => _matchesMacroFormat(item, state.formats)).toList()
           : items;
 
+      // ignore: avoid_print
+      print('🔍 [RESULT] rawItems=${items.length} filteredItems=${filteredItems.length} hasMore=${nextContinue != null}');
+
       return SearchResponse(
         items: filteredItems,
         continueParams: nextContinue,
         totalHits: totalHits,
         suggestion: suggestion,
       );
-    } catch (_) {
+    } catch (e, st) {
+      // ignore: avoid_print
+      print('🔍 [EXCEPTION] $e\n$st');
       return null;
     }
   }

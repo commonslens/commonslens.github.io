@@ -19,12 +19,19 @@ class SearchService {
 
   /// Builds a [SearchItem] from one `imageinfo` entry (the shape returned
   /// by `iiprop=url|size|mime|extmetadata|user|dimensions`, regardless of
-  /// which of the three call sites below fetched it — a single lookup, a
-  /// search page, or an author's upload list all return this same shape).
-  /// Every extmetadata field lives behind [_extValue] so Artist/License/
-  /// Categories/etc. are read identically everywhere. Returns null when
-  /// there's no usable original URL, mirroring what each call site already
-  /// treated as "skip this result".
+  /// which of the call sites below fetched it — a single lookup, a search
+  /// page, a geosearch page, or an author's upload list all return this
+  /// same shape). Every extmetadata field lives behind [_extValue] so
+  /// Artist/License/Categories/etc. are read identically everywhere.
+  /// Returns null when there's no usable original URL, mirroring what each
+  /// call site already treated as "skip this result".
+  ///
+  /// [latitude]/[longitude] are for the one call site (geosearch) that has
+  /// authoritative, backend-resolved coordinates for every item (from
+  /// MediaWiki's own `prop=coordinates`) rather than the often-absent
+  /// GPSLatitude/GPSLongitude extmetadata strings every item already gets
+  /// via [_extValue] below — see [SearchItem.resolvedLatitude] for how the
+  /// two sources combine.
   static SearchItem? _itemFromImageInfo(
     Map<String, dynamic> info, {
     required String rawTitle,
@@ -32,6 +39,8 @@ class SearchService {
     String? timestamp,
     String? descriptionUrl,
     String? uploaderFallback,
+    double? latitude,
+    double? longitude,
   }) {
     final originalUrl = info['url'] as String? ?? '';
     if (originalUrl.isEmpty) return null;
@@ -72,6 +81,8 @@ class SearchService {
       gpsLongitude: _extValue(ext, 'GPSLongitude'),
       permissionHtml: _extValue(ext, 'Permission'),
       attributionRequired: _extValue(ext, 'AttributionRequired'),
+      latitude: latitude,
+      longitude: longitude,
     );
   }
 
@@ -417,14 +428,24 @@ class SearchService {
   }
 
   /// Pure geographic browse via MediaWiki's `list=geosearch` generator
-  /// combined directly with `prop=imageinfo` (one request, same shape as
-  /// _fetchSingle's generator=search). Deliberately NOT routed through
-  /// buildQuery/CirrusSearch: this returns whatever has coordinates in the
-  /// requested area, with no relevance ranking and none of SearchState's
-  /// other filters applied. nearcoord:/neartitle: (used elsewhere in
-  /// buildQuery) are the CirrusSearch-keyword version of a radius search,
-  /// but can only ever be one clause ANDed into a text/filter query — this
-  /// is for "what's physically in this area", full stop.
+  /// combined directly with `prop=imageinfo` AND `prop=coordinates` (one
+  /// request, same shape as _fetchSingle's generator=search). Deliberately
+  /// NOT routed through buildQuery/CirrusSearch: this returns whatever has
+  /// coordinates in the requested area, with no relevance ranking and none
+  /// of SearchState's other filters applied. nearcoord:/neartitle: (used
+  /// elsewhere in buildQuery) are the CirrusSearch-keyword version of a
+  /// radius search, but can only ever be one clause ANDed into a
+  /// text/filter query — this is for "what's physically in this area",
+  /// full stop.
+  ///
+  /// `prop=coordinates` is requested alongside imageinfo specifically so
+  /// every returned [SearchItem] carries real, resolved
+  /// [SearchItem.latitude]/[SearchItem.longitude] — without it, items would
+  /// come back with no usable map coordinates at all (the `ggsprop=dist`
+  /// value used for sorting below is a distance, not a position). A page
+  /// can carry more than one coordinate entry (rare, but the API allows
+  /// it); the primary one (`primary: ''`, or simply the first if none is
+  /// marked primary) is what gets used.
   ///
   /// Exactly one of two modes:
   /// - Radius: pass [lat]/[lng] (with optional [radiusMeters]).
@@ -453,7 +474,9 @@ class SearchService {
         'ggsnamespace': '6',
         'ggslimit': '$limit',
         'ggsprop': 'dist',
-        'prop': 'imageinfo',
+        'prop': 'coordinates|imageinfo',
+        'coprop': 'type|dim',
+        'colimit': '$limit',
         'inprop': 'url',
         'iiprop': 'url|size|mime|extmetadata|user|dimensions',
         'iiurlwidth': '320',
@@ -504,11 +527,28 @@ class SearchService {
         final info = infoList.first as Map<String, dynamic>;
         final rawTitle = p['title'] as String? ?? '';
 
+        // A page can carry more than one coordinate entry — take the one
+        // explicitly marked primary, or fall back to the first if none is
+        // (the overwhelming common case: exactly one entry, unmarked).
+        final coordList = p['coordinates'] as List?;
+        double? itemLat;
+        double? itemLng;
+        if (coordList != null && coordList.isNotEmpty) {
+          final primary = coordList.firstWhere(
+            (c) => (c as Map<String, dynamic>)['primary'] != null,
+            orElse: () => coordList.first,
+          ) as Map<String, dynamic>;
+          itemLat = (primary['lat'] as num?)?.toDouble();
+          itemLng = (primary['lon'] as num?)?.toDouble();
+        }
+
         final item = _itemFromImageInfo(
           info,
           rawTitle: rawTitle,
           snippet: rawTitle,
           descriptionUrl: p['fullurl'] as String?,
+          latitude: itemLat,
+          longitude: itemLng,
         );
         if (item == null) continue;
 

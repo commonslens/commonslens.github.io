@@ -844,6 +844,19 @@ class SearchItem {
   final String permissionHtml;
   final String attributionRequired;
 
+  // Authoritative, backend-resolved coordinates — as opposed to
+  // gpsLatitude/gpsLongitude above, which are the raw (often absent)
+  // EXIF/template-derived extmetadata strings every ordinary search result
+  // carries. Currently only populated by SearchService.geosearch(), which
+  // requests MediaWiki's own `prop=coordinates` alongside imageinfo — the
+  // one call site that's actually guaranteed to have real coordinates for
+  // every returned page. Kept as a separate pair of fields rather than
+  // overwriting gpsLatitude/gpsLongitude so it's always clear which source
+  // an item's location came from; see [resolvedLatitude]/[resolvedLongitude]
+  // for the "give me whatever's available" accessor most UI code wants.
+  final double? latitude;
+  final double? longitude;
+
   const SearchItem({
     required this.title,
     required this.url,
@@ -874,7 +887,21 @@ class SearchItem {
     this.gpsLongitude = '',
     this.permissionHtml = '',
     this.attributionRequired = '',
+    this.latitude,
+    this.longitude,
   });
+
+  /// Best-available coordinates for plotting this item on a map — the
+  /// dedicated [latitude]/[longitude] fields when the backend already
+  /// resolved them directly (currently: geosearch's `coordinates` prop),
+  /// falling back to parsing the EXIF/template-derived GPSLatitude/
+  /// GPSLongitude extmetadata strings that ordinary text/filter search
+  /// results carry instead. Null when neither source has anything — most
+  /// text/filter search results won't, and that's fine: the item itself is
+  /// never dropped from the result set, it just can't be placed on a map.
+  double? get resolvedLatitude => latitude ?? double.tryParse(gpsLatitude);
+  double? get resolvedLongitude => longitude ?? double.tryParse(gpsLongitude);
+  bool get hasCoordinates => resolvedLatitude != null && resolvedLongitude != null;
 
   /// Flat map of every field — every value here is already a JSON-native
   /// primitive (String/bool/int), no nested encoding needed.
@@ -908,6 +935,8 @@ class SearchItem {
         'gpsLongitude': gpsLongitude,
         'permissionHtml': permissionHtml,
         'attributionRequired': attributionRequired,
+        'latitude': latitude,
+        'longitude': longitude,
       };
 
   static SearchItem fromJson(Map<String, dynamic> json) => SearchItem(
@@ -940,6 +969,8 @@ class SearchItem {
         gpsLongitude: json['gpsLongitude'] as String? ?? '',
         permissionHtml: json['permissionHtml'] as String? ?? '',
         attributionRequired: json['attributionRequired'] as String? ?? '',
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
       );
 
   String get extension {

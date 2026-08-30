@@ -223,6 +223,23 @@ class _SearchTopBarState extends State<SearchTopBar> {
             const SizedBox(width: 10),
             SizedBox(
               height: 38,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF2A2A2A)),
+                    foregroundColor: const Color(0xFFB0B0B0),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14)),
+                onPressed: () => context.push('/map'),
+                icon: const Icon(Icons.map_outlined, size: 16),
+                label: const Text('Map',
+                    style:
+                        TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 38,
               child: OutlinedButton(
                 style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Color(0xFF2A2A2A)),

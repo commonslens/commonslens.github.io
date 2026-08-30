@@ -94,9 +94,27 @@ class SearchPage extends ConsumerStatefulWidget {
 class _SearchPageState extends ConsumerState<SearchPage> {
   final ScrollController _scrollController = ScrollController();
 
-  bool _urlHydrated = false;
   bool _showQueryPreview = false;
   bool? _isFiltersExpanded;
+
+  // Tracks the query params this page has already "consumed" — either by
+  // hydrating from them, or by being the one that pushed them via the
+  // ref.listen below. `null` means nothing has been synced yet (only true
+  // on very first build).
+  //
+  // Previously this was a one-shot `_urlHydrated` bool: hydrate once on
+  // first didChangeDependencies, then never again. That broke external
+  // navigation back onto '/' with new params (e.g. "Open in main search"
+  // from the map page, or a browser back/forward): GoRouter reuses this
+  // same State instance when only the query string changes (the path '/'
+  // didn't change), so `initState`/the old one-shot guard never re-ran —
+  // the URL updated but the page kept showing whatever it last searched.
+  // Comparing against the last-synced params instead means an externally
+  // changed URL is correctly detected and re-hydrated, while our own
+  // internally-generated URL echoes (from the ref.listen below) are
+  // correctly recognized as "already in sync" and skipped — no infinite
+  // loop, no redundant re-fetch on every internal filter change.
+  Map<String, String>? _lastSyncedParams;
 
   final List<_DownloadJob> _downloadJobs = [];
   int _nextDownloadJobId = 0;
@@ -119,17 +137,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     PaintingBinding.instance.imageCache.maximumSizeBytes = 30 << 20;
   }
 
+  bool _sameParams(Map<String, String> a, Map<String, String>? b) {
+    if (b == null) return false;
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      if (b[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_urlHydrated) {
-      _urlHydrated = true;
-      final params = GoRouterState.of(context).uri.queryParameters;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ref.read(searchControllerProvider.notifier).hydrateFromUrl(params);
-      });
-    }
+    final params = GoRouterState.of(context).uri.queryParameters;
+    if (_sameParams(params, _lastSyncedParams)) return;
+    _lastSyncedParams = Map<String, String>.from(params);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(searchControllerProvider.notifier).hydrateFromUrl(params);
+    });
   }
 
   @override
@@ -534,6 +560,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         final currentUri = GoRouterState.of(context).uri;
         if (currentUri.path != '/') return;
         final params = SearchUrlCodec.toQueryParams(next);
+        // Mark these params as already synced *before* pushing the URL, so
+        // the didChangeDependencies this triggers recognizes it as our own
+        // echo (not an external change) and doesn't re-hydrate — see the
+        // comment on _lastSyncedParams.
+        _lastSyncedParams = Map<String, String>.from(params);
         final newUrl =
             Uri(path: '/', queryParameters: params.isEmpty ? null : params)
                 .toString();

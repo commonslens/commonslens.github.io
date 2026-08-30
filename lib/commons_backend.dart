@@ -223,14 +223,27 @@ class CommonsBackend {
   /// CirrusSearch relevance query), this bypasses CirrusSearch entirely
   /// via MediaWiki's own geosearch index — useful for a literal map/bbox
   /// browsing UI rather than "text/filter search, additionally constrained
-  /// by location". Paginated the same opaque-continuation way as
-  /// [search]/[authorUploads]. Exactly one of (lat & lng) or [boundingBox]
-  /// must be supplied.
+  /// by location". Exactly one of (lat & lng) or [boundingBox] must be
+  /// supplied.
+  ///
+  /// [limit] defaults to 500 — the documented anonymous-user ceiling for
+  /// this module (mw:Extension:GeoData#list=geosearch) — rather than the
+  /// smaller page size [search]/[authorUploads] use. This is deliberate,
+  /// not an oversight: verified against GeoData's own source
+  /// (QueryGeoSearchElastic.php, the backend Commons actually runs —
+  /// `$wgGeoDataBackend = 'elastic'`), this module never emits a
+  /// `continue` token at all. It just returns up to `limit` results,
+  /// full stop — there is no page 2 to ask for. Given that, asking for
+  /// anything less than the max in the first request only throws results
+  /// away for no benefit; [continueToken] is still accepted for forward
+  /// compatibility, but in practice [MediaSearchResult.hasMore] will
+  /// always come back false from this method against Commons today.
   Future<MediaSearchResult> geosearch({
     double? lat,
     double? lng,
     double radiusMeters = 1000,
     List<double>? boundingBox,
+    int limit = 500,
     Map<String, dynamic>? continueToken,
   }) async {
     final result = await _service.geosearch(
@@ -238,6 +251,7 @@ class CommonsBackend {
       lng: lng,
       radiusMeters: radiusMeters,
       boundingBox: boundingBox,
+      limit: limit,
       continueParams: continueToken,
     );
 

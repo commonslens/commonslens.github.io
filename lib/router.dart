@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'search_page.dart';
 import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
+import 'map_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -10,6 +11,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/',
       builder: (context, state) => const SearchPage(),
+    ),
+    GoRoute(
+      path: '/map',
+      builder: (context, state) => const MapPage(),
     ),
     GoRoute(
       path: '/author',

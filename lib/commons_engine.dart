@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'commons_backend.dart';
 import 'search_models.dart';
 
@@ -231,5 +233,238 @@ class AuthorPortfolioSession {
       loadingMore: false,
     );
     return _session;
+  }
+}
+
+/// Stateful wrapper over [CommonsBackend.geosearch] — same contract as
+/// [CommonsSearchSession] (remembers the continuation token, guards
+/// against out-of-order responses via a generation counter, dedupes
+/// [loadMore] pages by URL) but for pure geographic browse (radius or
+/// bounding box) rather than a CirrusSearch text/filter query.
+///
+/// This is a genuinely different mode from setting `nearCoord`/`nearTitle`
+/// on a [SearchState] and running it through [CommonsSearchSession]: no
+/// relevance ranking, none of [SearchState]'s other filters, distance-sorted
+/// (radius mode) or API-order (bounding-box mode) results only — see
+/// [CommonsBackend.geosearch] for the full rationale. Use this for "what's
+/// physically in this area, full stop"; use `nearCoord` on a normal
+/// [CommonsSearchSession] when you want location combined with category/
+/// depicts/license/etc. filters.
+///
+/// **[loadMore] is here for the interface's sake, not because it usually
+/// does anything.** Verified against GeoData's own source: the Elastic
+/// backend Commons runs (`QueryGeoSearchElastic.php`) never emits a
+/// `continue` token — it returns up to [CommonsBackend.geosearch]'s
+/// `limit` (default 500, the documented anonymous ceiling) in one shot and
+/// stops. [loadMore] still exists and still checks `hasMore` correctly, so
+/// it does the right, safe thing (a no-op) against that reality, and would
+/// pick up pagination automatically if a future GeoData version ever added
+/// it — but don't build UI that expects it to reliably fetch a second page
+/// today.
+///
+/// One session holds exactly one active area (either a radius search or a
+/// bounding-box search, never both at once) — calling either search method
+/// replaces whatever the other one had going.
+class GeoBrowseSession {
+  GeoBrowseSession({CommonsBackend? backend})
+      : _backend = backend ?? CommonsBackend();
+
+  final CommonsBackend _backend;
+  int _generation = 0;
+
+  double? _lat;
+  double? _lng;
+  double _radiusMeters = 1000;
+  List<double>? _boundingBox;
+
+  SearchSession _session = const SearchSession();
+
+  SearchSession get session => _session;
+  double? get lat => _lat;
+  double? get lng => _lng;
+  double get radiusMeters => _radiusMeters;
+  List<double>? get boundingBox => _boundingBox;
+  bool get isBoxMode => _boundingBox != null;
+
+  SearchSession _fromResult(MediaSearchResult result) {
+    return SearchSession(
+      items: result.items,
+      continueParams: result.continueToken,
+      hasMore: result.hasMore,
+      hasSearched: true,
+      loading: false,
+      loadingMore: false,
+      error: result.error,
+    );
+  }
+
+  /// Everything within [radiusMeters] of ([lat], [lng]), nearest first.
+  /// [radiusMeters] is clamped to GeoData's own documented ceiling
+  /// (10–10,000m) inside [CommonsBackend.geosearch]/[SearchService.geosearch]
+  /// — passing something outside that range doesn't error, it just gets
+  /// silently clamped there, same as the backend already does.
+  Future<SearchSession> searchRadius(double lat, double lng, double radiusMeters) async {
+    final generation = ++_generation;
+    _lat = lat;
+    _lng = lng;
+    _radiusMeters = radiusMeters;
+    _boundingBox = null;
+
+    _session = const SearchSession().copyWith(hasSearched: true, loading: true);
+    final result = await _backend.geosearch(lat: lat, lng: lng, radiusMeters: radiusMeters);
+    if (generation != _generation) return _session;
+    _session = _fromResult(result);
+    return _session;
+  }
+
+  /// Everything inside the rectangle [box] = [northLat, westLng, southLat,
+  /// eastLng] — see [CommonsBackend.geosearch] for why this, not
+  /// nearcoord:/neartitle:, is the real bounding-box mechanism.
+  ///
+  /// **Tiled, not one request.** In practice, a single `ggsbbox` request
+  /// against Commons stops returning matches once the box gets large
+  /// (a whole city, for instance) — GeoData's own source (BoundingBox.php,
+  /// QueryGeoSearchElastic.php) has no visible area check, so this is
+  /// either an undocumented server-side limit or a timeout/result-scan cap
+  /// that doesn't surface as an API error, just an empty result. Rather
+  /// than chase the exact undocumented number, [box] is split into an
+  /// n×n grid of smaller sub-boxes (n scales with the box's diagonal —
+  /// a couple of nearby taps still costs one request, a city-sized box
+  /// costs several, capped at 4×4), each queried independently via
+  /// [Future.wait] and merged, deduped by URL — the same fan-out shape
+  /// [SearchService] already uses for "+"-queries and union-mode filters,
+  /// just applied to geography instead of query branches.
+  Future<SearchSession> searchBoundingBox(List<double> box) async {
+    final generation = ++_generation;
+    _boundingBox = box;
+    _lat = null;
+    _lng = null;
+
+    _session = const SearchSession().copyWith(hasSearched: true, loading: true);
+
+    final gridSize = _gridSizeForBox(box);
+    final tiles = _tileBoundingBox(box, gridSize);
+
+    final results = await Future.wait(
+      tiles.map((tile) => _backend.geosearch(boundingBox: tile)),
+    );
+    if (generation != _generation) return _session;
+
+    final anySuccess = results.any((r) => r.error == null);
+    if (!anySuccess) {
+      _session = SearchSession(
+        hasSearched: true,
+        error: results.isNotEmpty ? results.first.error : 'Could not load nearby media.',
+      );
+      return _session;
+    }
+
+    final seenUrls = <String>{};
+    final merged = <SearchItem>[];
+    for (final result in results) {
+      for (final item in result.items) {
+        if (seenUrls.add(item.url)) merged.add(item);
+      }
+    }
+
+    // hasMore stays false regardless of whether any individual tile came
+    // back exactly at its own limit — see the class doc: this endpoint has
+    // no continuation to hand a loadMore, tiled or not, so there's nothing
+    // for hasMore=true to promise the caller.
+    _session = SearchSession(
+      items: merged,
+      hasMore: false,
+      hasSearched: true,
+      loading: false,
+    );
+    return _session;
+  }
+
+  /// Rough great-circle distance in km — good enough to pick a tile grid
+  /// size, not meant for anything precision-sensitive.
+  static double _approxKmSpan(double lat1, double lon1, double lat2, double lon2) {
+    const earthRadiusKm = 6371.0;
+    double toRad(double deg) => deg * math.pi / 180;
+    final dLat = toRad(lat2 - lat1);
+    final dLon = toRad(lon2 - lon1);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(toRad(lat1)) *
+            math.cos(toRad(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadiusKm * c;
+  }
+
+  /// Tuned against nothing more scientific than "a whole city needs to
+  /// work" — the exact server-side threshold this works around is
+  /// undocumented (see [searchBoundingBox]), so these breakpoints are a
+  /// deliberately conservative approximation, not a measured constant.
+  static int _gridSizeForBox(List<double> box) {
+    final diagonalKm = _approxKmSpan(box[0], box[1], box[2], box[3]);
+    if (diagonalKm <= 3) return 1;
+    if (diagonalKm <= 12) return 2;
+    if (diagonalKm <= 30) return 3;
+    return 4;
+  }
+
+  static List<List<double>> _tileBoundingBox(List<double> box, int gridSize) {
+    if (gridSize <= 1) return [box];
+    final north = box[0], west = box[1], south = box[2], east = box[3];
+    final latStep = (north - south) / gridSize;
+    final lngStep = (east - west) / gridSize;
+    final tiles = <List<double>>[];
+    for (var row = 0; row < gridSize; row++) {
+      for (var col = 0; col < gridSize; col++) {
+        tiles.add([
+          north - row * latStep,
+          west + col * lngStep,
+          north - (row + 1) * latStep,
+          west + (col + 1) * lngStep,
+        ]);
+      }
+    }
+    return tiles;
+  }
+
+  /// Next page for whichever area is currently active (radius or box). No-op
+  /// if already loading or there's no further page.
+  Future<SearchSession> loadMore() async {
+    final current = _session;
+    if (current.loadingMore || !current.hasMore) return current;
+    if (_lat == null && _boundingBox == null) return current;
+
+    final generation = _generation;
+    _session = current.copyWith(loadingMore: true);
+
+    final result = await _backend.geosearch(
+      lat: _lat,
+      lng: _lng,
+      radiusMeters: _radiusMeters,
+      boundingBox: _boundingBox,
+      continueToken: current.continueParams,
+    );
+    if (generation != _generation) return _session;
+
+    if (result.error != null) {
+      final failed = current.copyWith(loadingMore: false);
+      _session = failed;
+      return failed;
+    }
+
+    final existingUrls = current.items.map((e) => e.url).toSet();
+    final merged = [
+      ...current.items,
+      ...result.items.where((i) => !existingUrls.contains(i.url)),
+    ];
+
+    final done = current.copyWith(
+      items: merged,
+      continueParams: result.continueToken,
+      hasMore: result.hasMore,
+      loadingMore: false,
+    );
+    _session = done;
+    return done;
   }
 }

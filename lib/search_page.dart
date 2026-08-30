@@ -194,6 +194,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _cancelDownload(_DownloadJob job) {
     job.cancelToken.cancel();
     setState(() => job.cancelled = true);
+    // Auto-dismiss the cancelled row 5 seconds after it appears, instead
+    // of leaving it sitting there greyed out forever.
+    Future.delayed(const Duration(seconds: 5), () {
+      if (!mounted) return;
+      setState(() => _downloadJobs.remove(job));
+    });
   }
 
   Widget _buildResolutionButton({
@@ -280,19 +286,28 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
           // Only shown while the job is actually running — a finished,
           // failed, or already-cancelled job has nothing left to stop.
+          // Deliberately a prominent labeled button (not a bare icon) so
+          // it reads distinctly from the "Minimize" action in the bulk
+          // action bar below.
           if (isActive)
             Padding(
               padding: const EdgeInsets.only(left: 8),
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  icon: const Icon(Icons.close, size: 16, color: Color(0xFF888888)),
-                  tooltip: 'Cancel download',
-                  onPressed: () => _cancelDownload(job),
+              child: TextButton.icon(
+                onPressed: () => _cancelDownload(job),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF6B6B),
+                  backgroundColor: const Color(0xFF2A1414),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6)),
                 ),
+                icon: const Icon(Icons.close, size: 15),
+                label: const Text('Cancel download',
+                    style:
+                        TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
               ),
             ),
         ],
@@ -358,8 +373,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       backgroundColor: const Color(0xFF2A2A2A),
                       foregroundColor: Colors.white,
                     ),
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('Cancel'),
+                    icon: const Icon(Icons.arrow_downward, size: 18),
+                    label: const Text('Minimize'),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
@@ -542,35 +557,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             initialQuery: filterState.queryText,
             onSearch: _search,
           ),
-          InkWell(
-            onTap: () =>
-                setState(() => _isFiltersExpanded = !_isFiltersExpanded!),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _isFiltersExpanded!
-                        ? "Hide FileType Filters"
-                        : "Show Filetype Filters",
-                    style: const TextStyle(
-                        color: Color(0xFF3D7EFF),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    _isFiltersExpanded!
-                        ? Icons.keyboard_arrow_up
-                        : Icons.keyboard_arrow_down,
-                    color: const Color(0xFF3D7EFF),
-                    size: 16,
-                  )
-                ],
-              ),
-            ),
-          ),
+          _buildHeaderBar(session, filterState),
           AnimatedSize(
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
@@ -856,59 +843,94 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           child: Text(configForTab(filterState.tab).emptyMessage,
               style: const TextStyle(color: Color(0xFF404040), fontSize: 14)));
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
-          child: Row(
-            children: [
-              Text(
-                  '${session.items.length} RESULTS${session.hasMore ? '+' : ''}',
-                  style: const TextStyle(
-                      color: Color(0xFF323232),
-                      fontSize: 10,
-                      letterSpacing: 2,
-                      fontWeight: FontWeight.w600)),
-              const Spacer(),
-              _buildSortMenu(filterState.sortMode),
-            ],
+    return GridView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+      cacheExtent: 150,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+          maxCrossAxisExtent: 280,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85),
+      itemCount: session.items.length + (session.loadingMore ? 1 : 0),
+      itemBuilder: (context, i) {
+        if (i == session.items.length)
+          return const Center(
+              child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.5, color: Color(0xFF3D7EFF))));
+        return RepaintBoundary(
+          key: ValueKey(session.items[i].url),
+          child: MediaCard(
+            item: session.items[i],
+            searchResultsNotifier: ValueNotifier(session.items),
+            onLoadMore: () =>
+                ref.read(searchControllerProvider.notifier).loadMore(),
+            index: i,
+            searchState: filterState,
           ),
-        ),
-        Expanded(
-          child: GridView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-            cacheExtent: 150,
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 280,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.85),
-            itemCount: session.items.length + (session.loadingMore ? 1 : 0),
-            itemBuilder: (context, i) {
-              if (i == session.items.length)
-                return const Center(
-                    child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 1.5, color: Color(0xFF3D7EFF))));
-              return RepaintBoundary(
-                key: ValueKey(session.items[i].url),
-                child: MediaCard(
-                  item: session.items[i],
-                  searchResultsNotifier: ValueNotifier(session.items),
-                  onLoadMore: () =>
-                      ref.read(searchControllerProvider.notifier).loadMore(),
-                  index: i,
-                  searchState: filterState,
-                ),
-              );
-            },
+        );
+      },
+    );
+  }
+
+  /// Single combined header row: the FileType-filters expand/collapse
+  /// toggle on the left, plus (once a search has actually run) the results
+  /// count and sort menu on the right — replacing what used to be two
+  /// separate stacked rows. The toggle only wraps its own text+icon in an
+  /// InkWell rather than the full row, so tapping the sort menu on the
+  /// right doesn't also fire the expand/collapse toggle underneath it.
+  Widget _buildHeaderBar(SearchSession session, SearchState filterState) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+      child: Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () =>
+                setState(() => _isFiltersExpanded = !_isFiltersExpanded!),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _isFiltersExpanded!
+                        ? "Hide FileType Filters"
+                        : "Show Filetype Filters",
+                    style: const TextStyle(
+                        color: Color(0xFF3D7EFF),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    _isFiltersExpanded!
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: const Color(0xFF3D7EFF),
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ],
+          const Spacer(),
+          if (session.hasSearched) ...[
+            Text(
+                '${session.items.length} RESULTS${session.hasMore ? '+' : ''}',
+                style: const TextStyle(
+                    color: Color(0xFF323232),
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(width: 14),
+            _buildSortMenu(filterState.sortMode),
+          ],
+        ],
+      ),
     );
   }
 

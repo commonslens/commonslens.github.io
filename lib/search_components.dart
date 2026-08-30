@@ -326,8 +326,11 @@ final RegExp _cardHtmlTagRegex = RegExp(r'<[^>]*>');
 String _stripHtmlForCard(String value) =>
     value.isEmpty ? '' : value.replaceAll(_cardHtmlTagRegex, '').trim();
 
-/// Image Description when available, falling back to the filename.
+/// Object Name when available, falling back to Image Description, then the
+/// filename.
 String _displayTitle(SearchItem item) {
+  final objectName = _stripHtmlForCard(item.objectName);
+  if (objectName.isNotEmpty) return objectName;
   final desc = _stripHtmlForCard(item.imageDescriptionHtml);
   return desc.isNotEmpty ? desc : item.title;
 }
@@ -337,31 +340,53 @@ const _cardMonthAbbrev = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-/// "29 Aug '26" — prefers the extmetadata upload timestamp (the actual
-/// "published to Commons" date) over the page's last-revision timestamp,
-/// since the latter can move forward on a later, unrelated metadata edit
-/// (a category fix, a description tweak) without the file itself ever
-/// being re-uploaded. Falls back to the revision timestamp only when
-/// extmetadata didn't supply one.
+/// "29 Aug '26" — tries the date of creation (capture time) first, since
+/// that's what the person actually cares about, but some files have
+/// dateTimeOriginal populated with junk (free text, "circa 1920", stray
+/// annotations) that isn't a real parseable date. In that case this falls
+/// through to the upload date, then the raw revision timestamp — each
+/// candidate is try-parsed in turn and the first one that actually parses
+/// wins, rather than committing to whichever field is merely non-empty.
 String _formatPublishedDate(SearchItem item) {
-  final raw = item.uploadDateTime.trim().isNotEmpty
-      ? item.uploadDateTime.trim()
-      : (item.timestamp ?? '').trim();
-  if (raw.isEmpty) return '';
-  final dt = DateTime.tryParse(raw);
+  DateTime? dt;
+  for (final candidate in [
+    item.dateTimeOriginal.trim(),
+    item.uploadDateTime.trim(),
+    (item.timestamp ?? '').trim(),
+  ]) {
+    if (candidate.isEmpty) continue;
+    dt = DateTime.tryParse(candidate);
+    if (dt != null) break;
+  }
   if (dt == null) return '';
   final yy = (dt.year % 100).toString().padLeft(2, '0');
   return "${dt.day} ${_cardMonthAbbrev[dt.month - 1]} '$yy";
 }
 
-/// Date · License, falling back to the original snippet/mime subtitle
-/// when neither is available.
-String _displaySubtitle(SearchItem item) {
+const TextStyle _cardSubtitleStyle =
+    TextStyle(color: Color(0xFFB0B0B0), fontSize: 11, height: 1.35);
+
+/// Date pinned left, license pinned right, falling back to the original
+/// snippet/mime as a single line when neither is available.
+Widget _buildCardSubtitle(SearchItem item) {
   final date = _formatPublishedDate(item);
   final license = _stripHtmlForCard(item.licenseShortName);
-  final parts = [if (date.isNotEmpty) date, if (license.isNotEmpty) license];
-  if (parts.isEmpty) return item.snippet.isEmpty ? item.mime : item.snippet;
-  return parts.join(' | ');
+
+  if (date.isEmpty && license.isEmpty) {
+    final fallback = item.snippet.isEmpty ? item.mime : item.snippet;
+    return Text(fallback,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: _cardSubtitleStyle);
+  }
+
+  return Row(
+    children: [
+      Text(date, maxLines: 1, overflow: TextOverflow.ellipsis, style: _cardSubtitleStyle),
+      const Expanded(child: SizedBox.shrink()),
+      Text(license, maxLines: 1, overflow: TextOverflow.ellipsis, style: _cardSubtitleStyle),
+    ],
+  );
 }
 
 class MediaCard extends ConsumerStatefulWidget {
@@ -517,7 +542,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
 
               // 2. BOTTOM SECTION: Text Metadata
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10, right: 10),
                 decoration: const BoxDecoration(
                   border: Border(top: BorderSide(color: Color(0xFF202020))),
                 ),
@@ -533,13 +558,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                             fontWeight: FontWeight.w600,
                             height: 1.25)),
                     const SizedBox(height: 4),
-                    Text(_displaySubtitle(item),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Color(0xFFB0B0B0),
-                            fontSize: 11,
-                            height: 1.35)),
+                    _buildCardSubtitle(item),
                   ],
                 ),
               ),

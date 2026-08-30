@@ -383,32 +383,84 @@ class DownloadService {
         if (filesWritten == 0) continue;
 
         // data.csv — one row per file actually in this zip, describing it.
-        // artistHtml comes back as raw HTML (e.g. a linked username), so
-        // it's stripped down to plain text the same way the asset viewer's
-        // metadata panel already does, rather than dumping markup into a
-        // spreadsheet cell.
+        // Every field SearchItem carries goes in here — everything fetched
+        // via imageinfo/extmetadata for that file, not just a curated
+        // subset — since the whole point of this manifest is a complete,
+        // self-contained record of what's in the archive. HTML-bearing
+        // fields (artistHtml, imageDescriptionHtml, creditHtml,
+        // permissionHtml) are stripped down to plain text the same way the
+        // asset viewer's metadata panel already does, rather than dumping
+        // markup into a spreadsheet cell.
         final csvBuffer = StringBuffer()
-          ..writeln('filename,title,source_url,commons_url,author,license,'
-              'license_url,date_created,uploader,width,height,mime');
+          ..writeln([
+            'filename',
+            'title',
+            'source_url',
+            'thumb_url',
+            'commons_url',
+            'description_url',
+            'snippet',
+            'mime',
+            'is_svg',
+            'width',
+            'height',
+            'author',
+            'uploader',
+            'license',
+            'license_url',
+            'usage_terms',
+            'copyright_status',
+            'attribution_required',
+            'permission',
+            'restrictions',
+            'credit',
+            'date_original',
+            'upload_datetime',
+            'revision_timestamp',
+            'object_name',
+            'image_description',
+            'categories',
+            'assessments',
+            'gps_latitude',
+            'gps_longitude',
+          ].join(','));
         for (final entry in manifestEntries) {
           final fileName = entry.key;
           final item = entry.value;
-          final cleanArtist =
-              item.artistHtml.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+          String plain(String html) =>
+              html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
 
           csvBuffer.writeln([
             _csvField(fileName),
             _csvField(item.title),
             _csvField(item.url),
+            _csvField(item.thumb),
             _csvField(item.commonsUrl),
-            _csvField(cleanArtist),
-            _csvField(item.licenseShortName),
-            _csvField(item.licenseUrl),
-            _csvField(item.dateTimeOriginal),
-            _csvField(item.uploader),
+            _csvField(item.descriptionUrl ?? ''),
+            _csvField(item.snippet),
+            _csvField(item.mime),
+            item.isSvg.toString(),
             item.width.toString(),
             item.height.toString(),
-            _csvField(item.mime),
+            _csvField(plain(item.artistHtml)),
+            _csvField(item.uploader),
+            _csvField(item.licenseShortName),
+            _csvField(item.licenseUrl),
+            _csvField(item.usageTerms),
+            _csvField(item.copyrighted),
+            _csvField(item.attributionRequired),
+            _csvField(plain(item.permissionHtml)),
+            _csvField(item.restrictions),
+            _csvField(plain(item.creditHtml)),
+            _csvField(item.dateTimeOriginal),
+            _csvField(item.uploadDateTime),
+            _csvField(item.timestamp ?? ''),
+            _csvField(item.objectName),
+            _csvField(plain(item.imageDescriptionHtml)),
+            _csvField(item.categories),
+            _csvField(item.assessments),
+            _csvField(item.gpsLatitude),
+            _csvField(item.gpsLongitude),
           ].join(','));
         }
         final csvBytes = utf8.encode(csvBuffer.toString());

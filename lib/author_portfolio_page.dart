@@ -285,8 +285,8 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
                       backgroundColor: const Color(0xFF2A2A2A),
                       foregroundColor: Colors.white,
                     ),
-                    icon: const Icon(Icons.close, size: 18),
-                    label: const Text('Cancel'),
+                    icon: const Icon(Icons.arrow_downward, size: 18),
+                    label: const Text('Minimize'),
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(

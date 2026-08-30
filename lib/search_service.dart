@@ -152,6 +152,430 @@ class SearchService {
     }
   }
 
+  /// Every stored revision of a file, newest first — its upload/edit
+  /// history (re-uploads, crops, rotations, retouches), not the search
+  /// result's current version. Passing `iilimit` above 1 is what turns a
+  /// normal imageinfo request into a history request.
+  Future<List<FileRevision>> fetchFileHistory(
+    String filename, {
+    int limit = 20,
+  }) async {
+    try {
+      final title = filename.startsWith('File:') ? filename : 'File:$filename';
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'origin': '*',
+        'titles': title,
+        'prop': 'imageinfo',
+        'iiprop': 'timestamp|url|user|size|comment|dimensions',
+        'iilimit': '$limit',
+        'iiurlwidth': '320',
+      });
+
+      final response = await _client.get(uri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) return const [];
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      // Same failure class fetchPage/fetchAuthorImages guard against — a
+      // batch imageinfo call can come back HTTP 200 with a top-level
+      // `error` key instead of `query.pages` rather than throwing, so
+      // check for it explicitly instead of letting a null pages map
+      // silently look like "no history".
+      if (data.containsKey('error')) return const [];
+
+      final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
+      if (pages.isEmpty) return const [];
+      final page = pages.values.first as Map<String, dynamic>;
+      if (page.containsKey('missing')) return const [];
+
+      final infoList = page['imageinfo'] as List? ?? [];
+      return infoList
+          .map((raw) {
+            final info = raw as Map<String, dynamic>;
+            final originalUrl = info['url'] as String? ?? '';
+            final thumburl = info['thumburl'] as String? ?? '';
+            return FileRevision(
+              url: originalUrl,
+              thumb: thumburl.isNotEmpty ? thumburl : originalUrl,
+              timestamp: info['timestamp'] as String?,
+              uploader: info['user']?.toString() ?? '',
+              comment: info['comment'] as String? ?? '',
+              size: info['size'] as int? ?? 0,
+              width: info['width'] as int? ?? 0,
+              height: info['height'] as int? ?? 0,
+            );
+          })
+          .where((rev) => rev.url.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Reads a file's Structured Data on Commons (SDC) entity back — its
+  /// multilingual captions and every structured statement (creator,
+  /// institution, coordinates of depicted place, inception date, and
+  /// anything else editors have added), as opposed to *filtering* on one
+  /// of those via haswbstatement: (see buildQuery / SearchState's
+  /// statementsInclude). Two requests: resolve the file's pageid (SDC
+  /// entities are addressed as "M<pageid>", not by title), then fetch that
+  /// entity from Commons' own Wikibase API. Property/value labels are
+  /// resolved in a third, batched call against www.wikidata.org, since
+  /// Commons SDC reuses Wikidata's own P-/Q-code space rather than
+  /// maintaining a separate one.
+  Future<StructuredDataResult?> fetchStructuredData(String filename) async {
+    try {
+      final title = filename.startsWith('File:') ? filename : 'File:$filename';
+
+      final infoUri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'origin': '*',
+        'titles': title,
+        'prop': 'info',
+      });
+      final infoRes = await _client.get(infoUri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 10));
+      if (infoRes.statusCode != 200) return null;
+
+      final infoData = jsonDecode(infoRes.body) as Map<String, dynamic>;
+      if (infoData.containsKey('error')) return null;
+      final pages = (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
+      if (pages.isEmpty) return null;
+      final page = pages.values.first as Map<String, dynamic>;
+      if (page.containsKey('missing')) return null;
+      final pageId = page['pageid'];
+      if (pageId == null) return null;
+      final mid = 'M$pageId';
+
+      final entityUri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'wbgetentities',
+        'format': 'json',
+        'origin': '*',
+        'ids': mid,
+      });
+      final entityRes = await _client.get(entityUri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 10));
+      if (entityRes.statusCode != 200) return null;
+
+      final entityData = jsonDecode(entityRes.body) as Map<String, dynamic>;
+      if (entityData.containsKey('error')) return null;
+      final entity = entityData['entities']?[mid] as Map<String, dynamic>?;
+      if (entity == null) return null;
+
+      final labelsRaw = entity['labels'] as Map<String, dynamic>? ?? {};
+      final captions = <String, String>{
+        for (final entry in labelsRaw.entries)
+          entry.key:
+              (entry.value as Map<String, dynamic>)['value'] as String? ?? '',
+      };
+
+      final statementsRaw = entity['statements'] as Map<String, dynamic>? ?? {};
+
+      // Collect every P-code, plus every Q-code among the values — one
+      // batched label lookup at the end instead of one request per claim.
+      final idsToResolve = <String>{};
+      final rawClaims = <MapEntry<String, Map<String, dynamic>>>[];
+
+      for (final propEntry in statementsRaw.entries) {
+        final propertyId = propEntry.key;
+        idsToResolve.add(propertyId);
+        final claims = propEntry.value as List? ?? [];
+        for (final claim in claims) {
+          final mainsnak =
+              (claim as Map<String, dynamic>)['mainsnak'] as Map<String, dynamic>?;
+          if (mainsnak == null) continue;
+          rawClaims.add(MapEntry(propertyId, mainsnak));
+          final entityId = _entityIdFromSnak(mainsnak);
+          if (entityId != null) idsToResolve.add(entityId);
+        }
+      }
+
+      final labels = await _resolveWikidataLabels(idsToResolve);
+
+      final statements = rawClaims.map((entry) {
+        final propertyId = entry.key;
+        final snak = entry.value;
+        final valueEntityId = _entityIdFromSnak(snak);
+        final display = valueEntityId != null
+            ? (labels[valueEntityId] ?? valueEntityId)
+            : _formatSnakValue(snak);
+        return StructuredDataStatement(
+          propertyId: propertyId,
+          propertyLabel: labels[propertyId] ?? propertyId,
+          valueDisplay: display,
+          valueEntityId: valueEntityId,
+        );
+      }).toList();
+
+      return StructuredDataResult(mid: mid, captions: captions, statements: statements);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The Q-code of a claim's value, if that value is itself a Wikibase
+  /// item (e.g. creator, institution) — null for literal values (text,
+  /// dates, coordinates, quantities) and for novalue/somevalue snaks.
+  String? _entityIdFromSnak(Map<String, dynamic> snak) {
+    if (snak['snaktype'] != 'value') return null;
+    final datavalue = snak['datavalue'] as Map<String, dynamic>?;
+    if (datavalue == null || datavalue['type'] != 'wikibase-entityid') {
+      return null;
+    }
+    final value = datavalue['value'] as Map<String, dynamic>?;
+    return value?['id'] as String?;
+  }
+
+  /// Best-effort human-readable text for a literal (non-entity) claim
+  /// value — covers every Wikibase datatype SDC statements commonly use.
+  String _formatSnakValue(Map<String, dynamic> snak) {
+    if (snak['snaktype'] == 'novalue') return '(no value)';
+    if (snak['snaktype'] == 'somevalue') return '(unknown value)';
+
+    final datavalue = snak['datavalue'] as Map<String, dynamic>?;
+    if (datavalue == null) return '';
+    final type = datavalue['type'] as String?;
+    final value = datavalue['value'];
+
+    switch (type) {
+      case 'string':
+        return value?.toString() ?? '';
+      case 'monolingualtext':
+        final map = value as Map<String, dynamic>?;
+        return map?['text'] as String? ?? '';
+      case 'time':
+        final map = value as Map<String, dynamic>?;
+        final raw = map?['time'] as String? ?? '';
+        // Wikibase time strings look like "+2020-01-15T00:00:00Z" — strip
+        // the leading sign and clock component for a readable date.
+        return raw.replaceFirst('+', '').split('T').first;
+      case 'globecoordinate':
+        final map = value as Map<String, dynamic>?;
+        final lat = map?['latitude'];
+        final lon = map?['longitude'];
+        return (lat != null && lon != null) ? '$lat, $lon' : '';
+      case 'quantity':
+        final map = value as Map<String, dynamic>?;
+        final amount = map?['amount'] as String? ?? '';
+        return amount.replaceFirst('+', '');
+      default:
+        return value?.toString() ?? '';
+    }
+  }
+
+  /// Batched label lookup for a mix of Wikidata P-codes and Q-codes.
+  /// Always queries www.wikidata.org regardless of which Commons file
+  /// referenced the ids — Commons SDC statements point directly into
+  /// Wikidata's own id space rather than maintaining a separate one.
+  Future<Map<String, String>> _resolveWikidataLabels(
+    Set<String> ids, {
+    String language = 'en',
+  }) async {
+    if (ids.isEmpty) return {};
+    final result = <String, String>{};
+    try {
+      final idList = ids.toList();
+      // wbgetentities caps at 50 ids per request.
+      for (var i = 0; i < idList.length; i += 50) {
+        final batch = idList.skip(i).take(50).toList();
+        final uri = Uri.https('www.wikidata.org', '/w/api.php', {
+          'action': 'wbgetentities',
+          'format': 'json',
+          'origin': '*',
+          'ids': batch.join('|'),
+          'props': 'labels',
+          'languages': language,
+        });
+        final res = await _client.get(uri, headers: {
+          'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+        }).timeout(const Duration(seconds: 10));
+        if (res.statusCode != 200) continue;
+
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        if (data.containsKey('error')) continue;
+        final entities = data['entities'] as Map<String, dynamic>? ?? {};
+        for (final entry in entities.entries) {
+          final labels =
+              (entry.value as Map<String, dynamic>)['labels'] as Map<String, dynamic>?;
+          final label = labels?[language]?['value'] as String?;
+          if (label != null) result[entry.key] = label;
+        }
+      }
+    } catch (_) {
+      // Best-effort — partial results (raw ids standing in for
+      // unresolved labels) are still useful, so failures here don't
+      // invalidate the whole fetchStructuredData call.
+    }
+    return result;
+  }
+
+  /// Pure geographic browse via MediaWiki's `list=geosearch` generator
+  /// combined directly with `prop=imageinfo` (one request, same shape as
+  /// _fetchSingle's generator=search). Deliberately NOT routed through
+  /// buildQuery/CirrusSearch: this returns whatever has coordinates in the
+  /// requested area, with no relevance ranking and none of SearchState's
+  /// other filters applied. nearcoord:/neartitle: (used elsewhere in
+  /// buildQuery) are the CirrusSearch-keyword version of a radius search,
+  /// but can only ever be one clause ANDed into a text/filter query — this
+  /// is for "what's physically in this area", full stop.
+  ///
+  /// Exactly one of two modes:
+  /// - Radius: pass [lat]/[lng] (with optional [radiusMeters]).
+  /// - Rectangle: pass [boundingBox] as [northLat, westLng, southLat,
+  ///   eastLng] — the real mechanism for a literal bounding-box search
+  ///   (there is no "bounded:" CirrusSearch keyword; that name refers to
+  ///   nearcoord:/neartitle:'s radius search in Wikimedia's own docs).
+  Future<SearchResponse?> geosearch({
+    double? lat,
+    double? lng,
+    double radiusMeters = 1000,
+    List<double>? boundingBox,
+    int limit = pageSize,
+    Map<String, dynamic>? continueParams,
+  }) async {
+    final hasCoord = lat != null && lng != null;
+    final hasBox = boundingBox != null && boundingBox.length == 4;
+    if (!hasCoord && !hasBox) return null;
+
+    try {
+      final params = <String, String>{
+        'action': 'query',
+        'format': 'json',
+        'origin': '*',
+        'generator': 'geosearch',
+        'ggsnamespace': '6',
+        'ggslimit': '$limit',
+        'ggsprop': 'dist',
+        'prop': 'imageinfo',
+        'inprop': 'url',
+        'iiprop': 'url|size|mime|extmetadata|user|dimensions',
+        'iiurlwidth': '320',
+      };
+
+      if (hasBox) {
+        // top-left lat|lng, then bottom-right lat|lng.
+        params['ggsbbox'] =
+            '${boundingBox[0]}|${boundingBox[1]}|${boundingBox[2]}|${boundingBox[3]}';
+      } else {
+        // GeoData's own documented radius ceiling.
+        final clampedRadius = radiusMeters.clamp(10, 10000);
+        params['ggscoord'] = '$lat|$lng';
+        params['ggsradius'] = '$clampedRadius';
+      }
+
+      if (continueParams != null) {
+        for (final entry in continueParams.entries) {
+          params[entry.key] = entry.value.toString();
+        }
+      }
+
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
+      final response = await _client.get(uri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) return null;
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data.containsKey('error')) return null;
+
+      final nextContinue = data['continue'] as Map<String, dynamic>?;
+      final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
+
+      // (distance, item) pairs, sorted nearest-first for radius mode — page
+      // iteration order over a Map isn't guaranteed to match geosearch's
+      // own ordering. Bounding-box mode has no single "center" to sort by,
+      // so items without a `dist` value (always true for bbox mode) fall
+      // back to the order the API returned them in via their original
+      // index, rather than being scattered by an infinite sort key.
+      final scored = <MapEntry<double, SearchItem>>[];
+      var fallbackIndex = 0.0;
+      for (final page in pages.values) {
+        final p = page as Map<String, dynamic>;
+        final infoList = p['imageinfo'] as List?;
+        if (infoList == null || infoList.isEmpty) continue;
+        final info = infoList.first as Map<String, dynamic>;
+        final rawTitle = p['title'] as String? ?? '';
+
+        final item = _itemFromImageInfo(
+          info,
+          rawTitle: rawTitle,
+          snippet: rawTitle,
+          descriptionUrl: p['fullurl'] as String?,
+        );
+        if (item == null) continue;
+
+        final dist = (p['dist'] as num?)?.toDouble() ?? fallbackIndex++;
+        scored.add(MapEntry(dist, item));
+      }
+      scored.sort((a, b) => a.key.compareTo(b.key));
+
+      return SearchResponse(
+        items: scored.map((e) => e.value).toList(),
+        continueParams: nextContinue,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Every Wikimedia page (any language, any project) that currently
+  /// embeds [filename] — a real-world usage signal distinct from anything
+  /// CirrusSearch indexes. `guprop=url` asks for a ready-to-open link per
+  /// entry rather than making the caller reconstruct one from wiki+title.
+  Future<List<GlobalUsageEntry>> fetchGlobalUsage(
+    String filename, {
+    int limit = 500,
+  }) async {
+    try {
+      final title = filename.startsWith('File:') ? filename : 'File:$filename';
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'origin': '*',
+        'titles': title,
+        'prop': 'globalusage',
+        'guprop': 'url',
+        'gulimit': '$limit',
+      });
+
+      final response = await _client.get(uri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode != 200) return const [];
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data.containsKey('error')) return const [];
+
+      final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
+      if (pages.isEmpty) return const [];
+      final page = pages.values.first as Map<String, dynamic>;
+      if (page.containsKey('missing')) return const [];
+
+      final usageList = page['globalusage'] as List? ?? [];
+      return usageList.map((raw) {
+        final entry = raw as Map<String, dynamic>;
+        return GlobalUsageEntry(
+          wiki: entry['wiki'] as String? ?? '',
+          title: entry['title'] as String? ?? '',
+          url: entry['url'] as String?,
+        );
+      }).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+
+
   Future<List<DepictsEntity>> _searchWikidataEntities(
     String text, {
     required String type, // 'item' or 'property'
@@ -289,6 +713,17 @@ class SearchService {
     } catch (_) {
       return [];
     }
+  }
+
+  /// Human-readable label for a raw byte count — display only, never fed
+  /// back into a query (filesize: clauses always use raw bytes, see
+  /// buildQuery).
+  static String _formatBytes(int bytes) {
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    if (bytes >= 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '$bytes B';
   }
 
   QueryBuildResult buildQuery(SearchState state, {FileFormat? overrideFormat}) {
@@ -467,6 +902,65 @@ class SearchService {
         label: 'Height ≥ ${state.minHeight}px',
       ));
     }
+    if (state.maxWidth != null && state.maxWidth! > 0) {
+      parts.add('filew:<${state.maxWidth}');
+      chips.add(QueryChipData(
+        id: 'maxWidth',
+        label: 'Width ≤ ${state.maxWidth}px',
+      ));
+    }
+    if (state.maxHeight != null && state.maxHeight! > 0) {
+      parts.add('fileh:<${state.maxHeight}');
+      chips.add(QueryChipData(
+        id: 'maxHeight',
+        label: 'Height ≤ ${state.maxHeight}px',
+      ));
+    }
+
+    // filesize: — always raw bytes on the wire; a UI can offer MB/KB and
+    // convert before this point, but this method never guesses at units.
+    if (state.minFileSizeBytes != null && state.minFileSizeBytes! > 0) {
+      parts.add('filesize:>${state.minFileSizeBytes}');
+      chips.add(QueryChipData(
+        id: 'minFileSize',
+        label: 'Size ≥ ${_formatBytes(state.minFileSizeBytes!)}',
+      ));
+    }
+    if (state.maxFileSizeBytes != null && state.maxFileSizeBytes! > 0) {
+      parts.add('filesize:<${state.maxFileSizeBytes}');
+      chips.add(QueryChipData(
+        id: 'maxFileSize',
+        label: 'Size ≤ ${_formatBytes(state.maxFileSizeBytes!)}',
+      ));
+    }
+
+    if (state.colorDepthBits != null && state.colorDepthBits! > 0) {
+      parts.add('filebits:${state.colorDepthBits}');
+      chips.add(QueryChipData(
+        id: 'colorDepth',
+        label: '${state.colorDepthBits}-bit color depth',
+      ));
+    }
+
+    // hastemplate: generalized beyond the hardcoded QualityFilter presets
+    // further down — GLAM/institutional sets, granular PD templates, or
+    // anything else a template marks. Quoted whenever the name contains a
+    // space, same convention as excludeTerms below.
+    for (final template in state.templates.toList()..sort()) {
+      final safe = template.trim();
+      if (safe.isEmpty) continue;
+      final token = safe.contains(' ') ? '"$safe"' : safe;
+      parts.add('hastemplate:$token');
+      chips.add(QueryChipData(id: 'template:$safe', label: 'Template: $safe'));
+    }
+    for (final template in state.excludeTemplates.toList()..sort()) {
+      final safe = template.trim();
+      if (safe.isEmpty) continue;
+      final token = safe.contains(' ') ? '"$safe"' : safe;
+      parts.add('-hastemplate:$token');
+      chips.add(QueryChipData(
+          id: 'excludeTemplate:$safe', label: 'Not template: $safe'));
+    }
 
     // Union mode for depicts — same pattern and same reasoning as
     // categoriesUnion/statementsUnion: this is a preview join for the
@@ -569,6 +1063,41 @@ class SearchService {
       final token = needsQuotes ? '"$safe"' : safe;
       parts.add('-$token');
       chips.add(QueryChipData(id: 'exclude:$safe', label: 'Exclude: $safe'));
+    }
+
+    // morelike: — "files similar to these" via CirrusSearch's own
+    // similarity engine. Combines with every other clause above (AND),
+    // same as everything else in this method; it's just one more term in
+    // the joined query string, not a special standalone request.
+    final morelike = state.morelikeTitles
+        .map((t) {
+          final trimmed = t.trim();
+          if (trimmed.isEmpty) return '';
+          return trimmed.startsWith('File:') ? trimmed : 'File:$trimmed';
+        })
+        .where((t) => t.isNotEmpty)
+        .toList()
+      ..sort();
+    if (morelike.isNotEmpty) {
+      parts.add('morelike:${morelike.join('|')}');
+      chips.add(QueryChipData(
+        id: 'morelike',
+        label: morelike.length == 1
+            ? 'Similar to: ${morelike.first.replaceFirst('File:', '')}'
+            : 'Similar to ${morelike.length} files',
+      ));
+    }
+
+    // insource: — matches the file description page's raw wikitext, a
+    // different corpus than the analyzed/indexed text `queryText` matches
+    // against. Regex mode uses insource:/.../, literal mode wraps in
+    // quotes the same way excludeTerms does above.
+    final insource = state.insourceText?.trim() ?? '';
+    if (insource.isNotEmpty) {
+      final token =
+          state.insourceRegex ? 'insource:/$insource/' : 'insource:"$insource"';
+      parts.add(token);
+      chips.add(QueryChipData(id: 'insource', label: 'Source: $insource'));
     }
 
     final srsearch = parts.join(' ').trim();

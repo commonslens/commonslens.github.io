@@ -305,6 +305,38 @@ class SearchState {
   final bool statementsUnion;
   final Set<String> excludeTerms;
 
+  // CirrusSearch's morelike: keyword — files similar to the given File:
+  // title(s), e.g. {"File:Eiffel Tower at night.jpg"}. Combines with every
+  // other active filter (AND), same as every other clause buildQuery emits.
+  final Set<String> morelikeTitles;
+
+  // CirrusSearch's insource: keyword — full-text/regex search over a
+  // file's raw wikitext (its description-page source), which is a
+  // different corpus than the free-text `queryText` field (that matches
+  // the analyzed/indexed content, not literal source). insourceRegex
+  // switches between insource:"literal text" and insource:/regex/.
+  final String? insourceText;
+  final bool insourceRegex;
+
+  // Max-dimension counterparts to minWidth/minHeight above — filew:</fileh:<
+  final int? maxWidth;
+  final int? maxHeight;
+
+  // filesize: — byte range. Values are always raw bytes; a UI can offer
+  // MB/KB and convert client-side, but the wire format here never guesses
+  // at unit suffixes.
+  final int? minFileSizeBytes;
+  final int? maxFileSizeBytes;
+
+  // filebits: — color/bit depth (e.g. 1 for monochrome, 8/16 for color).
+  final int? colorDepthBits;
+
+  // hastemplate: generalized beyond the hardcoded QualityFilter presets —
+  // GLAM/institutional sets (e.g. "Institution:Metropolitan Museum of Art"),
+  // granular PD templates (e.g. "PD-USGov-NASA"), or any other template.
+  final Set<String> templates;
+  final Set<String> excludeTemplates;
+
   const SearchState({
     this.queryText = '',
     this.tab = MediaTabType.allMedia,
@@ -333,6 +365,16 @@ class SearchState {
     this.statementsExclude = const {},
     this.statementsUnion = false,
     this.excludeTerms = const {},
+    this.morelikeTitles = const {},
+    this.insourceText,
+    this.insourceRegex = false,
+    this.maxWidth,
+    this.maxHeight,
+    this.minFileSizeBytes,
+    this.maxFileSizeBytes,
+    this.colorDepthBits,
+    this.templates = const {},
+    this.excludeTemplates = const {},
   });
 
   SearchState copyWith({
@@ -363,6 +405,16 @@ class SearchState {
     Set<WikidataStatement>? statementsExclude,
     bool? statementsUnion,
     Set<String>? excludeTerms,
+    Set<String>? morelikeTitles,
+    String? insourceText,
+    bool? insourceRegex,
+    int? maxWidth,
+    int? maxHeight,
+    int? minFileSizeBytes,
+    int? maxFileSizeBytes,
+    int? colorDepthBits,
+    Set<String>? templates,
+    Set<String>? excludeTemplates,
     bool clearLanguageCode = false,
     bool clearContentModel = false,
     bool clearCreatedDate = false,
@@ -371,6 +423,12 @@ class SearchState {
     bool clearMinHeight = false,
     bool clearNearCoord = false,
     bool clearNearTitle = false,
+    bool clearInsourceText = false,
+    bool clearMaxWidth = false,
+    bool clearMaxHeight = false,
+    bool clearMinFileSizeBytes = false,
+    bool clearMaxFileSizeBytes = false,
+    bool clearColorDepthBits = false,
   }) {
     return SearchState(
       queryText: queryText ?? this.queryText,
@@ -404,6 +462,22 @@ class SearchState {
       statementsExclude: statementsExclude ?? this.statementsExclude,
       statementsUnion: statementsUnion ?? this.statementsUnion,
       excludeTerms: excludeTerms ?? this.excludeTerms,
+      morelikeTitles: morelikeTitles ?? this.morelikeTitles,
+      insourceText:
+          clearInsourceText ? null : (insourceText ?? this.insourceText),
+      insourceRegex: insourceRegex ?? this.insourceRegex,
+      maxWidth: clearMaxWidth ? null : (maxWidth ?? this.maxWidth),
+      maxHeight: clearMaxHeight ? null : (maxHeight ?? this.maxHeight),
+      minFileSizeBytes: clearMinFileSizeBytes
+          ? null
+          : (minFileSizeBytes ?? this.minFileSizeBytes),
+      maxFileSizeBytes: clearMaxFileSizeBytes
+          ? null
+          : (maxFileSizeBytes ?? this.maxFileSizeBytes),
+      colorDepthBits:
+          clearColorDepthBits ? null : (colorDepthBits ?? this.colorDepthBits),
+      templates: templates ?? this.templates,
+      excludeTemplates: excludeTemplates ?? this.excludeTemplates,
     );
   }
 
@@ -440,6 +514,16 @@ class SearchState {
         'statementsExclude': statementsExclude.map((s) => s.toJson()).toList(),
         'statementsUnion': statementsUnion,
         'excludeTerms': excludeTerms.toList(),
+        'morelikeTitles': morelikeTitles.toList(),
+        'insourceText': insourceText,
+        'insourceRegex': insourceRegex,
+        'maxWidth': maxWidth,
+        'maxHeight': maxHeight,
+        'minFileSizeBytes': minFileSizeBytes,
+        'maxFileSizeBytes': maxFileSizeBytes,
+        'colorDepthBits': colorDepthBits,
+        'templates': templates.toList(),
+        'excludeTemplates': excludeTemplates.toList(),
       };
 
   /// Parses a JSON request body (already `jsonDecode`d into
@@ -515,6 +599,16 @@ class SearchState {
       statementsExclude: statementsSet(json['statementsExclude']),
       statementsUnion: json['statementsUnion'] as bool? ?? false,
       excludeTerms: stringSet(json['excludeTerms']),
+      morelikeTitles: stringSet(json['morelikeTitles']),
+      insourceText: json['insourceText'] as String?,
+      insourceRegex: json['insourceRegex'] as bool? ?? false,
+      maxWidth: (json['maxWidth'] as num?)?.toInt(),
+      maxHeight: (json['maxHeight'] as num?)?.toInt(),
+      minFileSizeBytes: (json['minFileSizeBytes'] as num?)?.toInt(),
+      maxFileSizeBytes: (json['maxFileSizeBytes'] as num?)?.toInt(),
+      colorDepthBits: (json['colorDepthBits'] as num?)?.toInt(),
+      templates: stringSet(json['templates']),
+      excludeTemplates: stringSet(json['excludeTemplates']),
     );
   }
 }
@@ -1078,4 +1172,166 @@ class SearchSession {
       suggestion: json['suggestion'] as String?,
     );
   }
+}
+
+// -----------------------------------------------------------------------------
+// File history (revisions) — see SearchService.fetchFileHistory
+// -----------------------------------------------------------------------------
+
+/// One stored revision of a file — a re-upload, crop, rotation, or retouch
+/// over the same title. Distinct from [SearchItem], which only ever
+/// represents a file's *current* version; this is what backs a "file
+/// history" view (Commons' own File: pages have exactly this table).
+class FileRevision {
+  final String url;
+  final String thumb;
+  final String? timestamp;
+  final String uploader;
+  final String comment;
+  final int size; // bytes
+  final int width;
+  final int height;
+
+  const FileRevision({
+    required this.url,
+    required this.thumb,
+    this.timestamp,
+    this.uploader = '',
+    this.comment = '',
+    this.size = 0,
+    this.width = 0,
+    this.height = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'url': url,
+        'thumb': thumb,
+        'timestamp': timestamp,
+        'uploader': uploader,
+        'comment': comment,
+        'size': size,
+        'width': width,
+        'height': height,
+      };
+
+  static FileRevision fromJson(Map<String, dynamic> json) => FileRevision(
+        url: json['url'] as String? ?? '',
+        thumb: json['thumb'] as String? ?? '',
+        timestamp: json['timestamp'] as String?,
+        uploader: json['uploader'] as String? ?? '',
+        comment: json['comment'] as String? ?? '',
+        size: (json['size'] as num?)?.toInt() ?? 0,
+        width: (json['width'] as num?)?.toInt() ?? 0,
+        height: (json['height'] as num?)?.toInt() ?? 0,
+      );
+}
+
+// -----------------------------------------------------------------------------
+// Structured Data on Commons (SDC) read-back — see
+// SearchService.fetchStructuredData. Distinct from WikidataStatement above,
+// which is a property=value *filter* used to build a haswbstatement: query
+// clause; these classes represent the *result* of reading a specific
+// file's actual claims back (e.g. to display in the asset viewer).
+// -----------------------------------------------------------------------------
+
+/// One statement (claim) from a file's SDC entity — e.g. "creator: Ansel
+/// Adams" or "coordinates of the depicted place: 48.85, 2.29".
+class StructuredDataStatement {
+  final String propertyId; // P-code, e.g. "P170" (creator)
+  final String propertyLabel; // resolved label, or propertyId if unresolved
+  final String valueDisplay; // best-effort human-readable value
+  final String? valueEntityId; // Q-code if the value is itself a Wikibase item
+
+  const StructuredDataStatement({
+    required this.propertyId,
+    required this.propertyLabel,
+    required this.valueDisplay,
+    this.valueEntityId,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'propertyId': propertyId,
+        'propertyLabel': propertyLabel,
+        'valueDisplay': valueDisplay,
+        'valueEntityId': valueEntityId,
+      };
+
+  static StructuredDataStatement fromJson(Map<String, dynamic> json) =>
+      StructuredDataStatement(
+        propertyId: json['propertyId'] as String? ?? '',
+        propertyLabel: json['propertyLabel'] as String? ?? '',
+        valueDisplay: json['valueDisplay'] as String? ?? '',
+        valueEntityId: json['valueEntityId'] as String?,
+      );
+}
+
+/// The full SDC entity ("M<pageid>") attached to one Commons file: its
+/// multilingual captions (Wikibase labels — distinct from the legacy,
+/// single free-text `ImageDescription` extmetadata field SearchItem
+/// already carries) plus every structured statement.
+class StructuredDataResult {
+  final String mid; // e.g. "M12345"
+  final Map<String, String> captions; // language code -> caption text
+  final List<StructuredDataStatement> statements;
+
+  const StructuredDataResult({
+    required this.mid,
+    required this.captions,
+    required this.statements,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'mid': mid,
+        'captions': captions,
+        'statements': statements.map((s) => s.toJson()).toList(),
+      };
+
+  static StructuredDataResult fromJson(Map<String, dynamic> json) {
+    final captionsRaw = json['captions'] as Map<String, dynamic>? ?? {};
+    final statementsRaw = json['statements'] as List? ?? [];
+    return StructuredDataResult(
+      mid: json['mid'] as String? ?? '',
+      captions: {
+        for (final entry in captionsRaw.entries)
+          entry.key: entry.value?.toString() ?? '',
+      },
+      statements: statementsRaw
+          .whereType<Map>()
+          .map((m) =>
+              StructuredDataStatement.fromJson(Map<String, dynamic>.from(m)))
+          .toList(),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Global usage — see SearchService.fetchGlobalUsage
+// -----------------------------------------------------------------------------
+
+/// One Wikimedia page (any language, any project) that currently embeds a
+/// given Commons file — a real-world "is this actually used anywhere"
+/// quality signal, distinct from anything CirrusSearch itself indexes.
+class GlobalUsageEntry {
+  final String wiki; // e.g. "en.wikipedia.org"
+  final String title; // the page title on that wiki
+  final String? url;
+
+  const GlobalUsageEntry({
+    required this.wiki,
+    required this.title,
+    this.url,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'wiki': wiki,
+        'title': title,
+        'url': url,
+      };
+
+  static GlobalUsageEntry fromJson(Map<String, dynamic> json) =>
+      GlobalUsageEntry(
+        wiki: json['wiki'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        url: json['url'] as String?,
+      );
 }

@@ -199,6 +199,78 @@ class CommonsBackend {
   Future<SearchItem?> fetchItem(String fileIdOrTitle) =>
       _service.fetchSingleItem(fileIdOrTitle);
 
+  /// Every stored revision of a file, newest first — its upload/edit
+  /// history, not just the current version [fetchItem] returns. Not
+  /// paginated the way [search]/[authorUploads] are: this is a single
+  /// bounded list (`limit`, default 20), not an opaque-continuation feed.
+  Future<List<FileRevision>> fileHistory(String fileIdOrTitle, {int limit = 20}) =>
+      _service.fetchFileHistory(fileIdOrTitle, limit: limit);
+
+  /// A file's full Structured Data on Commons entity — multilingual
+  /// captions plus every structured statement (creator, institution,
+  /// coordinates of depicted place, and anything else editors have added)
+  /// — as opposed to *filtering* on one of those via [SearchState]'s
+  /// `statementsInclude`/`statementsExclude`. Null if the file has no SDC
+  /// entity, or on any fetch failure.
+  Future<StructuredDataResult?> structuredData(String fileIdOrTitle) =>
+      _service.fetchStructuredData(fileIdOrTitle);
+
+  /// Pure geographic browse — either a radius around ([lat], [lng]) or a
+  /// literal rectangle via [boundingBox] ([northLat, westLng, southLat,
+  /// eastLng]), ordered by distance where that's meaningful (radius mode),
+  /// with none of [SearchState]'s other filters applied. Unlike [search]
+  /// with a `nearCoord` filter set (which ANDs `nearcoord:` into a normal
+  /// CirrusSearch relevance query), this bypasses CirrusSearch entirely
+  /// via MediaWiki's own geosearch index — useful for a literal map/bbox
+  /// browsing UI rather than "text/filter search, additionally constrained
+  /// by location". Paginated the same opaque-continuation way as
+  /// [search]/[authorUploads]. Exactly one of (lat & lng) or [boundingBox]
+  /// must be supplied.
+  Future<MediaSearchResult> geosearch({
+    double? lat,
+    double? lng,
+    double radiusMeters = 1000,
+    List<double>? boundingBox,
+    Map<String, dynamic>? continueToken,
+  }) async {
+    final result = await _service.geosearch(
+      lat: lat,
+      lng: lng,
+      radiusMeters: radiusMeters,
+      boundingBox: boundingBox,
+      continueParams: continueToken,
+    );
+
+    final queryUsed = boundingBox != null
+        ? 'geosearch:bbox(${boundingBox.join(",")})'
+        : 'geosearch:$lat,$lng,${radiusMeters}m';
+
+    if (result == null) {
+      return MediaSearchResult(
+        items: const [],
+        hasMore: false,
+        continueToken: continueToken,
+        queryUsed: queryUsed,
+        error: 'Could not load nearby media — check connectivity, or that '
+            'either lat/lng or a bounding box was supplied.',
+      );
+    }
+
+    return MediaSearchResult(
+      items: result.items,
+      hasMore: result.continueParams != null,
+      continueToken: result.continueParams,
+      queryUsed: queryUsed,
+    );
+  }
+
+  /// Every Wikimedia page (any language, any project) that currently
+  /// embeds this file — a real-world usage signal (files actually used
+  /// somewhere vs. unused personal uploads) distinct from anything
+  /// CirrusSearch itself indexes.
+  Future<List<GlobalUsageEntry>> globalUsage(String fileIdOrTitle, {int limit = 500}) =>
+      _service.fetchGlobalUsage(fileIdOrTitle, limit: limit);
+
   /// Re-sorts already-fetched items for [SortMode.titleMatch] (a no-op for
   /// every other mode, which the backend already orders correctly).
   /// Needed after client-side merging paginated results — e.g. appending a

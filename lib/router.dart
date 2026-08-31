@@ -29,9 +29,21 @@ final GoRouter appRouter = GoRouter(
         final params = state.uri.queryParameters;
         final fileId = params['id'] ?? '';
         final author = params['author'];
+        final from = params['from'];
 
         final String returnUrl;
-        if (author != null && author.trim().isNotEmpty) {
+        if (from == 'map') {
+          // Map-originated navigation (see MapPage._openItem and
+          // _ResultsSheet's MediaCard extraParams). Closing always goes
+          // back to '/map' regardless of which geo mode (browse/filtered)
+          // produced this item, or whether filterState params are also
+          // present in the URL — those params are there for AssetViewer's
+          // own gallery sourcing (see 'from' handling there), not for
+          // reconstructing a return route. Without this branch, 'from' was
+          // silently ignored and this fell through to the '/' case below —
+          // which is what sent map taps back to the main search page.
+          returnUrl = '/map';
+        } else if (author != null && author.trim().isNotEmpty) {
           returnUrl =
               Uri(path: '/author', queryParameters: {'name': author}).toString();
         } else {

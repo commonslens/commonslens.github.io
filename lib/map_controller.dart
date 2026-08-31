@@ -109,19 +109,12 @@ class MapSearchController extends Notifier<MapViewState> {
   /// applied.
   Future<void> searchRadius(double lat, double lng, double radiusMeters) async {
     state = state.copyWith(
+      mode: GeoMode.filtered,
       centerLat: lat,
       centerLng: lng,
       radiusMeters: radiusMeters,
       clearBoundingBox: true,
     );
-
-    if (state.mode == GeoMode.browse) {
-      final future = _browseEngine.searchRadius(lat, lng, radiusMeters);
-      _syncSession();
-      await future;
-      _syncSession();
-      return;
-    }
 
     final nextFilter = state.filterState.copyWith(
       nearCoord: NearCoordFilter(lat: lat, lng: lng, radiusKm: radiusMeters / 1000),

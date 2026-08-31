@@ -273,14 +273,17 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(searchControllerProvider).activeSession;
-    final portfolioSession =
-        _authorName != null ? ref.watch(authorPortfolioProvider(_authorName!)) : null;
+    final portfolioSession = _authorName != null
+        ? ref.watch(authorPortfolioProvider(_authorName!))
+        : null;
     final mapSession =
         _isMapMode ? ref.watch(mapSearchControllerProvider).session : null;
     final items = _getCombinedItems();
 
     final isLoading = (_isStandalone && _isFetchingInjected) ||
-        (portfolioSession != null && portfolioSession.loading && items.isEmpty) ||
+        (portfolioSession != null &&
+            portfolioSession.loading &&
+            items.isEmpty) ||
         (mapSession != null && mapSession.loading && items.isEmpty) ||
         (_authorName == null &&
             !_isStandalone &&
@@ -706,6 +709,31 @@ class _MetadataInspector extends StatelessWidget {
           item: item,
           onLaunchCommons: onLaunchCommons,
         ),
+        if (item.hasCoordinates) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.push(
+                Uri(path: '/map', queryParameters: {
+                  'lat': item.resolvedLatitude!.toStringAsFixed(6),
+                  'lng': item.resolvedLongitude!.toStringAsFixed(6),
+                  'radiusKm': '10',
+                }).toString(),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF7AABFF),
+                side: const BorderSide(color: Color(0xFF2A2A2A)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.travel_explore, size: 16),
+              label: const Text('View Photos Clicked Nearby',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+          ),
+        ],
         const SizedBox(height: 32),
         _buildPropertyRow('FILE TYPE', item.mime.toUpperCase()),
         _buildPropertyRow('EXTENSION', item.extension.toUpperCase()),
@@ -998,7 +1026,7 @@ class _DownloadSection extends StatelessWidget {
     return item.url;
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     final isScalable =
         item.mediaKind == MediaKind.image || item.mediaKind == MediaKind.vector;

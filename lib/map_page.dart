@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart' as ll;
 
 import 'map_controller.dart';
 import 'search_components.dart';
+import 'search_controller.dart';
 import 'search_models.dart';
 import 'search_url_codec.dart';
 
@@ -16,6 +17,43 @@ const _kBg = Color(0xFF0B0B0B);
 const _kPanelBg = Color(0xFF141414);
 const _kBorder = Color(0xFF242424);
 const _kAccent = Color(0xFF3D7EFF);
+
+enum _BaseMapStyle { street, satellite, hybrid }
+
+extension on _BaseMapStyle {
+  _BaseMapStyle get next {
+    switch (this) {
+      case _BaseMapStyle.street:
+        return _BaseMapStyle.satellite;
+      case _BaseMapStyle.satellite:
+        return _BaseMapStyle.hybrid;
+      case _BaseMapStyle.hybrid:
+        return _BaseMapStyle.street;
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case _BaseMapStyle.street:
+        return Icons.map_outlined;
+      case _BaseMapStyle.satellite:
+        return Icons.satellite_alt;
+      case _BaseMapStyle.hybrid:
+        return Icons.layers;
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case _BaseMapStyle.street:
+        return 'Street';
+      case _BaseMapStyle.satellite:
+        return 'Satellite';
+      case _BaseMapStyle.hybrid:
+        return 'Hybrid';
+    }
+  }
+}
 
 class MapPage extends ConsumerStatefulWidget {
   const MapPage({super.key});
@@ -29,9 +67,17 @@ class _MapPageState extends ConsumerState<MapPage> {
   final _lngCtrl = TextEditingController();
   final _radiusCtrl = TextEditingController(text: '2000');
 
-  bool _satellite = false;
+  _BaseMapStyle _baseMapStyle = _BaseMapStyle.street;
   double _currentZoom = 2;
   double _currentRotation = 0;
+
+  // Two-tap bounding-box drawing — see _handleMapTap. Replaces the old
+  // "search whatever's on screen" behavior: the person picks the exact
+  // area instead of it defaulting to the current viewport.
+  bool _drawingBbox = false;
+  ll.LatLng? _bboxFirstPoint;
+
+  bool _handledInitialParams = false;
 
   static const double _minZoom = 2;
   static const double _maxZoom = 19;
@@ -39,6 +85,34 @@ class _MapPageState extends ConsumerState<MapPage> {
   double get _radius {
     final r = double.tryParse(_radiusCtrl.text.trim()) ?? _kMinRadiusMeters;
     return r < _kMinRadiusMeters ? _kMinRadiusMeters : r;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_handledInitialParams) return;
+    _handledInitialParams = true;
+
+    // Deep-link entry point for AssetViewer's "View Photos Clicked Nearby"
+    // — /map?lat=..&lng=..&radiusKm=.. — triggers a pure geosearch (browse
+    // mode) radius search around that point on first load.
+    final params = GoRouterState.of(context).uri.queryParameters;
+    final lat = double.tryParse(params['lat'] ?? '');
+    final lng = double.tryParse(params['lng'] ?? '');
+    if (lat == null || lng == null) return;
+
+    final radiusKm = double.tryParse(params['radiusKm'] ?? '') ?? 10;
+    final radiusM = radiusKm * 1000;
+
+    _latCtrl.text = lat.toStringAsFixed(6);
+    _lngCtrl.text = lng.toStringAsFixed(6);
+    _radiusCtrl.text = radiusM.toStringAsFixed(0);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _mapController.move(ll.LatLng(lat, lng), 12);
+      ref.read(mapSearchControllerProvider.notifier).browseRadius(lat, lng, radiusM);
+    });
   }
 
   void _searchAt(double lat, double lng) {
@@ -59,16 +133,78 @@ class _MapPageState extends ConsumerState<MapPage> {
     _mapController.move(ll.LatLng(lat, lng), _mapController.camera.zoom);
   }
 
-  /// Whole-viewport bbox search — the one bbox mechanism kept, since
-  /// CirrusSearch has no bbox keyword and this is the only real one
-  /// (see CommonsBackend.geosearch). Snaps to north-up first so a rotated
-  /// view searches exactly what's on screen, not its enclosing rectangle.
-  void _searchThisArea() {
-    if (_currentRotation != 0) _mapController.rotate(0);
-    final b = _mapController.camera.visibleBounds;
-    ref
-        .read(mapSearchControllerProvider.notifier)
-        .searchBoundingBox([b.north, b.west, b.south, b.east]);
+  void _toggleBboxDrawing() {
+    setState(() {
+      _drawingBbox = !_drawingBbox;
+      _bboxFirstPoint = null;
+    });
+  }
+
+  /// Routes a map tap to whichever interaction is currently active: laying
+  /// down a bounding-box corner, or (in explore mode) a normal radius tap.
+  /// Imported mode ignores taps entirely — there's no fetch to trigger
+  /// while viewing your own already-fetched results.
+  void _handleMapTap(MapViewState mapState, ll.LatLng point) {
+    if (_drawingBbox) {
+      if (_bboxFirstPoint == null) {
+        setState(() => _bboxFirstPoint = point);
+        return;
+      }
+      final p1 = _bboxFirstPoint!;
+      final north = math.max(p1.latitude, point.latitude);
+      final south = math.min(p1.latitude, point.latitude);
+      final west = math.min(p1.longitude, point.longitude);
+      final east = math.max(p1.longitude, point.longitude);
+      setState(() {
+        _drawingBbox = false;
+        _bboxFirstPoint = null;
+      });
+      ref
+          .read(mapSearchControllerProvider.notifier)
+          .searchBoundingBox([north, west, south, east]);
+      return;
+    }
+
+    if (mapState.mode == GeoMode.imported) return;
+    _handleTap(point);
+  }
+
+  void _fitToItems(List<SearchItem> items) {
+    final coords = items
+        .where((i) => i.hasCoordinates)
+        .map((i) => ll.LatLng(i.resolvedLatitude!, i.resolvedLongitude!))
+        .toList();
+    if (coords.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (coords.length == 1) {
+        _mapController.move(coords.first, 12);
+        return;
+      }
+      final bounds = LatLngBounds.fromPoints(coords);
+      _mapController.fitCamera(
+          CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(60)));
+    });
+  }
+
+  /// "Search → map" tab: pulls the main search page's current results and
+  /// plots whichever ones carry coordinates. Re-tapping the tab re-imports
+  /// (in case the main search changed since last time).
+  void _handleSelectImport() {
+    setState(() {
+      _drawingBbox = false;
+      _bboxFirstPoint = null;
+    });
+    final items = ref.read(searchControllerProvider).activeSession.items;
+    ref.read(mapSearchControllerProvider.notifier).importFromItems(items);
+    _fitToItems(items);
+  }
+
+  void _handleSelectExplore() {
+    final current = ref.read(mapSearchControllerProvider);
+    if (current.mode == GeoMode.imported) {
+      ref.read(mapSearchControllerProvider.notifier).setMode(GeoMode.browse);
+    }
   }
 
   void _openItem(SearchItem item) {
@@ -83,7 +219,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     if (state.mode == GeoMode.filtered) {
       if (!state.session.hasSearched) return;
       target = state.filterState;
-    } else if (state.boundingBox != null) {
+    } else if (state.mode == GeoMode.browse && state.boundingBox != null) {
       final box = state.boundingBox!;
       final center = ll.LatLng((box[0] + box[2]) / 2, (box[1] + box[3]) / 2);
       final corner = ll.LatLng(box[0], box[1]);
@@ -242,9 +378,11 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(mapSearchControllerProvider);
+    final mainSearchItems = ref.watch(searchControllerProvider).activeSession.items;
     final session = state.session;
     final plottable = session.items.where((i) => i.hasCoordinates).toList();
     final clusters = _clusterItems(plottable, _currentZoom);
+    final isImportMode = state.mode == GeoMode.imported;
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -264,180 +402,305 @@ class _MapPageState extends ConsumerState<MapPage> {
           const SizedBox(width: 4),
         ],
       ),
-      body: LayoutBuilder(builder: (context, constraints) {
-        final isDesktop = constraints.maxWidth >= 900;
-
-        final mapArea = Stack(
-          children: [
-            FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: const ll.LatLng(20, 0),
-                initialZoom: 2,
-                minZoom: _minZoom,
-                maxZoom: _maxZoom,
-                interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
-                onTap: (_, point) => _handleTap(point),
-                onPositionChanged: (camera, hasGesture) {
-                  if (camera.zoom != _currentZoom || camera.rotation != _currentRotation) {
-                    setState(() {
-                      _currentZoom = camera.zoom;
-                      _currentRotation = camera.rotation;
-                    });
-                  }
-                },
-              ),
+      body: Column(
+        children: [
+          // Explicit two-mode toggle — "search → map" (plot what you
+          // already found) vs "map → search" (tap/draw to find something
+          // new). See GeoMode's doc for the full rationale.
+          Container(
+            color: _kPanelBg,
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
               children: [
-                TileLayer(
-                  urlTemplate: _satellite
-                      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
-                      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.commonslens.app',
-                  maxZoom: 19,
+                Expanded(
+                  child: _ModeButton(
+                    label: 'SEARCH → MAP',
+                    sublabel: 'Plot your current results',
+                    selected: isImportMode,
+                    onTap: _handleSelectImport,
+                  ),
                 ),
-                if (state.boundingBox != null)
-                  PolygonLayer(polygons: [
-                    Polygon(
-                      points: [
-                        ll.LatLng(state.boundingBox![0], state.boundingBox![1]),
-                        ll.LatLng(state.boundingBox![0], state.boundingBox![3]),
-                        ll.LatLng(state.boundingBox![2], state.boundingBox![3]),
-                        ll.LatLng(state.boundingBox![2], state.boundingBox![1]),
-                      ],
-                      color: _kAccent.withOpacity(0.15),
-                      borderColor: _kAccent,
-                      borderStrokeWidth: 2,
-                    ),
-                  ]),
-                if (state.hasPoint)
-                  CircleLayer(circles: [
-                    CircleMarker(
-                      point: ll.LatLng(state.centerLat!, state.centerLng!),
-                      radius: state.radiusMeters,
-                      useRadiusInMeter: true,
-                      color: _kAccent.withOpacity(0.12),
-                      borderColor: _kAccent,
-                      borderStrokeWidth: 2,
-                    ),
-                  ]),
-                if (state.hasPoint)
-                  MarkerLayer(markers: [
-                    Marker(
-                      point: ll.LatLng(state.centerLat!, state.centerLng!),
-                      width: 14,
-                      height: 14,
-                      child: const _CenterDot(),
-                    ),
-                  ]),
-                MarkerLayer(
-                  markers: clusters
-                      .map((c) => Marker(
-                            key: ValueKey('cluster-${c.key}-${c.items.length}'),
-                            point: c.center,
-                            width: c.items.length > 1 ? 44 : 34,
-                            height: c.items.length > 1 ? 44 : 34,
-                            child: _ClusterMarker(
-                              key: ValueKey('cluster-w-${c.key}-${c.items.length}'),
-                              cluster: c,
-                              onTap: () => c.items.length == 1
-                                  ? _openItem(c.items.first)
-                                  : _showClusterSheet(context, c),
-                            ),
-                          ))
-                      .toList(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _ModeButton(
+                    label: 'MAP → SEARCH',
+                    sublabel: 'Tap or draw to find photos',
+                    selected: !isImportMode,
+                    onTap: _handleSelectExplore,
+                  ),
                 ),
               ],
             ),
+          ),
+          Expanded(
+            child: LayoutBuilder(builder: (context, constraints) {
+              final isDesktop = constraints.maxWidth >= 900;
 
-            // Coordinate / radius entry panel.
-            Positioned(
-              top: 12,
-              left: 12,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 300),
-                child: _CoordPanel(
-                  latCtrl: _latCtrl,
-                  lngCtrl: _lngCtrl,
-                  radiusCtrl: _radiusCtrl,
-                  onSubmit: _submitCoords,
-                ),
-              ),
-            ),
-
-            // Satellite toggle + search-this-area.
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Column(
+              final mapArea = Stack(
                 children: [
-                  _OverlayIconButton(
-                    icon: _satellite ? Icons.map : Icons.satellite_alt,
-                    tooltip: _satellite ? 'Street map' : 'Satellite',
-                    onTap: () => setState(() => _satellite = !_satellite),
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: const ll.LatLng(20, 0),
+                      initialZoom: 2,
+                      minZoom: _minZoom,
+                      maxZoom: _maxZoom,
+                      interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
+                      onTap: (_, point) => _handleMapTap(state, point),
+                      onPositionChanged: (camera, hasGesture) {
+                        if (camera.zoom != _currentZoom || camera.rotation != _currentRotation) {
+                          setState(() {
+                            _currentZoom = camera.zoom;
+                            _currentRotation = camera.rotation;
+                          });
+                        }
+                      },
+                    ),
+                    children: [
+                      if (_baseMapStyle == _BaseMapStyle.street)
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.commonslens.app',
+                          maxZoom: 19,
+                        )
+                      else ...[
+                        TileLayer(
+                          urlTemplate:
+                              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                          userAgentPackageName: 'com.commonslens.app',
+                          maxZoom: 19,
+                        ),
+                        // Hybrid = satellite imagery + this transparent
+                        // roads/labels overlay on top. Satellite alone
+                        // (the branch above without this layer) stays
+                        // available as its own mode for a clean image.
+                        if (_baseMapStyle == _BaseMapStyle.hybrid)
+                          TileLayer(
+                            urlTemplate:
+                                'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+                            userAgentPackageName: 'com.commonslens.app',
+                            maxZoom: 19,
+                          ),
+                      ],
+                      if (state.boundingBox != null)
+                        PolygonLayer(polygons: [
+                          Polygon(
+                            points: [
+                              ll.LatLng(state.boundingBox![0], state.boundingBox![1]),
+                              ll.LatLng(state.boundingBox![0], state.boundingBox![3]),
+                              ll.LatLng(state.boundingBox![2], state.boundingBox![3]),
+                              ll.LatLng(state.boundingBox![2], state.boundingBox![1]),
+                            ],
+                            color: _kAccent.withOpacity(0.15),
+                            borderColor: _kAccent,
+                            borderStrokeWidth: 2,
+                          ),
+                        ]),
+                      if (state.hasPoint)
+                        CircleLayer(circles: [
+                          CircleMarker(
+                            point: ll.LatLng(state.centerLat!, state.centerLng!),
+                            radius: state.radiusMeters,
+                            useRadiusInMeter: true,
+                            color: _kAccent.withOpacity(0.12),
+                            borderColor: _kAccent,
+                            borderStrokeWidth: 2,
+                          ),
+                        ]),
+                      if (state.hasPoint)
+                        MarkerLayer(markers: [
+                          Marker(
+                            point: ll.LatLng(state.centerLat!, state.centerLng!),
+                            width: 14,
+                            height: 14,
+                            child: const _CenterDot(),
+                          ),
+                        ]),
+                      if (_bboxFirstPoint != null)
+                        MarkerLayer(markers: [
+                          Marker(
+                            point: _bboxFirstPoint!,
+                            width: 16,
+                            height: 16,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _kAccent,
+                                border: Border.all(color: Colors.white, width: 2),
+                              ),
+                            ),
+                          ),
+                        ]),
+                      MarkerLayer(
+                        markers: clusters
+                            .map((c) => Marker(
+                                  key: ValueKey('cluster-${c.key}-${c.items.length}'),
+                                  point: c.center,
+                                  width: c.items.length > 1 ? 44 : 34,
+                                  height: c.items.length > 1 ? 44 : 34,
+                                  child: _ClusterMarker(
+                                    key: ValueKey('cluster-w-${c.key}-${c.items.length}'),
+                                    cluster: c,
+                                    onTap: () => c.items.length == 1
+                                        ? _openItem(c.items.first)
+                                        : _showClusterSheet(context, c),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  _OverlayIconButton(
-                    icon: Icons.crop_free,
-                    tooltip: 'Search this area (bounding box)',
-                    onTap: _searchThisArea,
+
+                  if (!isImportMode)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 300),
+                        child: _CoordPanel(
+                          latCtrl: _latCtrl,
+                          lngCtrl: _lngCtrl,
+                          radiusCtrl: _radiusCtrl,
+                          onSubmit: _submitCoords,
+                        ),
+                      ),
+                    ),
+
+                  if (_drawingBbox)
+                    Positioned(
+                      top: 12,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: _kPanelBg.withOpacity(0.96),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _kAccent),
+                          ),
+                          child: Text(
+                            _bboxFirstPoint == null
+                                ? 'Tap the first corner of your search area'
+                                : 'Tap the opposite corner to finish',
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (isImportMode)
+                    Positioned(
+                      top: 12,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 420),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: _kPanelBg.withOpacity(0.96),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _kBorder),
+                            ),
+                            child: const Text(
+                              'Showing your current search results with location data. Switch to "Map → Search" to explore new areas.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: Color(0xFFAAAAAA), fontSize: 11.5, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: Column(
+                      children: [
+                        _OverlayIconButton(
+                          icon: _baseMapStyle.icon,
+                          tooltip: '${_baseMapStyle.label} map — tap for ${_baseMapStyle.next.label}',
+                          onTap: () => setState(() => _baseMapStyle = _baseMapStyle.next),
+                        ),
+                        if (!isImportMode) ...[
+                          const SizedBox(height: 8),
+                          _OverlayIconButton(
+                            icon: _drawingBbox ? Icons.close : Icons.crop_free,
+                            tooltip:
+                                _drawingBbox ? 'Cancel drawing' : 'Draw bounding box (tap 2 points)',
+                            active: _drawingBbox,
+                            onTap: _toggleBboxDrawing,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  if (session.loading)
+                    const Positioned(
+                      bottom: 12,
+                      left: 12,
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: _kAccent),
+                      ),
+                    ),
+
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: _MapNavigationControls(
+                      mapController: _mapController,
+                      currentRotation: _currentRotation,
+                      minZoom: _minZoom,
+                      maxZoom: _maxZoom,
+                    ),
                   ),
                 ],
-              ),
-            ),
+              );
 
-            if (session.loading)
-              const Positioned(
-                bottom: 12,
-                left: 12,
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: _kAccent),
+              final results = _ResultsPane(
+                session: session,
+                onLoadMore: () => ref.read(mapSearchControllerProvider.notifier).loadMore(),
+                onOpenInMainSearch: isImportMode ? null : () => _openInMainSearch(state),
+                onOpenItem: _openItem,
+                searchState: state.mode == GeoMode.filtered ? state.filterState : const SearchState(),
+                emptyMessage: isImportMode
+                    ? 'None of your current search results have location data.'
+                    : 'No media found here.',
+                noteText: isImportMode
+                    ? '${state.importedItems.length} of ${mainSearchItems.length} results have location data.'
+                    : null,
+              );
+
+              if (isDesktop) {
+                return Row(children: [
+                  Expanded(flex: 3, child: mapArea),
+                  Container(
+                    width: 420,
+                    decoration: const BoxDecoration(
+                        color: Color(0xFF0D0D0D), border: Border(left: BorderSide(color: Color(0xFF1E1E1E)))),
+                    child: results,
+                  ),
+                ]);
+              }
+              return Column(children: [
+                Expanded(flex: 3, child: mapArea),
+                Container(
+                  height: 320,
+                  decoration: const BoxDecoration(
+                      color: Color(0xFF0D0D0D), border: Border(top: BorderSide(color: Color(0xFF1E1E1E)))),
+                  child: results,
                 ),
-              ),
-
-            Positioned(
-              bottom: 12,
-              right: 12,
-              child: _MapNavigationControls(
-                mapController: _mapController,
-                currentRotation: _currentRotation,
-                minZoom: _minZoom,
-                maxZoom: _maxZoom,
-              ),
-            ),
-          ],
-        );
-
-        final results = _ResultsPane(
-          session: session,
-          onLoadMore: () => ref.read(mapSearchControllerProvider.notifier).loadMore(),
-          onOpenInMainSearch: () => _openInMainSearch(state),
-          onOpenItem: _openItem,
-          searchState: state.mode == GeoMode.filtered ? state.filterState : const SearchState(),
-        );
-
-        if (isDesktop) {
-          return Row(children: [
-            Expanded(flex: 3, child: mapArea),
-            Container(
-              width: 420,
-              decoration: const BoxDecoration(
-                  color: Color(0xFF0D0D0D), border: Border(left: BorderSide(color: Color(0xFF1E1E1E)))),
-              child: results,
-            ),
-          ]);
-        }
-        return Column(children: [
-          Expanded(flex: 3, child: mapArea),
-          Container(
-            height: 320,
-            decoration: const BoxDecoration(
-                color: Color(0xFF0D0D0D), border: Border(top: BorderSide(color: Color(0xFF1E1E1E)))),
-            child: results,
+              ]);
+            }),
           ),
-        ]);
-      }),
+        ],
+      ),
     );
   }
 }
@@ -486,6 +749,53 @@ List<_MarkerCluster> _clusterItems(List<SearchItem> items, double zoom) {
 // -----------------------------------------------------------------------------
 // Small presentational widgets
 // -----------------------------------------------------------------------------
+
+class _ModeButton extends StatelessWidget {
+  final String label;
+  final String sublabel;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ModeButton({
+    required this.label,
+    required this.sublabel,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? _kAccent.withOpacity(0.14) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: selected ? _kAccent : _kBorder),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(label,
+                style: TextStyle(
+                    color: selected ? Colors.white : const Color(0xFF9A9A9A),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.8)),
+            const SizedBox(height: 2),
+            Text(sublabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: selected ? const Color(0xFFCBD9FF) : const Color(0xFF666666),
+                    fontSize: 10)),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _CoordPanel extends StatelessWidget {
   final TextEditingController latCtrl;
@@ -609,7 +919,13 @@ class _OverlayIconButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
-  const _OverlayIconButton({required this.icon, required this.tooltip, required this.onTap});
+  final bool active;
+  const _OverlayIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.active = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -621,9 +937,9 @@ class _OverlayIconButton extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: _kPanelBg.withOpacity(0.96),
+            color: active ? _kAccent.withOpacity(0.25) : _kPanelBg.withOpacity(0.96),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _kBorder),
+            border: Border.all(color: active ? _kAccent : _kBorder),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
         ),
@@ -719,13 +1035,16 @@ class _NavDivider extends StatelessWidget {
 }
 
 /// Split-screen results pane: a normal MediaCard grid on the right of the
-/// map, sourced live from whichever geo session (radius or bbox) is active.
+/// map, sourced live from whichever geo state is active (radius, bbox, or
+/// imported).
 class _ResultsPane extends StatelessWidget {
   final SearchSession session;
   final VoidCallback onLoadMore;
-  final VoidCallback onOpenInMainSearch;
+  final VoidCallback? onOpenInMainSearch;
   final void Function(SearchItem) onOpenItem;
   final SearchState searchState;
+  final String emptyMessage;
+  final String? noteText;
 
   const _ResultsPane({
     required this.session,
@@ -733,6 +1052,8 @@ class _ResultsPane extends StatelessWidget {
     required this.onOpenInMainSearch,
     required this.onOpenItem,
     required this.searchState,
+    required this.emptyMessage,
+    this.noteText,
   });
 
   @override
@@ -742,28 +1063,38 @@ class _ResultsPane extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
-          child: Row(children: [
-            Expanded(
-              child: Text(
-                session.error ??
-                    '${session.items.length} RESULT${session.items.length == 1 ? '' : 'S'}',
-                style: const TextStyle(
-                    color: Color(0xFF7A7A7A), fontSize: 10.5, letterSpacing: 1.2, fontWeight: FontWeight.w700),
-              ),
-            ),
-            if (session.items.isNotEmpty)
-              TextButton.icon(
-                onPressed: onOpenInMainSearch,
-                style: TextButton.styleFrom(
-                    foregroundColor: _kAccent,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                icon: const Icon(Icons.open_in_new, size: 14),
-                label:
-                    const Text('Open in main search', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-              ),
-          ]),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Expanded(
+                  child: Text(
+                    session.error ??
+                        '${session.items.length} RESULT${session.items.length == 1 ? '' : 'S'}',
+                    style: const TextStyle(
+                        color: Color(0xFF7A7A7A), fontSize: 10.5, letterSpacing: 1.2, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (onOpenInMainSearch != null && session.items.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: onOpenInMainSearch,
+                    style: TextButton.styleFrom(
+                        foregroundColor: _kAccent,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    icon: const Icon(Icons.open_in_new, size: 14),
+                    label: const Text('Open in main search',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                  ),
+              ]),
+              if (noteText != null) ...[
+                const SizedBox(height: 4),
+                Text(noteText!,
+                    style: const TextStyle(color: Color(0xFF555555), fontSize: 10.5)),
+              ],
+            ],
+          ),
         ),
         Expanded(
           child: session.items.isEmpty
@@ -772,7 +1103,7 @@ class _ResultsPane extends StatelessWidget {
                     session.loading
                         ? 'Searching…'
                         : session.hasSearched
-                            ? 'No media found here.'
+                            ? emptyMessage
                             : 'Tap the map, or enter coordinates, to search a radius.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Color(0xFF404040), fontSize: 13),

@@ -9645,7 +9645,7 @@ P8(a){var s=null
 return A.TF(s,new A.hh(4,A.bY(6),B.l),s,B.lY,s,s,s,s,!0,s,s,s,s,s,s,B.cq,!0,s,s,s,s,s,s,s,s,s,s,s,s,s,B.a_M,a,s,s,s,s,s,!0,s,s,s,!0,!0,!1,s,s,s,s,s,s,s,s,s,s,s,s,s,s)},
 bj4(a,b){var s,r,q,p,o,n,m
 if(a.length===0)return B.Qm
-s=40/B.d.dT(Math.pow(2,b),0.0005,40)
+s=B.d.dT(40/Math.pow(2,b),0.0005,40)
 r=A.q(t.N,t.hN)
 for(q=a.length,p=0;p<a.length;a.length===q||(0,A.z)(a),++p){o=a[p]
 n=o.k2

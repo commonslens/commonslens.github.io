@@ -24,8 +24,7 @@ class AdvancedFiltersDrawer extends StatelessWidget {
     // Never the old hardcoded 600 — that overflowed on any phone-width
     // viewport. Caps at 420 on tablet/small-desktop widths that still fall
     // below the 900 docked-panel breakpoint in search_page.dart; shrinks to
-    // 92% of the viewport below 480 so it never touches the screen edges.
-    final drawerWidth = width < 480 ? width * 0.92 : 420.0;
+    final drawerWidth = width < 480 ? width : 420.0;
     return Drawer(
       width: drawerWidth,
       backgroundColor: const Color(0xFF111111),

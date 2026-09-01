@@ -111,7 +111,9 @@ class _MapPageState extends ConsumerState<MapPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _mapController.move(ll.LatLng(lat, lng), 12);
-      ref.read(mapSearchControllerProvider.notifier).browseRadius(lat, lng, radiusM);
+      ref
+          .read(mapSearchControllerProvider.notifier)
+          .browseRadius(lat, lng, radiusM);
     });
   }
 
@@ -123,7 +125,8 @@ class _MapPageState extends ConsumerState<MapPage> {
     ref.read(mapSearchControllerProvider.notifier).searchRadius(lat, lng, r);
   }
 
-  void _handleTap(ll.LatLng point) => _searchAt(point.latitude, point.longitude);
+  void _handleTap(ll.LatLng point) =>
+      _searchAt(point.latitude, point.longitude);
 
   void _submitCoords() {
     final lat = double.tryParse(_latCtrl.text.trim());
@@ -223,10 +226,13 @@ class _MapPageState extends ConsumerState<MapPage> {
       final box = state.boundingBox!;
       final center = ll.LatLng((box[0] + box[2]) / 2, (box[1] + box[3]) / 2);
       final corner = ll.LatLng(box[0], box[1]);
-      final radiusM = const ll.Distance().as(ll.LengthUnit.Meter, center, corner);
+      final radiusM =
+          const ll.Distance().as(ll.LengthUnit.Meter, center, corner);
       target = SearchState(
         nearCoord: NearCoordFilter(
-            lat: center.latitude, lng: center.longitude, radiusKm: radiusM / 1000),
+            lat: center.latitude,
+            lng: center.longitude,
+            radiusKm: radiusM / 1000),
       );
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text(
@@ -236,7 +242,8 @@ class _MapPageState extends ConsumerState<MapPage> {
       return;
     }
     final params = SearchUrlCodec.toQueryParams(target);
-    context.go(Uri(path: '/', queryParameters: params.isEmpty ? null : params).toString());
+    context.go(Uri(path: '/', queryParameters: params.isEmpty ? null : params)
+        .toString());
   }
 
   void _showClusterSheet(BuildContext context, _MarkerCluster cluster) {
@@ -309,7 +316,10 @@ class _MapPageState extends ConsumerState<MapPage> {
         return StatefulBuilder(builder: (context, setSheetState) {
           return Padding(
             padding: EdgeInsets.only(
-                left: 20, right: 20, top: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -334,7 +344,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                   items: LicensePreset.values
                       .map((p) => DropdownMenuItem(
                           value: p,
-                          child: Text(licensePresetLabel(p), style: const TextStyle(color: Colors.white))))
+                          child: Text(licensePresetLabel(p),
+                              style: const TextStyle(color: Colors.white))))
                       .toList(),
                   onChanged: (v) => setSheetState(() => license = v ?? license),
                 ),
@@ -346,7 +357,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                   items: QualityFilter.values
                       .map((q) => DropdownMenuItem(
                           value: q,
-                          child: Text(qualityFilterLabel(q), style: const TextStyle(color: Colors.white))))
+                          child: Text(qualityFilterLabel(q),
+                              style: const TextStyle(color: Colors.white))))
                       .toList(),
                   onChanged: (v) => setSheetState(() => quality = v ?? quality),
                 ),
@@ -357,14 +369,18 @@ class _MapPageState extends ConsumerState<MapPage> {
                     style: ElevatedButton.styleFrom(
                         backgroundColor: _kAccent,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8))),
                     onPressed: () {
                       notifier.updateFilters((s) => s.copyWith(
-                          queryText: queryCtrl.text.trim(), licensePreset: license, qualityFilter: quality));
+                          queryText: queryCtrl.text.trim(),
+                          licensePreset: license,
+                          qualityFilter: quality));
                       Navigator.of(context).pop();
                     },
                     child: const Text('Apply',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        style: TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -411,10 +427,17 @@ class _MapPageState extends ConsumerState<MapPage> {
           onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
         title: const Text('GEOSPATIAL BROWSE',
-            style: TextStyle(color: Colors.white, fontSize: 12, letterSpacing: 1.5, fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                letterSpacing: 1.5,
+                fontWeight: FontWeight.w700)),
         centerTitle: true,
         actions: [
-          IconButton(icon: const Icon(Icons.tune), tooltip: 'Filters', onPressed: () => _showFilterSheet(context)),
+          IconButton(
+              icon: const Icon(Icons.tune),
+              tooltip: 'Filters',
+              onPressed: () => _showFilterSheet(context)),
           const SizedBox(width: 4),
         ],
       ),
@@ -461,10 +484,12 @@ class _MapPageState extends ConsumerState<MapPage> {
                       initialZoom: 2,
                       minZoom: _minZoom,
                       maxZoom: _maxZoom,
-                      interactionOptions: const InteractionOptions(flags: InteractiveFlag.all),
+                      interactionOptions:
+                          const InteractionOptions(flags: InteractiveFlag.all),
                       onTap: (_, point) => _handleMapTap(state, point),
                       onPositionChanged: (camera, hasGesture) {
-                        if (camera.zoom != _currentZoom || camera.rotation != _currentRotation) {
+                        if (camera.zoom != _currentZoom ||
+                            camera.rotation != _currentRotation) {
                           setState(() {
                             _currentZoom = camera.zoom;
                             _currentRotation = camera.rotation;
@@ -475,7 +500,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                     children: [
                       if (_baseMapStyle == _BaseMapStyle.street)
                         TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          urlTemplate:
+                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.commonslens.app',
                           maxZoom: 19,
                         )
@@ -502,10 +528,14 @@ class _MapPageState extends ConsumerState<MapPage> {
                         PolygonLayer(polygons: [
                           Polygon(
                             points: [
-                              ll.LatLng(state.boundingBox![0], state.boundingBox![1]),
-                              ll.LatLng(state.boundingBox![0], state.boundingBox![3]),
-                              ll.LatLng(state.boundingBox![2], state.boundingBox![3]),
-                              ll.LatLng(state.boundingBox![2], state.boundingBox![1]),
+                              ll.LatLng(
+                                  state.boundingBox![0], state.boundingBox![1]),
+                              ll.LatLng(
+                                  state.boundingBox![0], state.boundingBox![3]),
+                              ll.LatLng(
+                                  state.boundingBox![2], state.boundingBox![3]),
+                              ll.LatLng(
+                                  state.boundingBox![2], state.boundingBox![1]),
                             ],
                             color: _kAccent.withOpacity(0.15),
                             borderColor: _kAccent,
@@ -515,7 +545,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                       if (state.hasPoint)
                         CircleLayer(circles: [
                           CircleMarker(
-                            point: ll.LatLng(state.centerLat!, state.centerLng!),
+                            point:
+                                ll.LatLng(state.centerLat!, state.centerLng!),
                             radius: state.radiusMeters,
                             useRadiusInMeter: true,
                             color: _kAccent.withOpacity(0.12),
@@ -526,7 +557,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                       if (state.hasPoint)
                         MarkerLayer(markers: [
                           Marker(
-                            point: ll.LatLng(state.centerLat!, state.centerLng!),
+                            point:
+                                ll.LatLng(state.centerLat!, state.centerLng!),
                             width: 14,
                             height: 14,
                             child: const _CenterDot(),
@@ -542,7 +574,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: _kAccent,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
                               ),
                             ),
                           ),
@@ -550,12 +583,14 @@ class _MapPageState extends ConsumerState<MapPage> {
                       MarkerLayer(
                         markers: clusters
                             .map((c) => Marker(
-                                  key: ValueKey('cluster-${c.key}-${c.items.length}'),
+                                  key: ValueKey(
+                                      'cluster-${c.key}-${c.items.length}'),
                                   point: c.center,
                                   width: c.items.length > 1 ? 44 : 34,
                                   height: c.items.length > 1 ? 44 : 34,
                                   child: _ClusterMarker(
-                                    key: ValueKey('cluster-w-${c.key}-${c.items.length}'),
+                                    key: ValueKey(
+                                        'cluster-w-${c.key}-${c.items.length}'),
                                     cluster: c,
                                     onTap: () => c.items.length == 1
                                         ? _openItem(c.items.first)
@@ -566,7 +601,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                       ),
                     ],
                   ),
-
                   if (!isImportMode)
                     Positioned(
                       top: 12,
@@ -581,7 +615,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                         ),
                       ),
                     ),
-
                   if (_drawingBbox)
                     Positioned(
                       top: 12,
@@ -589,7 +622,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                       right: 0,
                       child: Center(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
                             color: _kPanelBg.withOpacity(0.96),
                             borderRadius: BorderRadius.circular(20),
@@ -600,7 +634,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                                 ? 'Tap the first corner of your search area'
                                 : 'Tap the opposite corner to finish',
                             style: const TextStyle(
-                                color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -614,7 +650,8 @@ class _MapPageState extends ConsumerState<MapPage> {
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 420),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
                               color: _kPanelBg.withOpacity(0.96),
                               borderRadius: BorderRadius.circular(20),
@@ -624,13 +661,14 @@ class _MapPageState extends ConsumerState<MapPage> {
                               'Showing your current search results with location data. Switch to "Map → Search" to explore new areas.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: Color(0xFFAAAAAA), fontSize: 11.5, fontWeight: FontWeight.w600),
+                                  color: Color(0xFFAAAAAA),
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
                       ),
                     ),
-
                   Positioned(
                     top: 12,
                     right: 12,
@@ -638,15 +676,18 @@ class _MapPageState extends ConsumerState<MapPage> {
                       children: [
                         _OverlayIconButton(
                           icon: _baseMapStyle.icon,
-                          tooltip: '${_baseMapStyle.label} map — tap for ${_baseMapStyle.next.label}',
-                          onTap: () => setState(() => _baseMapStyle = _baseMapStyle.next),
+                          tooltip:
+                              '${_baseMapStyle.label} map — tap for ${_baseMapStyle.next.label}',
+                          onTap: () => setState(
+                              () => _baseMapStyle = _baseMapStyle.next),
                         ),
                         if (!isImportMode) ...[
                           const SizedBox(height: 8),
                           _OverlayIconButton(
                             icon: _drawingBbox ? Icons.close : Icons.crop_free,
-                            tooltip:
-                                _drawingBbox ? 'Cancel drawing' : 'Draw bounding box (tap 2 points)',
+                            tooltip: _drawingBbox
+                                ? 'Cancel drawing'
+                                : 'Draw bounding box (tap 2 points)',
                             active: _drawingBbox,
                             onTap: _toggleBboxDrawing,
                           ),
@@ -654,7 +695,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                       ],
                     ),
                   ),
-
                   if (session.loading)
                     const Positioned(
                       bottom: 12,
@@ -662,10 +702,10 @@ class _MapPageState extends ConsumerState<MapPage> {
                       child: SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: _kAccent),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: _kAccent),
                       ),
                     ),
-
                   Positioned(
                     bottom: 12,
                     right: 12,
@@ -684,9 +724,12 @@ class _MapPageState extends ConsumerState<MapPage> {
                 onLoadMore: () => isImportMode
                     ? ref.read(searchControllerProvider.notifier).loadMore()
                     : ref.read(mapSearchControllerProvider.notifier).loadMore(),
-                onOpenInMainSearch: isImportMode ? null : () => _openInMainSearch(state),
+                onOpenInMainSearch:
+                    isImportMode ? null : () => _openInMainSearch(state),
                 onOpenItem: _openItem,
-                searchState: state.mode == GeoMode.filtered ? state.filterState : const SearchState(),
+                searchState: state.mode == GeoMode.filtered
+                    ? state.filterState
+                    : const SearchState(),
                 emptyMessage: isImportMode
                     ? 'None of your current search results have location data.'
                     : 'No media found here.',
@@ -701,7 +744,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                   Container(
                     width: 420,
                     decoration: const BoxDecoration(
-                        color: Color(0xFF0D0D0D), border: Border(left: BorderSide(color: Color(0xFF1E1E1E)))),
+                        color: Color(0xFF0D0D0D),
+                        border:
+                            Border(left: BorderSide(color: Color(0xFF1E1E1E)))),
                     child: results,
                   ),
                 ]);
@@ -711,7 +756,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                 Container(
                   height: 320,
                   decoration: const BoxDecoration(
-                      color: Color(0xFF0D0D0D), border: Border(top: BorderSide(color: Color(0xFF1E1E1E)))),
+                      color: Color(0xFF0D0D0D),
+                      border:
+                          Border(top: BorderSide(color: Color(0xFF1E1E1E)))),
                   child: results,
                 ),
               ]);
@@ -730,7 +777,8 @@ InputDecoration _fieldDecoration({String? hint}) => InputDecoration(
       hintStyle: const TextStyle(color: Colors.white30, fontSize: 12.5),
       isDense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
     );
 
 // -----------------------------------------------------------------------------
@@ -742,12 +790,13 @@ class _MarkerCluster {
   final String key;
   final ll.LatLng center;
   final List<SearchItem> items;
-  const _MarkerCluster({required this.key, required this.center, required this.items});
+  const _MarkerCluster(
+      {required this.key, required this.center, required this.items});
 }
 
 List<_MarkerCluster> _clusterItems(List<SearchItem> items, double zoom) {
   if (items.isEmpty) return const [];
-  final cellSize = 40 / math.pow(2, zoom).clamp(0.0005, 40);
+  final cellSize = (40 / math.pow(2, zoom)).clamp(0.0005, 40);
   final buckets = <String, List<SearchItem>>{};
   for (final item in items) {
     final lat = item.resolvedLatitude;
@@ -758,9 +807,12 @@ List<_MarkerCluster> _clusterItems(List<SearchItem> items, double zoom) {
   }
   return buckets.entries.map((entry) {
     final group = entry.value;
-    final lat = group.map((i) => i.resolvedLatitude!).reduce((a, b) => a + b) / group.length;
-    final lng = group.map((i) => i.resolvedLongitude!).reduce((a, b) => a + b) / group.length;
-    return _MarkerCluster(key: entry.key, center: ll.LatLng(lat, lng), items: group);
+    final lat = group.map((i) => i.resolvedLatitude!).reduce((a, b) => a + b) /
+        group.length;
+    final lng = group.map((i) => i.resolvedLongitude!).reduce((a, b) => a + b) /
+        group.length;
+    return _MarkerCluster(
+        key: entry.key, center: ll.LatLng(lat, lng), items: group);
   }).toList();
 }
 
@@ -806,7 +858,9 @@ class _ModeButton extends StatelessWidget {
             Text(sublabel,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: selected ? const Color(0xFFCBD9FF) : const Color(0xFF666666),
+                    color: selected
+                        ? const Color(0xFFCBD9FF)
+                        : const Color(0xFF666666),
                     fontSize: 10)),
           ],
         ),
@@ -846,7 +900,8 @@ class _CoordPanel extends StatelessWidget {
               child: TextField(
                 controller: latCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                    signed: true, decimal: true),
                 decoration: _fieldDecoration(hint: 'Lat'),
               ),
             ),
@@ -855,7 +910,8 @@ class _CoordPanel extends StatelessWidget {
               child: TextField(
                 controller: lngCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                    signed: true, decimal: true),
                 decoration: _fieldDecoration(hint: 'Lon'),
               ),
             ),
@@ -866,7 +922,8 @@ class _CoordPanel extends StatelessWidget {
               child: TextField(
                 controller: radiusCtrl,
                 style: const TextStyle(color: Colors.white, fontSize: 12.5),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: _fieldDecoration(hint: 'Radius (m), min 500'),
               ),
             ),
@@ -878,7 +935,8 @@ class _CoordPanel extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                     backgroundColor: _kAccent,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6))),
                 child: const Icon(Icons.search, size: 18, color: Colors.white),
               ),
             ),
@@ -904,19 +962,24 @@ class _ClusterMarker extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: isCluster ? _kAccent : const Color(0xFF1A1A1A),
-          border: Border.all(color: isCluster ? Colors.white : _kAccent, width: 2),
+          border:
+              Border.all(color: isCluster ? Colors.white : _kAccent, width: 2),
         ),
         alignment: Alignment.center,
         child: isCluster
             ? Text('$count',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13))
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13))
             : ClipOval(
                 child: Image.network(
                   cluster.items.first.thumb,
                   fit: BoxFit.cover,
                   width: 34,
                   height: 34,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.image, size: 16, color: Colors.white54),
+                  errorBuilder: (_, __, ___) =>
+                      const Icon(Icons.image, size: 16, color: Colors.white54),
                 ),
               ),
       ),
@@ -929,7 +992,9 @@ class _CenterDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         decoration: BoxDecoration(
-            shape: BoxShape.circle, color: _kAccent, border: Border.all(color: Colors.white, width: 2)),
+            shape: BoxShape.circle,
+            color: _kAccent,
+            border: Border.all(color: Colors.white, width: 2)),
       );
 }
 
@@ -955,7 +1020,9 @@ class _OverlayIconButton extends StatelessWidget {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: active ? _kAccent.withOpacity(0.25) : _kPanelBg.withOpacity(0.96),
+            color: active
+                ? _kAccent.withOpacity(0.25)
+                : _kPanelBg.withOpacity(0.96),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: active ? _kAccent : _kBorder),
           ),
@@ -982,10 +1049,12 @@ class _MapNavigationControls extends StatelessWidget {
 
   void _zoomBy(double delta) {
     final camera = mapController.camera;
-    mapController.move(camera.center, (camera.zoom + delta).clamp(minZoom, maxZoom));
+    mapController.move(
+        camera.center, (camera.zoom + delta).clamp(minZoom, maxZoom));
   }
 
-  void _rotateBy(double degrees) => mapController.rotate(mapController.camera.rotation + degrees);
+  void _rotateBy(double degrees) =>
+      mapController.rotate(mapController.camera.rotation + degrees);
 
   @override
   Widget build(BuildContext context) {
@@ -1000,13 +1069,23 @@ class _MapNavigationControls extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _NavButton(icon: Icons.add, tooltip: 'Zoom in', onTap: () => _zoomBy(1)),
+          _NavButton(
+              icon: Icons.add, tooltip: 'Zoom in', onTap: () => _zoomBy(1)),
           const _NavDivider(),
-          _NavButton(icon: Icons.remove, tooltip: 'Zoom out', onTap: () => _zoomBy(-1)),
+          _NavButton(
+              icon: Icons.remove,
+              tooltip: 'Zoom out',
+              onTap: () => _zoomBy(-1)),
           const _NavDivider(),
-          _NavButton(icon: Icons.rotate_left, tooltip: 'Rotate left', onTap: () => _rotateBy(-15)),
+          _NavButton(
+              icon: Icons.rotate_left,
+              tooltip: 'Rotate left',
+              onTap: () => _rotateBy(-15)),
           const _NavDivider(),
-          _NavButton(icon: Icons.rotate_right, tooltip: 'Rotate right', onTap: () => _rotateBy(15)),
+          _NavButton(
+              icon: Icons.rotate_right,
+              tooltip: 'Rotate right',
+              onTap: () => _rotateBy(15)),
           const _NavDivider(),
           Tooltip(
             message: 'Reset to north',
@@ -1034,14 +1113,18 @@ class _NavButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
-  const _NavButton({required this.icon, required this.tooltip, required this.onTap});
+  const _NavButton(
+      {required this.icon, required this.tooltip, required this.onTap});
 
   @override
   Widget build(BuildContext context) => Tooltip(
         message: tooltip,
         child: InkWell(
           onTap: onTap,
-          child: SizedBox(width: 40, height: 40, child: Icon(icon, size: 18, color: Colors.white70)),
+          child: SizedBox(
+              width: 40,
+              height: 40,
+              child: Icon(icon, size: 18, color: Colors.white70)),
         ),
       );
 }
@@ -1090,7 +1173,10 @@ class _ResultsPane extends StatelessWidget {
                     session.error ??
                         '${session.items.length} RESULT${session.items.length == 1 ? '' : 'S'}',
                     style: const TextStyle(
-                        color: Color(0xFF7A7A7A), fontSize: 10.5, letterSpacing: 1.2, fontWeight: FontWeight.w700),
+                        color: Color(0xFF7A7A7A),
+                        fontSize: 10.5,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w700),
                   ),
                 ),
                 if (onOpenInMainSearch != null && session.items.isNotEmpty)
@@ -1103,13 +1189,15 @@ class _ResultsPane extends StatelessWidget {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                     icon: const Icon(Icons.open_in_new, size: 14),
                     label: const Text('Open in main search',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
               ]),
               if (noteText != null) ...[
                 const SizedBox(height: 4),
                 Text(noteText!,
-                    style: const TextStyle(color: Color(0xFF555555), fontSize: 10.5)),
+                    style: const TextStyle(
+                        color: Color(0xFF555555), fontSize: 10.5)),
               ],
             ],
           ),
@@ -1124,26 +1212,34 @@ class _ResultsPane extends StatelessWidget {
                             ? emptyMessage
                             : 'Tap the map, or enter coordinates, to search a radius.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFF404040), fontSize: 13),
+                    style:
+                        const TextStyle(color: Color(0xFF404040), fontSize: 13),
                   ),
                 )
               : NotificationListener<ScrollNotification>(
                   onNotification: (n) {
-                    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 400) onLoadMore();
+                    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 400)
+                      onLoadMore();
                     return false;
                   },
                   child: GridView.builder(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 220, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 0.85),
-                    itemCount: session.items.length + (session.loadingMore ? 1 : 0),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 220,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 0.85),
+                    itemCount:
+                        session.items.length + (session.loadingMore ? 1 : 0),
                     itemBuilder: (context, i) {
                       if (i == session.items.length) {
                         return const Center(
                           child: SizedBox(
                               width: 18,
                               height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 1.5, color: _kAccent)),
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 1.5, color: _kAccent)),
                         );
                       }
                       final item = session.items[i];

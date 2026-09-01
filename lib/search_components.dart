@@ -18,10 +18,18 @@ class SearchTopBar extends StatefulWidget {
   final String initialQuery;
   final ValueChanged<String> onSearch;
 
+  // Hidden once the filter panel is permanently docked (desktop — see
+  // SearchPage.build's isDesktop branch): there's nothing to "open" when
+  // it's already visible on screen. True by default so the Drawer-based
+  // mobile path (the only caller that matters below the dock breakpoint)
+  // keeps its button without having to pass anything.
+  final bool showFiltersButton;
+
   const SearchTopBar({
     super.key,
     required this.initialQuery,
     required this.onSearch,
+    this.showFiltersButton = true,
   });
 
   @override
@@ -237,22 +245,24 @@ class _SearchTopBarState extends State<SearchTopBar> {
                         TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
               ),
             ),
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 38,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF2A2A2A)),
-                    foregroundColor: const Color(0xFFB0B0B0),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14)),
-                onPressed: () => Scaffold.of(context).openEndDrawer(),
-                child: const Text('Filters',
-                    style:
-                        TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+            if (widget.showFiltersButton) ...[
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 38,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF2A2A2A)),
+                      foregroundColor: const Color(0xFFB0B0B0),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14)),
+                  onPressed: () => Scaffold.of(context).openEndDrawer(),
+                  child: const Text('Filters',
+                      style: TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
               ),
-            ),
+            ],
             const SizedBox(width: 8),
             SizedBox(
               height: 38,

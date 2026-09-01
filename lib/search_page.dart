@@ -595,42 +595,70 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final session = viewState.activeSession;
     final filterState = viewState.filterState;
 
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
     _isFiltersExpanded ??= !isMobile;
+
+    // Filters stop being a thing you "open" once every pick applies
+    // instantly (see FilterPanelContent) — at that point a modal Drawer
+    // that covers the results you're trying to react to is actively in
+    // the way. Above this breakpoint the filter panel docks permanently
+    // alongside results, same split-screen shape map_page.dart already
+    // uses for its own results pane; below it, screen space doesn't allow
+    // a permanent dock, so it stays a Drawer, just no longer hardcoded to
+    // an overflow-prone 600px.
+    final isDesktop = screenWidth >= 900;
+
+    final mainColumn = Column(
+      children: [
+        SearchTopBar(
+          initialQuery: filterState.queryText,
+          onSearch: _search,
+          showFiltersButton: !isDesktop,
+        ),
+        _buildHeaderBar(session, filterState),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: _isFiltersExpanded!
+              ? Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildTabBar(filterState),
+                    _buildFormatChips(filterState),
+                    _buildActiveChipsBar(viewState.lastBuiltQuery),
+                    _buildQueryPreviewBar(
+                        viewState.lastBuiltQuery, session.hasSearched),
+                  ],
+                )
+              : const SizedBox.shrink(),
+        ),
+        Expanded(
+            child: session.hasSearched
+                ? _buildResults(session, filterState)
+                : _buildLanding()),
+        if (session.hasSearched) _buildBulkActionBar(session),
+      ],
+    );
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),
-      endDrawer: const AdvancedFiltersDrawer(),
-      body: Column(
-        children: [
-          SearchTopBar(
-            initialQuery: filterState.queryText,
-            onSearch: _search,
-          ),
-          _buildHeaderBar(session, filterState),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: _isFiltersExpanded!
-                ? Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildTabBar(filterState),
-                      _buildFormatChips(filterState),
-                      _buildActiveChipsBar(viewState.lastBuiltQuery),
-                      _buildQueryPreviewBar(
-                          viewState.lastBuiltQuery, session.hasSearched),
-                    ],
-                  )
-                : const SizedBox.shrink(),
-          ),
-          Expanded(
-              child: session.hasSearched
-                  ? _buildResults(session, filterState)
-                  : _buildLanding()),
-          if (session.hasSearched) _buildBulkActionBar(session),
-        ],
-      ),
+      endDrawer: isDesktop ? null : const AdvancedFiltersDrawer(),
+      body: isDesktop
+          ? Row(
+              children: [
+                Expanded(child: mainColumn),
+                Container(
+                  width: 380,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF111111),
+                    border: Border(left: BorderSide(color: Color(0xFF1E1E1E))),
+                  ),
+                  child: const FilterPanelContent(),
+                ),
+              ],
+            )
+          : mainColumn,
     );
   }
 

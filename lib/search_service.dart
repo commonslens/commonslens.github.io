@@ -713,6 +713,42 @@ class SearchService {
     }
   }
 
+  /// Same shape as [searchCategories] — `list=allpages` restricted to
+  /// namespace 10 (Template:) instead of `list=allcategories` — for the
+  /// Templates picker's hastemplate: autocomplete. Titles come back as
+  /// "Template:Foo"; stripped to "Foo" to match how template names are
+  /// already stored everywhere else in [SearchState.templates] /
+  /// [SearchState.excludeTemplates] and embedded in hastemplate: clauses
+  /// (see [buildQuery]) — bare, no namespace prefix.
+  Future<List<String>> searchTemplates(String query) async {
+    final clean = query.trim();
+    if (clean.isEmpty) return [];
+    try {
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'query',
+        'list': 'allpages',
+        'apnamespace': '10',
+        'apprefix': clean,
+        'format': 'json',
+        'origin': '*',
+      });
+      final res = await _client.get(uri, headers: {
+        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+      }).timeout(const Duration(seconds: 5));
+      if (res.statusCode != 200) return [];
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final pages = data['query']?['allpages'] as List? ?? [];
+      return pages
+          .map((p) => ((p as Map<String, dynamic>)['title'] as String? ?? '')
+              .replaceFirst('Template:', '')
+              .trim())
+          .where((t) => t.isNotEmpty)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Type-ahead suggestions for the main search bar, via MediaWiki's
   /// `action=opensearch` — the same endpoint that powers the suggestion
   /// dropdown on wikipedia.org/commons.wikimedia.org's own search box.

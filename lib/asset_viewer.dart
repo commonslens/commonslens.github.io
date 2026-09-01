@@ -273,14 +273,17 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(searchControllerProvider).activeSession;
-    final portfolioSession =
-        _authorName != null ? ref.watch(authorPortfolioProvider(_authorName!)) : null;
+    final portfolioSession = _authorName != null
+        ? ref.watch(authorPortfolioProvider(_authorName!))
+        : null;
     final mapSession =
         _isMapMode ? ref.watch(mapSearchControllerProvider).session : null;
     final items = _getCombinedItems();
 
     final isLoading = (_isStandalone && _isFetchingInjected) ||
-        (portfolioSession != null && portfolioSession.loading && items.isEmpty) ||
+        (portfolioSession != null &&
+            portfolioSession.loading &&
+            items.isEmpty) ||
         (mapSession != null && mapSession.loading && items.isEmpty) ||
         (_authorName == null &&
             !_isStandalone &&
@@ -684,7 +687,7 @@ class _MetadataInspector extends StatelessWidget {
 
   /// Shared section header, used everywhere below instead of one-off
   /// Text+Divider blocks, so every section in the panel reads with the
-  /// same rhythm as it flows from Title -> Author -> Download -> 
+  /// same rhythm as it flows from Title -> Author -> Download ->
   /// Description -> Dates -> Metadata -> Global Usage.
   Widget _sectionHeader(String label, {bool withDivider = true}) {
     return Padding(
@@ -736,10 +739,6 @@ class _MetadataInspector extends StatelessWidget {
         // near it.
         _sectionHeader('DOWNLOAD & ACTIONS', withDivider: false),
         _DownloadSection(item: item, onLaunchCommons: onLaunchCommons),
-        if (item.hasCoordinates) ...[
-          const SizedBox(height: 10),
-          _NearbyMediaButton(item: item),
-        ],
 
         // 4. DESCRIPTION — every free-text descriptive field together,
         // rather than split between a top-level "snippet" and a buried
@@ -757,6 +756,10 @@ class _MetadataInspector extends StatelessWidget {
 
         // 7. RELATED MEDIA — CirrusSearch's own similarity engine
         // (morelike:), for "find me more like this" discovery.
+        if (item.hasCoordinates) ...[
+          const SizedBox(height: 10),
+          _NearbyMediaButton(item: item),
+        ],
         _RelatedMediaSection(fileTitle: item.title),
 
         // 8. GLOBAL USAGE — a real-world "is this used anywhere" signal,
@@ -785,8 +788,7 @@ class _MetadataInspector extends StatelessWidget {
   }
 
   Widget _buildDescriptionSection() {
-    final snippet =
-        item.snippet.isEmpty ? '' : _cleanHtml(item.snippet);
+    final snippet = item.snippet.isEmpty ? '' : _cleanHtml(item.snippet);
     final imageDescription = _cleanHtml(item.imageDescriptionHtml);
     final objectName = item.objectName.trim();
 
@@ -1093,7 +1095,8 @@ class _StructuredDataSection extends ConsumerStatefulWidget {
       _StructuredDataSectionState();
 }
 
-class _StructuredDataSectionState extends ConsumerState<_StructuredDataSection> {
+class _StructuredDataSectionState
+    extends ConsumerState<_StructuredDataSection> {
   bool _expanded = false;
 
   @override
@@ -1118,7 +1121,9 @@ class _StructuredDataSectionState extends ConsumerState<_StructuredDataSection> 
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  _expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
                   size: 16,
                   color: const Color(0xFF5C5C5C),
                 ),
@@ -1128,13 +1133,15 @@ class _StructuredDataSectionState extends ConsumerState<_StructuredDataSection> 
           if (_expanded) ...[
             const SizedBox(height: 12),
             Consumer(builder: (context, ref, _) {
-              final sdcAsync = ref.watch(structuredDataProvider(widget.fileTitle));
+              final sdcAsync =
+                  ref.watch(structuredDataProvider(widget.fileTitle));
 
               return sdcAsync.when(
                 loading: () => const SizedBox(
                   height: 24,
                   width: 24,
-                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
                 ),
                 error: (_, __) => const Text(
                   'Could not load structured data.',
@@ -1144,7 +1151,8 @@ class _StructuredDataSectionState extends ConsumerState<_StructuredDataSection> 
                   if (result == null || result.statements.isEmpty) {
                     return const Text(
                       'No structured data statements on this file.',
-                      style: TextStyle(color: Color(0xFF888888), fontSize: 13, height: 1.5),
+                      style: TextStyle(
+                          color: Color(0xFF888888), fontSize: 13, height: 1.5),
                     );
                   }
                   return Column(
@@ -1228,7 +1236,9 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  _expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
                   size: 16,
                   color: const Color(0xFF5C5C5C),
                 ),
@@ -1238,13 +1248,15 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
           if (_expanded) ...[
             const SizedBox(height: 12),
             Consumer(builder: (context, ref, _) {
-              final relatedAsync = ref.watch(morelikeProvider(widget.fileTitle));
+              final relatedAsync =
+                  ref.watch(morelikeProvider(widget.fileTitle));
 
               return relatedAsync.when(
                 loading: () => const SizedBox(
                   height: 24,
                   width: 24,
-                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
                 ),
                 error: (_, __) => const Text(
                   'Could not load related media.',
@@ -1254,7 +1266,8 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
                   if (items.isEmpty) {
                     return const Text(
                       'No related media found.',
-                      style: TextStyle(color: Color(0xFF888888), fontSize: 13, height: 1.5),
+                      style: TextStyle(
+                          color: Color(0xFF888888), fontSize: 13, height: 1.5),
                     );
                   }
                   return SizedBox(
@@ -1269,7 +1282,9 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
                           message: related.title,
                           child: GestureDetector(
                             onTap: () => context.push(
-                              Uri(path: '/view', queryParameters: {'id': related.title})
+                              Uri(
+                                      path: '/view',
+                                      queryParameters: {'id': related.title})
                                   .toString(),
                             ),
                             child: ClipRRect(
@@ -1282,10 +1297,13 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
                                     ? Image.network(
                                         related.thumb,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Icon(
-                                            Icons.image, size: 24, color: Colors.white24),
+                                        errorBuilder: (_, __, ___) =>
+                                            const Icon(Icons.image,
+                                                size: 24,
+                                                color: Colors.white24),
                                       )
-                                    : const Icon(Icons.image, size: 24, color: Colors.white24),
+                                    : const Icon(Icons.image,
+                                        size: 24, color: Colors.white24),
                               ),
                             ),
                           ),
@@ -1316,7 +1334,8 @@ class _GlobalUsageSection extends ConsumerStatefulWidget {
   const _GlobalUsageSection({required this.fileTitle});
 
   @override
-  ConsumerState<_GlobalUsageSection> createState() => _GlobalUsageSectionState();
+  ConsumerState<_GlobalUsageSection> createState() =>
+      _GlobalUsageSectionState();
 }
 
 class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
@@ -1353,7 +1372,9 @@ class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
                 ),
                 const SizedBox(width: 8),
                 Icon(
-                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  _expanded
+                      ? Icons.keyboard_arrow_up
+                      : Icons.keyboard_arrow_down,
                   size: 16,
                   color: const Color(0xFF5C5C5C),
                 ),
@@ -1363,13 +1384,15 @@ class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
           if (_expanded) ...[
             const SizedBox(height: 14),
             Consumer(builder: (context, ref, _) {
-              final usageAsync = ref.watch(globalUsageProvider(widget.fileTitle));
+              final usageAsync =
+                  ref.watch(globalUsageProvider(widget.fileTitle));
 
               return usageAsync.when(
                 loading: () => const SizedBox(
                   height: 24,
                   width: 24,
-                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
                 ),
                 error: (_, __) => const Text(
                   'Could not load usage data.',
@@ -1383,7 +1406,8 @@ class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
                     // result worth suppressing.
                     return const Text(
                       'Not currently used on any Wikimedia project.',
-                      style: TextStyle(color: Color(0xFF888888), fontSize: 13, height: 1.5),
+                      style: TextStyle(
+                          color: Color(0xFF888888), fontSize: 13, height: 1.5),
                     );
                   }
                   return Column(
@@ -1408,9 +1432,13 @@ class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
                                 TextSpan(
                                   text: entry.title,
                                   style: TextStyle(
-                                    color: hasUrl ? const Color(0xFF7AABFF) : const Color(0xFFB0B0B0),
+                                    color: hasUrl
+                                        ? const Color(0xFF7AABFF)
+                                        : const Color(0xFFB0B0B0),
                                     fontSize: 13,
-                                    decoration: hasUrl ? TextDecoration.underline : null,
+                                    decoration: hasUrl
+                                        ? TextDecoration.underline
+                                        : null,
                                     decorationColor: const Color(0xFF7AABFF),
                                   ),
                                 ),
@@ -1463,7 +1491,7 @@ class _DownloadSection extends StatelessWidget {
     return item.url;
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     final isScalable =
         item.mediaKind == MediaKind.image || item.mediaKind == MediaKind.vector;

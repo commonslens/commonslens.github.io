@@ -5,7 +5,7 @@ import 'search_url_codec.dart';
 
 class SearchService {
   static const int pageSize = 50;
-  
+
   static final http.Client _client = http.Client();
 
   static final RegExp _htmlTagRegex = RegExp(r'<[^>]*>');
@@ -32,6 +32,7 @@ class SearchService {
   /// GPSLatitude/GPSLongitude extmetadata strings every item already gets
   /// via [_extValue] below — see [SearchItem.resolvedLatitude] for how the
   /// two sources combine.
+
   static SearchItem? _itemFromImageInfo(
     Map<String, dynamic> info, {
     required String rawTitle,
@@ -93,7 +94,6 @@ class SearchService {
   /// the two can never drift out of sync with each other.
   static final RegExp multiQuerySeparator = RegExp(r'\s+\+\s+');
 
-  
   static const Map<LicensePreset, String> _licenseClauses = {
     LicensePreset.cc0: 'haswbstatement:P275=Q6938433', // ~9.9M hits
     LicensePreset.ccBy4: 'haswbstatement:P275=Q20007257', // ~7.6M hits
@@ -116,7 +116,7 @@ class SearchService {
   Future<SearchItem?> fetchSingleItem(String filename) async {
     try {
       final title = filename.startsWith('File:') ? filename : 'File:$filename';
-      
+
       final params = <String, String>{
         'action': 'query',
         'format': 'json',
@@ -129,7 +129,7 @@ class SearchService {
       };
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      
+
       final response = await _client.get(uri, headers: {
         'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
       }).timeout(const Duration(seconds: 15));
@@ -142,7 +142,7 @@ class SearchService {
       if (pages.isEmpty) return null;
 
       final page = pages.values.first;
-      
+
       if (page.containsKey('missing')) return null;
 
       final infoList = page['imageinfo'] as List?;
@@ -256,7 +256,8 @@ class SearchService {
 
       final infoData = jsonDecode(infoRes.body) as Map<String, dynamic>;
       if (infoData.containsKey('error')) return null;
-      final pages = (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
+      final pages =
+          (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
       if (pages.isEmpty) return null;
       final page = pages.values.first as Map<String, dynamic>;
       if (page.containsKey('missing')) return null;
@@ -299,8 +300,8 @@ class SearchService {
         idsToResolve.add(propertyId);
         final claims = propEntry.value as List? ?? [];
         for (final claim in claims) {
-          final mainsnak =
-              (claim as Map<String, dynamic>)['mainsnak'] as Map<String, dynamic>?;
+          final mainsnak = (claim as Map<String, dynamic>)['mainsnak']
+              as Map<String, dynamic>?;
           if (mainsnak == null) continue;
           rawClaims.add(MapEntry(propertyId, mainsnak));
           final entityId = _entityIdFromSnak(mainsnak);
@@ -325,7 +326,8 @@ class SearchService {
         );
       }).toList();
 
-      return StructuredDataResult(mid: mid, captions: captions, statements: statements);
+      return StructuredDataResult(
+          mid: mid, captions: captions, statements: statements);
     } catch (_) {
       return null;
     }
@@ -413,8 +415,8 @@ class SearchService {
         if (data.containsKey('error')) continue;
         final entities = data['entities'] as Map<String, dynamic>? ?? {};
         for (final entry in entities.entries) {
-          final labels =
-              (entry.value as Map<String, dynamic>)['labels'] as Map<String, dynamic>?;
+          final labels = (entry.value as Map<String, dynamic>)['labels']
+              as Map<String, dynamic>?;
           final label = labels?[language]?['value'] as String?;
           if (label != null) result[entry.key] = label;
         }
@@ -614,8 +616,6 @@ class SearchService {
     }
   }
 
-
-
   Future<List<DepictsEntity>> _searchWikidataEntities(
     String text, {
     required String type, // 'item' or 'property'
@@ -648,14 +648,17 @@ class SearchService {
       final data = jsonDecode(response.body) as Map<String, dynamic>;
       final results = data['search'] as List? ?? [];
 
-      return results.map((r) {
-        final map = r as Map<String, dynamic>;
-        return DepictsEntity(
-          qid: map['id'] as String? ?? '',
-          label: map['label'] as String? ?? (map['id'] as String? ?? ''),
-          description: map['description'] as String?,
-        );
-      }).where((e) => e.qid.isNotEmpty).toList();
+      return results
+          .map((r) {
+            final map = r as Map<String, dynamic>;
+            return DepictsEntity(
+              qid: map['id'] as String? ?? '',
+              label: map['label'] as String? ?? (map['id'] as String? ?? ''),
+              description: map['description'] as String?,
+            );
+          })
+          .where((e) => e.qid.isNotEmpty)
+          .toList();
     } catch (_) {
       return [];
     }
@@ -666,7 +669,8 @@ class SearchService {
     int limit = 8,
     String language = 'en',
   }) {
-    return _searchWikidataEntities(text, type: 'item', limit: limit, language: language);
+    return _searchWikidataEntities(text,
+        type: 'item', limit: limit, language: language);
   }
 
   /// For the generalized Wikidata property browser (haswbstatement: beyond
@@ -756,7 +760,8 @@ class SearchService {
   /// Callers pass in a single query *segment* (see
   /// [SearchService.multiQuerySeparator]) — this method has no opinion on
   /// "+"-splitting, that's the caller's job.
-  Future<List<String>> searchTitleSuggestions(String text, {int limit = 8}) async {
+  Future<List<String>> searchTitleSuggestions(String text,
+      {int limit = 8}) async {
     final query = text.trim();
     if (query.isEmpty) return [];
     try {
@@ -873,7 +878,8 @@ class SearchService {
 
     if (state.categoriesUnion && includeCategories.length > 1) {
       final clauses = includeCategories
-          .map((c) => state.deepCategoryMode ? 'deepcat:"$c"' : 'incategory:"$c"')
+          .map((c) =>
+              state.deepCategoryMode ? 'deepcat:"$c"' : 'incategory:"$c"')
           .toList();
       parts.add(clauses.join(' OR '));
     } else {
@@ -894,10 +900,12 @@ class SearchService {
 
       if (state.deepCategoryMode) {
         parts.add('-deepcat:"$safe"');
-        chips.add(QueryChipData(id: 'excludeCategory:$safe', label: 'Not in deep category: $safe'));
+        chips.add(QueryChipData(
+            id: 'excludeCategory:$safe', label: 'Not in deep category: $safe'));
       } else {
         parts.add('-incategory:"$safe"');
-        chips.add(QueryChipData(id: 'excludeCategory:$safe', label: 'Not in category: $safe'));
+        chips.add(QueryChipData(
+            id: 'excludeCategory:$safe', label: 'Not in category: $safe'));
       }
     }
 
@@ -1083,8 +1091,8 @@ class SearchService {
     // real OR execution happens via per-statement fan-out in fetchPage
     // below; this join is just an honest preview of intent.
     final includeStatements = state.statementsInclude.toList()
-      ..sort((a, b) =>
-          '${a.property.qid}${a.value.qid}'.compareTo('${b.property.qid}${b.value.qid}'));
+      ..sort((a, b) => '${a.property.qid}${a.value.qid}'
+          .compareTo('${b.property.qid}${b.value.qid}'));
 
     if (state.statementsUnion && includeStatements.length > 1) {
       final clauses = includeStatements
@@ -1104,8 +1112,8 @@ class SearchService {
     }
 
     for (final stmt in state.statementsExclude.toList()
-      ..sort((a, b) =>
-          '${a.property.qid}${a.value.qid}'.compareTo('${b.property.qid}${b.value.qid}'))) {
+      ..sort((a, b) => '${a.property.qid}${a.value.qid}'
+          .compareTo('${b.property.qid}${b.value.qid}'))) {
       parts.add('-haswbstatement:${stmt.property.qid}=${stmt.value.qid}');
       chips.add(QueryChipData(
         id: 'excludeStatement:${stmt.property.qid}:${stmt.value.qid}',
@@ -1227,7 +1235,8 @@ class SearchService {
         }
       }
 
-      final listUri = Uri.https('commons.wikimedia.org', '/w/api.php', listParams);
+      final listUri =
+          Uri.https('commons.wikimedia.org', '/w/api.php', listParams);
       final listResponse = await _client.get(listUri, headers: {
         'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
       }).timeout(const Duration(seconds: 15));
@@ -1267,7 +1276,8 @@ class SearchService {
         'iiurlwidth': '320',
       };
 
-      final infoUri = Uri.https('commons.wikimedia.org', '/w/api.php', infoParams);
+      final infoUri =
+          Uri.https('commons.wikimedia.org', '/w/api.php', infoParams);
       final infoResponse = await _client.get(infoUri, headers: {
         'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
       }).timeout(const Duration(seconds: 15));
@@ -1275,7 +1285,8 @@ class SearchService {
       if (infoResponse.statusCode != 200) return null;
 
       final infoData = jsonDecode(infoResponse.body) as Map<String, dynamic>;
-      final pages = (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
+      final pages =
+          (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
 
       // pages is keyed by pageid with no guaranteed order — index by title
       // so we can rebuild the newest-first order from step 1.
@@ -1310,7 +1321,6 @@ class SearchService {
       return null;
     }
   }
-
 
   /// A stable signature for [state] — identical filters always produce the
   /// same signature, safe to use as a cache/session key.
@@ -1404,7 +1414,8 @@ class SearchService {
           // rather than abandoning it.
           newMultiContinue[key] = branchContinue ?? <String, dynamic>{};
           // ignore: avoid_print
-          print('🔍 [BRANCH FAILED] key=$key — will retry on next loadMore instead of dropping it');
+          print(
+              '🔍 [BRANCH FAILED] key=$key — will retry on next loadMore instead of dropping it');
         }
       }());
     }
@@ -1448,7 +1459,8 @@ class SearchService {
 
     if (segments.length <= 1) {
       // ignore: avoid_print
-      print('🔍 [FETCHPAGE] single-segment path, queryText="${state.queryText}" tab=${state.tab.name} formats=${state.formats}');
+      print(
+          '🔍 [FETCHPAGE] single-segment path, queryText="${state.queryText}" tab=${state.tab.name} formats=${state.formats}');
       return _fetchPageForQuery(state, continueParams: continueParams);
     }
 
@@ -1662,7 +1674,8 @@ class SearchService {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
 
       // ignore: avoid_print
-      print('🔍 [REQUEST] tab=${state.tab.name} formats=${state.formats} overrideFormat=$overrideFormat\n🔍 [REQUEST URL] $uri');
+      print(
+          '🔍 [REQUEST] tab=${state.tab.name} formats=${state.formats} overrideFormat=$overrideFormat\n🔍 [REQUEST URL] $uri');
 
       // Transient failures (dropped connection, timeout, a momentary 5xx
       // from the API cluster) are common enough on a public API under load
@@ -1684,7 +1697,8 @@ class SearchService {
             break;
           }
           // ignore: avoid_print
-          print('🔍 [RETRY $attempt/3] HTTP ${candidate.statusCode} — retrying');
+          print(
+              '🔍 [RETRY $attempt/3] HTTP ${candidate.statusCode} — retrying');
         } catch (e) {
           // ignore: avoid_print
           print('🔍 [RETRY $attempt/3] network error: $e');
@@ -1712,7 +1726,8 @@ class SearchService {
         final errorCode = apiError['code'] as String?;
 
         // ignore: avoid_print
-        print('🔍 [API ERROR] code=$errorCode info=${apiError['info']} includeThumbWidth=$includeThumbWidth');
+        print(
+            '🔍 [API ERROR] code=$errorCode info=${apiError['info']} includeThumbWidth=$includeThumbWidth');
 
         // The one specific, recoverable case: retry once with thumbnail
         // scaling turned off entirely, so nothing can fail to normalize.
@@ -1746,14 +1761,16 @@ class SearchService {
       final suggestion = searchInfo?['suggestion'] as String?;
 
       // ignore: avoid_print
-      print('🔍 [PARSE] pages.length=${pages.length} totalhits=$totalHits suggestion=$suggestion');
+      print(
+          '🔍 [PARSE] pages.length=${pages.length} totalhits=$totalHits suggestion=$suggestion');
 
       final items = <SearchItem>[];
       for (final page in pages.values) {
         final infoList = page['imageinfo'] as List?;
         if (infoList == null || infoList.isEmpty) {
           // ignore: avoid_print
-          print('🔍 [SKIP] title=${page['title']} — no imageinfo (missing=${page['missing']}, invalid=${page['invalid']})');
+          print(
+              '🔍 [SKIP] title=${page['title']} — no imageinfo (missing=${page['missing']}, invalid=${page['invalid']})');
           continue;
         }
 
@@ -1771,11 +1788,14 @@ class SearchService {
       }
 
       final filteredItems = overrideFormat == null
-          ? items.where((item) => _matchesMacroFormat(item, state.formats)).toList()
+          ? items
+              .where((item) => _matchesMacroFormat(item, state.formats))
+              .toList()
           : items;
 
       // ignore: avoid_print
-      print('🔍 [RESULT] rawItems=${items.length} filteredItems=${filteredItems.length} hasMore=${nextContinue != null}');
+      print(
+          '🔍 [RESULT] rawItems=${items.length} filteredItems=${filteredItems.length} hasMore=${nextContinue != null}');
 
       return SearchResponse(
         items: filteredItems,
@@ -1790,7 +1810,8 @@ class SearchService {
     }
   }
 
-  List<SearchItem> _multiSort<K>(Map<K, List<SearchItem>> streams, SortMode mode) {
+  List<SearchItem> _multiSort<K>(
+      Map<K, List<SearchItem>> streams, SortMode mode) {
     final result = <SearchItem>[];
 
     if (mode == SortMode.relevance) {
@@ -1812,16 +1833,17 @@ class SearchService {
       }
 
       if (mode == SortMode.titleMatch) {
-        result.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        result.sort(
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
       } else {
         result.sort((a, b) {
           final tA = a.timestamp ?? '';
           final tB = b.timestamp ?? '';
           final cmp = tA.compareTo(tB);
           if (mode == SortMode.newestCreated || mode == SortMode.newestEdited) {
-            return -cmp; 
+            return -cmp;
           }
-          return cmp; 
+          return cmp;
         });
       }
     }
@@ -1832,22 +1854,36 @@ class SearchService {
   String _getMimeString(FileFormat format) {
     switch (format) {
       case FileFormat.jpg:
-      case FileFormat.jpeg: return 'image/jpeg';
-      case FileFormat.png: return 'image/png';
-      case FileFormat.svg: return 'image/svg+xml';
-      case FileFormat.gif: return 'image/gif';
+      case FileFormat.jpeg:
+        return 'image/jpeg';
+      case FileFormat.png:
+        return 'image/png';
+      case FileFormat.svg:
+        return 'image/svg+xml';
+      case FileFormat.gif:
+        return 'image/gif';
       case FileFormat.tif:
-      case FileFormat.tiff: return 'image/tiff';
-      case FileFormat.webp: return 'image/webp';
-      case FileFormat.pdf: return 'application/pdf';
-      case FileFormat.djvu: return 'image/vnd.djvu'; 
+      case FileFormat.tiff:
+        return 'image/tiff';
+      case FileFormat.webp:
+        return 'image/webp';
+      case FileFormat.pdf:
+        return 'application/pdf';
+      case FileFormat.djvu:
+        return 'image/vnd.djvu';
       case FileFormat.ogg:
-      case FileFormat.oga: return 'audio/ogg';
-      case FileFormat.ogv: return 'video/ogg';
-      case FileFormat.mp3: return 'audio/mpeg';
-      case FileFormat.wav: return 'audio/wav';
-      case FileFormat.webm: return 'video/webm';
-      case FileFormat.mp4: return 'video/mp4';
+      case FileFormat.oga:
+        return 'audio/ogg';
+      case FileFormat.ogv:
+        return 'video/ogg';
+      case FileFormat.mp3:
+        return 'audio/mpeg';
+      case FileFormat.wav:
+        return 'audio/wav';
+      case FileFormat.webm:
+        return 'video/webm';
+      case FileFormat.mp4:
+        return 'video/mp4';
     }
   }
 
@@ -1858,23 +1894,58 @@ class SearchService {
 
     for (final format in formats) {
       switch (format) {
-        case FileFormat.jpg: if (ext == 'jpg' || mime == 'image/jpeg') return true; break;
-        case FileFormat.jpeg: if (ext == 'jpeg' || mime == 'image/jpeg') return true; break;
-        case FileFormat.png: if (ext == 'png' || mime == 'image/png') return true; break;
-        case FileFormat.svg: if (ext == 'svg' || mime == 'image/svg+xml') return true; break;
-        case FileFormat.gif: if (ext == 'gif' || mime == 'image/gif') return true; break;
-        case FileFormat.tif: if (ext == 'tif' || mime == 'image/tiff') return true; break;
-        case FileFormat.tiff: if (ext == 'tiff' || mime == 'image/tiff') return true; break;
-        case FileFormat.webp: if (ext == 'webp' || mime == 'image/webp') return true; break;
-        case FileFormat.pdf: if (ext == 'pdf' || mime == 'application/pdf') return true; break;
-        case FileFormat.djvu: if (ext == 'djvu') return true; break;
-        case FileFormat.ogg: if (ext == 'ogg' || mime.contains('ogg')) return true; break;
-        case FileFormat.oga: if (ext == 'oga' || mime.contains('ogg')) return true; break;
-        case FileFormat.ogv: if (ext == 'ogv' || mime.contains('ogg')) return true; break;
-        case FileFormat.mp3: if (ext == 'mp3' || mime.contains('mpeg') || mime.contains('mp3')) return true; break;
-        case FileFormat.wav: if (ext == 'wav' || mime.contains('wav')) return true; break;
-        case FileFormat.webm: if (ext == 'webm' || mime.contains('webm')) return true; break;
-        case FileFormat.mp4: if (ext == 'mp4' || mime.contains('mp4')) return true; break;
+        case FileFormat.jpg:
+          if (ext == 'jpg' || mime == 'image/jpeg') return true;
+          break;
+        case FileFormat.jpeg:
+          if (ext == 'jpeg' || mime == 'image/jpeg') return true;
+          break;
+        case FileFormat.png:
+          if (ext == 'png' || mime == 'image/png') return true;
+          break;
+        case FileFormat.svg:
+          if (ext == 'svg' || mime == 'image/svg+xml') return true;
+          break;
+        case FileFormat.gif:
+          if (ext == 'gif' || mime == 'image/gif') return true;
+          break;
+        case FileFormat.tif:
+          if (ext == 'tif' || mime == 'image/tiff') return true;
+          break;
+        case FileFormat.tiff:
+          if (ext == 'tiff' || mime == 'image/tiff') return true;
+          break;
+        case FileFormat.webp:
+          if (ext == 'webp' || mime == 'image/webp') return true;
+          break;
+        case FileFormat.pdf:
+          if (ext == 'pdf' || mime == 'application/pdf') return true;
+          break;
+        case FileFormat.djvu:
+          if (ext == 'djvu') return true;
+          break;
+        case FileFormat.ogg:
+          if (ext == 'ogg' || mime.contains('ogg')) return true;
+          break;
+        case FileFormat.oga:
+          if (ext == 'oga' || mime.contains('ogg')) return true;
+          break;
+        case FileFormat.ogv:
+          if (ext == 'ogv' || mime.contains('ogg')) return true;
+          break;
+        case FileFormat.mp3:
+          if (ext == 'mp3' || mime.contains('mpeg') || mime.contains('mp3'))
+            return true;
+          break;
+        case FileFormat.wav:
+          if (ext == 'wav' || mime.contains('wav')) return true;
+          break;
+        case FileFormat.webm:
+          if (ext == 'webm' || mime.contains('webm')) return true;
+          break;
+        case FileFormat.mp4:
+          if (ext == 'mp4' || mime.contains('mp4')) return true;
+          break;
       }
     }
     return false;
@@ -1883,11 +1954,93 @@ class SearchService {
   List<SearchItem> applyClientSort(List<SearchItem> items, SortMode sortMode) {
     if (sortMode != SortMode.titleMatch) return items;
     final sorted = List<SearchItem>.from(items);
-    sorted.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    sorted
+        .sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
     return sorted;
   }
 
   static String _stripHtml(String s) {
     return s.replaceAll(_htmlTagRegex, '').trim();
+  }
+}
+
+typedef CategoryItem = ({String name, int size});
+typedef BrowseResult<T> = ({List<T> items, String? nextCursor});
+
+extension BrowseExtensions on SearchService {
+  Future<BrowseResult<CategoryItem>> browseCategories({
+    String? prefix,
+    String? cursor,
+    int limit = 500,
+  }) async {
+    final params = <String, String>{
+      'action': 'query',
+      'list': 'allcategories',
+      'acprop': 'size',
+      'aclimit': '$limit',
+      'format': 'json',
+      'origin': '*',
+    };
+    if (prefix != null && prefix.trim().isNotEmpty)
+      params['acprefix'] = prefix.trim();
+    if (cursor != null) params['accontinue'] = cursor;
+
+    try {
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
+      final res = await SearchService._client
+          .get(uri); // Assumes _client is accessible or make it public
+      if (res.statusCode != 200)
+        return (items: <CategoryItem>[], nextCursor: null);
+
+      final data = jsonDecode(res.body);
+      final cats = data['query']?['allcategories'] as List? ?? [];
+      final nextCursor = data['continue']?['accontinue'] as String?;
+
+      final items = cats
+          .map((c) =>
+              (name: c['*'] as String, size: (c['size'] as num?)?.toInt() ?? 0))
+          .toList();
+
+      return (items: items, nextCursor: nextCursor);
+    } catch (_) {
+      return (items: <CategoryItem>[], nextCursor: null);
+    }
+  }
+
+  Future<BrowseResult<String>> browseTemplates({
+    String? prefix,
+    String? cursor,
+    int limit = 500,
+  }) async {
+    final params = <String, String>{
+      'action': 'query',
+      'list': 'allpages',
+      'apnamespace': '10',
+      'aplimit': '$limit',
+      'format': 'json',
+      'origin': '*',
+    };
+    if (prefix != null && prefix.trim().isNotEmpty)
+      params['apprefix'] = prefix.trim();
+    if (cursor != null) params['apcontinue'] = cursor;
+
+    try {
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
+      final res = await SearchService._client.get(uri);
+      if (res.statusCode != 200) return (items: <String>[], nextCursor: null);
+
+      final data = jsonDecode(res.body);
+      final pages = data['query']?['allpages'] as List? ?? [];
+      final nextCursor = data['continue']?['apcontinue'] as String?;
+
+      final items = pages
+          .map((p) =>
+              (p['title'] as String).replaceFirst('Template:', '').trim())
+          .toList();
+
+      return (items: items, nextCursor: nextCursor);
+    } catch (_) {
+      return (items: <String>[], nextCursor: null);
+    }
   }
 }

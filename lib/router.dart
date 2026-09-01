@@ -1,3 +1,4 @@
+import 'package:commonslens/browse_page.dart';
 import 'package:go_router/go_router.dart';
 
 import 'search_page.dart';
@@ -11,6 +12,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/',
       builder: (context, state) => const SearchPage(),
+    ),
+    GoRoute(
+      path: '/browse',
+      builder: (context, state) => const BrowsePage(),
     ),
     GoRoute(
       path: '/map',
@@ -44,8 +49,8 @@ final GoRouter appRouter = GoRouter(
           // which is what sent map taps back to the main search page.
           returnUrl = '/map';
         } else if (author != null && author.trim().isNotEmpty) {
-          returnUrl =
-              Uri(path: '/author', queryParameters: {'name': author}).toString();
+          returnUrl = Uri(path: '/author', queryParameters: {'name': author})
+              .toString();
         } else {
           final returnParams = Map<String, String>.from(params)..remove('id');
           returnUrl = Uri(

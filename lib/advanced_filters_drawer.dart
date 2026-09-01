@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'search_models.dart';
 import 'search_controller.dart';
@@ -99,23 +100,34 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       bytes == null ? '' : (bytes / (1024 * 1024)).toString();
 
   void _seedControllers(SearchState state) {
-    _minWidthCtrl = TextEditingController(text: state.minWidth?.toString() ?? '');
-    _minHeightCtrl = TextEditingController(text: state.minHeight?.toString() ?? '');
-    _maxWidthCtrl = TextEditingController(text: state.maxWidth?.toString() ?? '');
-    _maxHeightCtrl = TextEditingController(text: state.maxHeight?.toString() ?? '');
-    _minFileSizeCtrl = TextEditingController(text: _bytesToMBText(state.minFileSizeBytes));
-    _maxFileSizeCtrl = TextEditingController(text: _bytesToMBText(state.maxFileSizeBytes));
+    _minWidthCtrl =
+        TextEditingController(text: state.minWidth?.toString() ?? '');
+    _minHeightCtrl =
+        TextEditingController(text: state.minHeight?.toString() ?? '');
+    _maxWidthCtrl =
+        TextEditingController(text: state.maxWidth?.toString() ?? '');
+    _maxHeightCtrl =
+        TextEditingController(text: state.maxHeight?.toString() ?? '');
+    _minFileSizeCtrl =
+        TextEditingController(text: _bytesToMBText(state.minFileSizeBytes));
+    _maxFileSizeCtrl =
+        TextEditingController(text: _bytesToMBText(state.maxFileSizeBytes));
     _colorDepthBits = state.colorDepthBits;
 
-    _latCtrl = TextEditingController(text: state.nearCoord?.lat.toString() ?? '');
-    _lngCtrl = TextEditingController(text: state.nearCoord?.lng.toString() ?? '');
-    _radiusCtrl = TextEditingController(text: state.nearCoord?.radiusKm.toString() ?? '10');
+    _latCtrl =
+        TextEditingController(text: state.nearCoord?.lat.toString() ?? '');
+    _lngCtrl =
+        TextEditingController(text: state.nearCoord?.lng.toString() ?? '');
+    _radiusCtrl = TextEditingController(
+        text: state.nearCoord?.radiusKm.toString() ?? '10');
     _nearTitleCtrl = TextEditingController(text: state.nearTitle?.title ?? '');
-    _nearTitleRadiusCtrl = TextEditingController(text: state.nearTitle?.radiusKm.toString() ?? '10');
+    _nearTitleRadiusCtrl = TextEditingController(
+        text: state.nearTitle?.radiusKm.toString() ?? '10');
 
     _langCtrl = TextEditingController(text: state.languageCode ?? '');
     _modelCtrl = TextEditingController(text: state.contentModel ?? '');
-    _createdFromCtrl = TextEditingController(text: state.createdDate?.from ?? '');
+    _createdFromCtrl =
+        TextEditingController(text: state.createdDate?.from ?? '');
     _createdToCtrl = TextEditingController(text: state.createdDate?.to ?? '');
     _editedFromCtrl = TextEditingController(text: state.editedDate?.from ?? '');
     _editedToCtrl = TextEditingController(text: state.editedDate?.to ?? '');
@@ -145,7 +157,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     sync(_lngCtrl, state.nearCoord?.lng.toString() ?? '');
     sync(_radiusCtrl, state.nearCoord?.radiusKm.toString() ?? _radiusCtrl.text);
     sync(_nearTitleCtrl, state.nearTitle?.title ?? '');
-    sync(_nearTitleRadiusCtrl, state.nearTitle?.radiusKm.toString() ?? _nearTitleRadiusCtrl.text);
+    sync(_nearTitleRadiusCtrl,
+        state.nearTitle?.radiusKm.toString() ?? _nearTitleRadiusCtrl.text);
     sync(_langCtrl, state.languageCode ?? '');
     sync(_modelCtrl, state.contentModel ?? '');
     sync(_createdFromCtrl, state.createdDate?.from ?? '');
@@ -227,7 +240,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     NearCoordFilter? coordFilter;
     NearTitleFilter? titleFilter;
     if (nearTitleText.isNotEmpty) {
-      titleFilter = NearTitleFilter(title: nearTitleText, radiusKm: nearTitleRad);
+      titleFilter =
+          NearTitleFilter(title: nearTitleText, radiusKm: nearTitleRad);
     } else if (lat != null && lng != null) {
       coordFilter = NearCoordFilter(lat: lat, lng: lng, radiusKm: rad);
     }
@@ -247,8 +261,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     final cTo = _createdToCtrl.text.trim();
     final eFrom = _editedFromCtrl.text.trim();
     final eTo = _editedToCtrl.text.trim();
-    final created = (cFrom.isNotEmpty || cTo.isNotEmpty) ? DateFilter(from: cFrom, to: cTo) : null;
-    final edited = (eFrom.isNotEmpty || eTo.isNotEmpty) ? DateFilter(from: eFrom, to: eTo) : null;
+    final created = (cFrom.isNotEmpty || cTo.isNotEmpty)
+        ? DateFilter(from: cFrom, to: cTo)
+        : null;
+    final edited = (eFrom.isNotEmpty || eTo.isNotEmpty)
+        ? DateFilter(from: eFrom, to: eTo)
+        : null;
 
     _update((c) => c.copyWith(
           createdDate: created,
@@ -264,12 +282,14 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
   void _applyLanguage(String text) {
     final lang = text.trim().isEmpty ? null : text.trim();
-    _update((c) => c.copyWith(languageCode: lang, clearLanguageCode: lang == null));
+    _update(
+        (c) => c.copyWith(languageCode: lang, clearLanguageCode: lang == null));
   }
 
   void _applyContentModel(String text) {
     final model = text.trim().isEmpty ? null : text.trim();
-    _update((c) => c.copyWith(contentModel: model, clearContentModel: model == null));
+    _update((c) =>
+        c.copyWith(contentModel: model, clearContentModel: model == null));
   }
 
   // ---- Categories (instant) ----
@@ -282,14 +302,15 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           )
         : c.copyWith(
             categories: {...c.categories, value},
-            excludeCategories: c.excludeCategories.where((v) => v != value).toSet(),
+            excludeCategories:
+                c.excludeCategories.where((v) => v != value).toSet(),
           ));
   }
 
-  void _removeCategoryInclude(String value) =>
-      _update((c) => c.copyWith(categories: c.categories.where((v) => v != value).toSet()));
-  void _removeCategoryExclude(String value) =>
-      _update((c) => c.copyWith(excludeCategories: c.excludeCategories.where((v) => v != value).toSet()));
+  void _removeCategoryInclude(String value) => _update((c) =>
+      c.copyWith(categories: c.categories.where((v) => v != value).toSet()));
+  void _removeCategoryExclude(String value) => _update((c) => c.copyWith(
+      excludeCategories: c.excludeCategories.where((v) => v != value).toSet()));
 
   // ---- Templates (instant) ----
 
@@ -301,14 +322,15 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           )
         : c.copyWith(
             templates: {...c.templates, value},
-            excludeTemplates: c.excludeTemplates.where((v) => v != value).toSet(),
+            excludeTemplates:
+                c.excludeTemplates.where((v) => v != value).toSet(),
           ));
   }
 
-  void _removeTemplateInclude(String value) =>
-      _update((c) => c.copyWith(templates: c.templates.where((v) => v != value).toSet()));
-  void _removeTemplateExclude(String value) =>
-      _update((c) => c.copyWith(excludeTemplates: c.excludeTemplates.where((v) => v != value).toSet()));
+  void _removeTemplateInclude(String value) => _update((c) =>
+      c.copyWith(templates: c.templates.where((v) => v != value).toSet()));
+  void _removeTemplateExclude(String value) => _update((c) => c.copyWith(
+      excludeTemplates: c.excludeTemplates.where((v) => v != value).toSet()));
 
   // ---- Depicts (instant) ----
 
@@ -324,15 +346,19 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           ));
   }
 
-  void _removeDepictsInclude(DepictsEntity value) =>
-      _update((c) => c.copyWith(depictsInclude: c.depictsInclude.where((v) => v != value).toSet()));
-  void _removeDepictsExclude(DepictsEntity value) =>
-      _update((c) => c.copyWith(depictsExclude: c.depictsExclude.where((v) => v != value).toSet()));
+  void _removeDepictsInclude(DepictsEntity value) => _update((c) => c.copyWith(
+      depictsInclude: c.depictsInclude.where((v) => v != value).toSet()));
+  void _removeDepictsExclude(DepictsEntity value) => _update((c) => c.copyWith(
+      depictsExclude: c.depictsExclude.where((v) => v != value).toSet()));
 
-  void _setDepictsUnion(bool union) => _update((c) => c.copyWith(depictsUnion: union));
-  void _setCategoriesUnion(bool union) => _update((c) => c.copyWith(categoriesUnion: union));
-  void _setDeepCategoryMode(bool deep) => _update((c) => c.copyWith(deepCategoryMode: deep));
-  void _setStatementsUnion(bool union) => _update((c) => c.copyWith(statementsUnion: union));
+  void _setDepictsUnion(bool union) =>
+      _update((c) => c.copyWith(depictsUnion: union));
+  void _setCategoriesUnion(bool union) =>
+      _update((c) => c.copyWith(categoriesUnion: union));
+  void _setDeepCategoryMode(bool deep) =>
+      _update((c) => c.copyWith(deepCategoryMode: deep));
+  void _setStatementsUnion(bool union) =>
+      _update((c) => c.copyWith(statementsUnion: union));
 
   // ---- Statements (instant, two-step property -> value) ----
 
@@ -340,25 +366,32 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     _update((c) => exclude
         ? c.copyWith(
             statementsExclude: {...c.statementsExclude, stmt},
-            statementsInclude: c.statementsInclude.where((v) => v != stmt).toSet(),
+            statementsInclude:
+                c.statementsInclude.where((v) => v != stmt).toSet(),
           )
         : c.copyWith(
             statementsInclude: {...c.statementsInclude, stmt},
-            statementsExclude: c.statementsExclude.where((v) => v != stmt).toSet(),
+            statementsExclude:
+                c.statementsExclude.where((v) => v != stmt).toSet(),
           ));
   }
 
   void _removeStatementInclude(WikidataStatement stmt) =>
-      _update((c) => c.copyWith(statementsInclude: c.statementsInclude.where((v) => v != stmt).toSet()));
+      _update((c) => c.copyWith(
+          statementsInclude:
+              c.statementsInclude.where((v) => v != stmt).toSet()));
   void _removeStatementExclude(WikidataStatement stmt) =>
-      _update((c) => c.copyWith(statementsExclude: c.statementsExclude.where((v) => v != stmt).toSet()));
+      _update((c) => c.copyWith(
+          statementsExclude:
+              c.statementsExclude.where((v) => v != stmt).toSet()));
 
   @override
   Widget build(BuildContext context) {
     // Keeps the range-filter controllers honest against external changes
     // (URL hydrate, chip removal on the main search page) even though this
     // widget itself may live far longer than any single search now.
-    ref.listen(searchControllerProvider.select((s) => s.filterState), (previous, next) {
+    ref.listen(searchControllerProvider.select((s) => s.filterState),
+        (previous, next) {
       if (previous == next) return;
       _syncControllersFromState(next);
     });
@@ -375,7 +408,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
               children: [
                 const Text('FILTERS',
                     style: TextStyle(
-                        color: Colors.white, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.w800)),
+                        color: Colors.white,
+                        fontSize: 12,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w800)),
                 if (widget.showCloseButton)
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white54),
@@ -391,7 +427,17 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
               children: [
                 _sectionDivider('IMAGE CLASSIFICATION'),
                 const SizedBox(height: 20),
-
+                GestureDetector(
+                  onTap: () => context.push('/browse'),
+                  child: const Text(
+                    'Browse the full directory of categories, templates and Q-codes →',
+                    style: TextStyle(
+                        color: Color(0xFF3D7EFF),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 12),
                 _sectionHeader('DEPICTS (SUBJECT)'),
                 Row(
                   children: [
@@ -417,7 +463,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   state.depictsUnion
                       ? 'Matches files depicting ANY selected subject below (this OR this), still excluding anything marked "not".'
                       : 'Matches files depicting ALL selected subjects below (this AND this), and excludes anything marked "not".',
-                  style: const TextStyle(color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                  style: const TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 _EntitySetPicker<DepictsEntity>(
@@ -433,7 +480,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   onRemoveExclude: _removeDepictsExclude,
                 ),
                 const SizedBox(height: 24),
-
                 _sectionHeader('WIKIDATA PROPERTY SEARCH'),
                 Row(
                   children: [
@@ -459,7 +505,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   state.statementsUnion
                       ? 'Matches ANY selected property below (this OR this), still excluding anything marked "not".'
                       : 'Matches ALL selected properties below (this AND this), and excludes anything marked "not".',
-                  style: const TextStyle(color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                  style: const TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 _StatementsPicker(
@@ -471,7 +518,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   onRemoveExclude: _removeStatementExclude,
                 ),
                 const SizedBox(height: 24),
-
                 _sectionHeader('CATEGORIES'),
                 Row(
                   children: [
@@ -497,7 +543,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   state.categoriesUnion
                       ? 'Matches files in ANY selected category below (this OR this), still excluding anything marked "not".'
                       : 'Matches files in ALL selected categories below (this AND this), and excludes anything marked "not".',
-                  style: const TextStyle(color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                  style: const TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 _StringSetPicker(
@@ -532,7 +579,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                             Text(
                               'Include subcategories',
                               style: TextStyle(
-                                color: state.deepCategoryMode ? Colors.white : Colors.white70,
+                                color: state.deepCategoryMode
+                                    ? Colors.white
+                                    : Colors.white70,
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -542,7 +591,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                               state.deepCategoryMode
                                   ? 'Deep: also pulls files from every subcategory nested beneath the categories above.'
                                   : 'Strict: only files filed directly in the exact categories above — nested subcategories are skipped.',
-                              style: const TextStyle(color: Color(0xFF888888), fontSize: 11, height: 1.4),
+                              style: const TextStyle(
+                                  color: Color(0xFF888888),
+                                  fontSize: 11,
+                                  height: 1.4),
                             ),
                           ],
                         ),
@@ -557,7 +609,26 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
+                _sectionHeader('TEMPLATES'),
+                Text(
+                  'Matches files carrying a specific template — e.g. a GLAM/institutional '
+                  'set ("Institution:Metropolitan Museum of Art") or a granular PD template '
+                  '("PD-USGov-NASA"). Always required (AND), no union mode.',
+                  style: const TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                _StringSetPicker(
+                  include: state.templates,
+                  exclude: state.excludeTemplates,
+                  search: (text) => _service.searchTemplates(text),
+                  addHint: 'e.g. PD-USGov-NASA',
+                  excludeHint: 'Exclude template name...',
+                  onAdd: _addTemplate,
+                  onRemoveInclude: _removeTemplateInclude,
+                  onRemoveExclude: _removeTemplateExclude,
+                ),
+                const SizedBox(height: 24),
                 _sectionHeader('QUALITY ASSESSMENT'),
                 DropdownButtonFormField<QualityFilter>(
                   dropdownColor: const Color(0xFF1E1E1E),
@@ -565,14 +636,16 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   value: state.qualityFilter,
                   items: QualityFilter.values
                       .map((q) => DropdownMenuItem(
-                          value: q, child: Text(qualityFilterLabel(q), style: const TextStyle(color: Colors.white))))
+                          value: q,
+                          child: Text(qualityFilterLabel(q),
+                              style: const TextStyle(color: Colors.white))))
                       .toList(),
                   onChanged: (val) {
-                    if (val != null) _update((c) => c.copyWith(qualityFilter: val));
+                    if (val != null)
+                      _update((c) => c.copyWith(qualityFilter: val));
                   },
                 ),
                 const SizedBox(height: 24),
-
                 _sectionDivider('LICENSE'),
                 const SizedBox(height: 20),
                 _sectionHeader('LICENSE / RIGHTS'),
@@ -583,17 +656,17 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   items: LicensePreset.values
                       .map((preset) => DropdownMenuItem(
                           value: preset,
-                          child: Text(licensePresetLabel(preset), style: const TextStyle(color: Colors.white))))
+                          child: Text(licensePresetLabel(preset),
+                              style: const TextStyle(color: Colors.white))))
                       .toList(),
                   onChanged: (val) {
-                    if (val != null) _update((c) => c.copyWith(licensePreset: val));
+                    if (val != null)
+                      _update((c) => c.copyWith(licensePreset: val));
                   },
                 ),
                 const SizedBox(height: 24),
-
                 _sectionDivider('METADATA AND LOCATION'),
                 const SizedBox(height: 20),
-
                 _sectionHeader('LANGUAGE & CONTENT'),
                 Row(
                   children: [
@@ -615,13 +688,13 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         style: const TextStyle(color: Colors.white),
                         decoration: _fieldDecoration(hint: 'Model (wikitext)'),
                         onSubmitted: _applyContentModel,
-                        onTapOutside: (_) => _applyContentModel(_modelCtrl.text),
+                        onTapOutside: (_) =>
+                            _applyContentModel(_modelCtrl.text),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-
                 _sectionHeader('DATES (YYYY-MM-DD)'),
                 Text('CREATED', style: _groupLabelStyle()),
                 const SizedBox(height: 6),
@@ -673,7 +746,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 const SizedBox(height: 12),
                 _groupApplyButton('Apply Dates', _applyDates),
                 const SizedBox(height: 24),
-
                 _sectionHeader('RESOLUTION BOUNDS'),
                 Row(
                   children: [
@@ -682,7 +754,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _minWidthCtrl,
                         style: const TextStyle(color: Colors.white),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         decoration: _fieldDecoration(hint: 'Min width px'),
                       ),
                     ),
@@ -692,7 +766,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _minHeightCtrl,
                         style: const TextStyle(color: Colors.white),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         decoration: _fieldDecoration(hint: 'Min height px'),
                       ),
                     ),
@@ -706,7 +782,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _maxWidthCtrl,
                         style: const TextStyle(color: Colors.white),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         decoration: _fieldDecoration(hint: 'Max width px'),
                       ),
                     ),
@@ -716,7 +794,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _maxHeightCtrl,
                         style: const TextStyle(color: Colors.white),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         decoration: _fieldDecoration(hint: 'Max height px'),
                       ),
                     ),
@@ -751,9 +831,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       child: TextField(
                         controller: _minFileSizeCtrl,
                         style: const TextStyle(color: Colors.white),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration:
-                            _fieldDecoration(hint: _fileSizeUnitMB ? 'Min size (MB)' : 'Min size (KB)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: _fieldDecoration(
+                            hint: _fileSizeUnitMB
+                                ? 'Min size (MB)'
+                                : 'Min size (KB)'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -761,9 +844,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       child: TextField(
                         controller: _maxFileSizeCtrl,
                         style: const TextStyle(color: Colors.white),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration:
-                            _fieldDecoration(hint: _fileSizeUnitMB ? 'Max size (MB)' : 'Max size (KB)'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        decoration: _fieldDecoration(
+                            hint: _fileSizeUnitMB
+                                ? 'Max size (MB)'
+                                : 'Max size (KB)'),
                       ),
                     ),
                   ],
@@ -774,39 +860,37 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   decoration: _fieldDecoration(hint: 'Any color depth'),
                   value: _colorDepthBits,
                   items: const [
-                    DropdownMenuItem(value: null, child: Text('Any color depth', style: TextStyle(color: Colors.white70))),
-                    DropdownMenuItem(value: 1, child: Text('1-bit (monochrome)', style: TextStyle(color: Colors.white))),
-                    DropdownMenuItem(value: 8, child: Text('8-bit', style: TextStyle(color: Colors.white))),
-                    DropdownMenuItem(value: 16, child: Text('16-bit', style: TextStyle(color: Colors.white))),
-                    DropdownMenuItem(value: 24, child: Text('24-bit', style: TextStyle(color: Colors.white))),
-                    DropdownMenuItem(value: 32, child: Text('32-bit', style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: null,
+                        child: Text('Any color depth',
+                            style: TextStyle(color: Colors.white70))),
+                    DropdownMenuItem(
+                        value: 1,
+                        child: Text('1-bit (monochrome)',
+                            style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: 8,
+                        child: Text('8-bit',
+                            style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: 16,
+                        child: Text('16-bit',
+                            style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: 24,
+                        child: Text('24-bit',
+                            style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: 32,
+                        child: Text('32-bit',
+                            style: TextStyle(color: Colors.white))),
                   ],
                   onChanged: (val) => setState(() => _colorDepthBits = val),
                 ),
                 const SizedBox(height: 12),
-                _groupApplyButton('Apply Resolution & Size', _applyResolutionAndSize),
+                _groupApplyButton(
+                    'Apply Resolution & Size', _applyResolutionAndSize),
                 const SizedBox(height: 24),
-
-                _sectionHeader('TEMPLATES'),
-                Text(
-                  'Matches files carrying a specific template — e.g. a GLAM/institutional '
-                  'set ("Institution:Metropolitan Museum of Art") or a granular PD template '
-                  '("PD-USGov-NASA"). Always required (AND), no union mode.',
-                  style: const TextStyle(color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
-                ),
-                const SizedBox(height: 12),
-                _StringSetPicker(
-                  include: state.templates,
-                  exclude: state.excludeTemplates,
-                  search: (text) => _service.searchTemplates(text),
-                  addHint: 'e.g. PD-USGov-NASA',
-                  excludeHint: 'Exclude template name...',
-                  onAdd: _addTemplate,
-                  onRemoveInclude: _removeTemplateInclude,
-                  onRemoveExclude: _removeTemplateExclude,
-                ),
-                const SizedBox(height: 24),
-
                 _sectionHeader('GEOLOCATION (LAT / LNG / RADIUS KM)'),
                 Row(
                   children: [
@@ -833,7 +917,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _radiusCtrl,
                         style: const TextStyle(color: Colors.white),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         decoration: _fieldDecoration(hint: 'km'),
                       ),
                     ),
@@ -847,7 +933,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       padding: EdgeInsets.symmetric(horizontal: 10),
                       child: Text('OR SEARCH NEAR A PLACE',
                           style: TextStyle(
-                              color: Color(0xFF555555), fontSize: 9, letterSpacing: 1.2, fontWeight: FontWeight.w700)),
+                              color: Color(0xFF555555),
+                              fontSize: 9,
+                              letterSpacing: 1.2,
+                              fontWeight: FontWeight.w700)),
                     ),
                     Expanded(child: Divider(color: Color(0xFF222222))),
                   ],
@@ -871,7 +960,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _nearTitleRadiusCtrl,
                         style: const TextStyle(color: Colors.white),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         decoration: _fieldDecoration(hint: 'km'),
                       ),
                     ),
@@ -890,13 +981,17 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
   TextInputType _urlKeyboardType() {
     return (kIsWeb &&
-            (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android))
+            (defaultTargetPlatform == TargetPlatform.iOS ||
+                defaultTargetPlatform == TargetPlatform.android))
         ? TextInputType.text
         : TextInputType.url;
   }
 
   TextStyle _groupLabelStyle() => const TextStyle(
-      color: Color(0xFF666666), fontSize: 9.5, letterSpacing: 1.2, fontWeight: FontWeight.w700);
+      color: Color(0xFF666666),
+      fontSize: 9.5,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w700);
 
   Widget _groupApplyButton(String label, VoidCallback onTap) {
     return SizedBox(
@@ -909,7 +1004,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+        child: Text(label,
+            style:
+                const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -961,8 +1058,14 @@ class _StringSetPickerState extends State<_StringSetPicker> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              ...widget.include.map((c) => _filterChip(label: c, excluded: false, onDeleted: () => widget.onRemoveInclude(c))),
-              ...widget.exclude.map((c) => _filterChip(label: c, excluded: true, onDeleted: () => widget.onRemoveExclude(c))),
+              ...widget.include.map((c) => _filterChip(
+                  label: c,
+                  excluded: false,
+                  onDeleted: () => widget.onRemoveInclude(c))),
+              ...widget.exclude.map((c) => _filterChip(
+                  label: c,
+                  excluded: true,
+                  onDeleted: () => widget.onRemoveExclude(c))),
             ],
           ),
           const SizedBox(height: 12),
@@ -973,14 +1076,16 @@ class _StringSetPickerState extends State<_StringSetPicker> {
             Expanded(
               child: Autocomplete<String>(
                 optionsBuilder: (textEditingValue) async {
-                  if (textEditingValue.text.isEmpty) return const Iterable<String>.empty();
+                  if (textEditingValue.text.isEmpty)
+                    return const Iterable<String>.empty();
                   return await widget.search(textEditingValue.text);
                 },
                 onSelected: (selection) {
                   widget.onAdd(selection, _excludeMode);
                   _fieldController?.clear();
                 },
-                fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                fieldViewBuilder:
+                    (context, controller, focusNode, onEditingComplete) {
                   _fieldController = controller;
                   void addFromField() {
                     final val = controller.text.trim();
@@ -992,15 +1097,21 @@ class _StringSetPickerState extends State<_StringSetPicker> {
                   return TextField(
                     keyboardType: (kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
-                                defaultTargetPlatform == TargetPlatform.android))
+                                defaultTargetPlatform ==
+                                    TargetPlatform.android))
                         ? TextInputType.text
                         : TextInputType.url,
                     controller: controller,
                     focusNode: focusNode,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _fieldDecoration(hint: _excludeMode ? widget.excludeHint : widget.addHint).copyWith(
+                    decoration: _fieldDecoration(
+                            hint: _excludeMode
+                                ? widget.excludeHint
+                                : widget.addHint)
+                        .copyWith(
                       suffixIcon: IconButton(
-                        icon: const Icon(Icons.add, color: Colors.white54, size: 18),
+                        icon: const Icon(Icons.add,
+                            color: Colors.white54, size: 18),
                         onPressed: addFromField,
                       ),
                     ),
@@ -1014,7 +1125,8 @@ class _StringSetPickerState extends State<_StringSetPicker> {
                       color: const Color(0xFF1E1E1E),
                       elevation: 4,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 360),
+                        constraints:
+                            const BoxConstraints(maxHeight: 200, maxWidth: 360),
                         child: ListView.builder(
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
@@ -1022,7 +1134,8 @@ class _StringSetPickerState extends State<_StringSetPicker> {
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
                             return ListTile(
-                              title: Text(option, style: const TextStyle(color: Colors.white)),
+                              title: Text(option,
+                                  style: const TextStyle(color: Colors.white)),
                               onTap: () {
                                 onSelected(option);
                                 FocusScope.of(context).unfocus();
@@ -1037,7 +1150,9 @@ class _StringSetPickerState extends State<_StringSetPicker> {
               ),
             ),
             const SizedBox(width: 10),
-            _excludeModeToggle(excludeMode: _excludeMode, onChanged: (val) => setState(() => _excludeMode = val)),
+            _excludeModeToggle(
+                excludeMode: _excludeMode,
+                onChanged: (val) => setState(() => _excludeMode = val)),
           ],
         ),
       ],
@@ -1080,7 +1195,8 @@ class _EntitySetPicker<T extends Object> extends StatefulWidget {
   State<_EntitySetPicker<T>> createState() => _EntitySetPickerState<T>();
 }
 
-class _EntitySetPickerState<T extends Object> extends State<_EntitySetPicker<T>> {
+class _EntitySetPickerState<T extends Object>
+    extends State<_EntitySetPicker<T>> {
   bool _excludeMode = false;
   TextEditingController? _fieldController;
 
@@ -1094,10 +1210,14 @@ class _EntitySetPickerState<T extends Object> extends State<_EntitySetPicker<T>>
             spacing: 6,
             runSpacing: 6,
             children: [
-              ...widget.include.map((d) =>
-                  _filterChip(label: widget.labelOf(d), excluded: false, onDeleted: () => widget.onRemoveInclude(d))),
-              ...widget.exclude.map((d) =>
-                  _filterChip(label: widget.labelOf(d), excluded: true, onDeleted: () => widget.onRemoveExclude(d))),
+              ...widget.include.map((d) => _filterChip(
+                  label: widget.labelOf(d),
+                  excluded: false,
+                  onDeleted: () => widget.onRemoveInclude(d))),
+              ...widget.exclude.map((d) => _filterChip(
+                  label: widget.labelOf(d),
+                  excluded: true,
+                  onDeleted: () => widget.onRemoveExclude(d))),
             ],
           ),
           const SizedBox(height: 12),
@@ -1109,25 +1229,30 @@ class _EntitySetPickerState<T extends Object> extends State<_EntitySetPicker<T>>
               child: Autocomplete<T>(
                 displayStringForOption: widget.labelOf,
                 optionsBuilder: (textEditingValue) async {
-                  if (textEditingValue.text.isEmpty) return const Iterable<Never>.empty();
+                  if (textEditingValue.text.isEmpty)
+                    return const Iterable<Never>.empty();
                   return await widget.search(textEditingValue.text);
                 },
                 onSelected: (selection) {
                   widget.onAdd(selection, _excludeMode);
                   _fieldController?.clear();
                 },
-                fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                fieldViewBuilder:
+                    (context, controller, focusNode, onEditingComplete) {
                   _fieldController = controller;
                   return TextField(
                     keyboardType: (kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
-                                defaultTargetPlatform == TargetPlatform.android))
+                                defaultTargetPlatform ==
+                                    TargetPlatform.android))
                         ? TextInputType.text
                         : TextInputType.url,
                     controller: controller,
                     focusNode: focusNode,
                     style: const TextStyle(color: Colors.white),
-                    decoration: _fieldDecoration(hint: _excludeMode ? widget.excludeHint : widget.addHint),
+                    decoration: _fieldDecoration(
+                        hint:
+                            _excludeMode ? widget.excludeHint : widget.addHint),
                     onSubmitted: (_) => controller.clear(),
                   );
                 },
@@ -1138,18 +1263,23 @@ class _EntitySetPickerState<T extends Object> extends State<_EntitySetPicker<T>>
                       color: const Color(0xFF1E1E1E),
                       elevation: 4,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 300),
+                        constraints:
+                            const BoxConstraints(maxHeight: 200, maxWidth: 300),
                         child: ListView.builder(
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
                           itemCount: options.length,
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
-                            final description = widget.descriptionOf?.call(option);
+                            final description =
+                                widget.descriptionOf?.call(option);
                             return ListTile(
-                              title: Text(widget.labelOf(option), style: const TextStyle(color: Colors.white)),
+                              title: Text(widget.labelOf(option),
+                                  style: const TextStyle(color: Colors.white)),
                               subtitle: description != null
-                                  ? Text(description, style: const TextStyle(color: Colors.white54, fontSize: 11))
+                                  ? Text(description,
+                                      style: const TextStyle(
+                                          color: Colors.white54, fontSize: 11))
                                   : null,
                               onTap: () => onSelected(option),
                             );
@@ -1162,7 +1292,9 @@ class _EntitySetPickerState<T extends Object> extends State<_EntitySetPicker<T>>
               ),
             ),
             const SizedBox(width: 10),
-            _excludeModeToggle(excludeMode: _excludeMode, onChanged: (val) => setState(() => _excludeMode = val)),
+            _excludeModeToggle(
+                excludeMode: _excludeMode,
+                onChanged: (val) => setState(() => _excludeMode = val)),
           ],
         ),
       ],
@@ -1236,14 +1368,18 @@ class _StatementsPickerState extends State<_StatementsPicker> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle, size: 14, color: Color(0xFF3D7EFF)),
+                const Icon(Icons.check_circle,
+                    size: 14, color: Color(0xFF3D7EFF)),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Property: ${_pendingProperty!.label} — now search a value',
-                      style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  child: Text(
+                      'Property: ${_pendingProperty!.label} — now search a value',
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 12)),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close, size: 16, color: Colors.white54),
+                  icon:
+                      const Icon(Icons.close, size: 16, color: Colors.white54),
                   onPressed: () => setState(() => _pendingProperty = null),
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -1258,26 +1394,33 @@ class _StatementsPickerState extends State<_StatementsPicker> {
           children: [
             Expanded(
               child: Autocomplete<DepictsEntity>(
-                key: ValueKey(_pendingProperty == null ? 'statement-property' : 'statement-value'),
+                key: ValueKey(_pendingProperty == null
+                    ? 'statement-property'
+                    : 'statement-value'),
                 displayStringForOption: (option) => option.label,
                 optionsBuilder: (textEditingValue) async {
-                  if (textEditingValue.text.isEmpty) return const Iterable<DepictsEntity>.empty();
+                  if (textEditingValue.text.isEmpty)
+                    return const Iterable<DepictsEntity>.empty();
                   return _pendingProperty == null
-                      ? await widget.service.searchWikidataProperties(textEditingValue.text)
-                      : await widget.service.searchDepictsEntities(textEditingValue.text);
+                      ? await widget.service
+                          .searchWikidataProperties(textEditingValue.text)
+                      : await widget.service
+                          .searchDepictsEntities(textEditingValue.text);
                 },
                 onSelected: (selection) {
                   if (_pendingProperty == null) {
                     setState(() => _pendingProperty = selection);
                     _propertyFieldController?.clear();
                   } else {
-                    final stmt = WikidataStatement(property: _pendingProperty!, value: selection);
+                    final stmt = WikidataStatement(
+                        property: _pendingProperty!, value: selection);
                     widget.onAdd(stmt, _excludeMode);
                     setState(() => _pendingProperty = null);
                     _valueFieldController?.clear();
                   }
                 },
-                fieldViewBuilder: (context, controller, focusNode, onEditingComplete) {
+                fieldViewBuilder:
+                    (context, controller, focusNode, onEditingComplete) {
                   if (_pendingProperty == null) {
                     _propertyFieldController = controller;
                   } else {
@@ -1286,7 +1429,8 @@ class _StatementsPickerState extends State<_StatementsPicker> {
                   return TextField(
                     keyboardType: (kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
-                                defaultTargetPlatform == TargetPlatform.android))
+                                defaultTargetPlatform ==
+                                    TargetPlatform.android))
                         ? TextInputType.text
                         : TextInputType.url,
                     controller: controller,
@@ -1305,7 +1449,8 @@ class _StatementsPickerState extends State<_StatementsPicker> {
                       color: const Color(0xFF1E1E1E),
                       elevation: 4,
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 200, maxWidth: 360),
+                        constraints:
+                            const BoxConstraints(maxHeight: 200, maxWidth: 360),
                         child: ListView.builder(
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
@@ -1313,9 +1458,12 @@ class _StatementsPickerState extends State<_StatementsPicker> {
                           itemBuilder: (context, index) {
                             final option = options.elementAt(index);
                             return ListTile(
-                              title: Text(option.label, style: const TextStyle(color: Colors.white)),
+                              title: Text(option.label,
+                                  style: const TextStyle(color: Colors.white)),
                               subtitle: option.description != null
-                                  ? Text(option.description!, style: const TextStyle(color: Colors.white54, fontSize: 11))
+                                  ? Text(option.description!,
+                                      style: const TextStyle(
+                                          color: Colors.white54, fontSize: 11))
                                   : null,
                               onTap: () => onSelected(option),
                             );
@@ -1328,7 +1476,9 @@ class _StatementsPickerState extends State<_StatementsPicker> {
               ),
             ),
             const SizedBox(width: 10),
-            _excludeModeToggle(excludeMode: _excludeMode, onChanged: (val) => setState(() => _excludeMode = val)),
+            _excludeModeToggle(
+                excludeMode: _excludeMode,
+                onChanged: (val) => setState(() => _excludeMode = val)),
           ],
         ),
       ],
@@ -1348,7 +1498,11 @@ Widget _sectionDivider(String label) {
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Text(label,
-            style: const TextStyle(color: Color(0xFF3D7EFF), fontSize: 12, letterSpacing: 1.8, fontWeight: FontWeight.w800)),
+            style: const TextStyle(
+                color: Color(0xFF3D7EFF),
+                fontSize: 12,
+                letterSpacing: 1.8,
+                fontWeight: FontWeight.w800)),
       ),
       const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
     ],
@@ -1360,39 +1514,64 @@ Widget _sectionHeader(String title) {
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
       title,
-      style: const TextStyle(color: Color(0xFF7A7A7A), fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.5),
+      style: const TextStyle(
+          color: Color(0xFF7A7A7A),
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.5),
     ),
   );
 }
 
-Widget _filterChip({required String label, required bool excluded, required VoidCallback onDeleted}) {
+Widget _filterChip(
+    {required String label,
+    required bool excluded,
+    required VoidCallback onDeleted}) {
   return Chip(
     label: Text(
       excluded ? '− $label' : label,
-      style: TextStyle(color: excluded ? const Color(0xFFFF6B6B) : Colors.white, fontSize: 11),
+      style: TextStyle(
+          color: excluded ? const Color(0xFFFF6B6B) : Colors.white,
+          fontSize: 11),
     ),
-    backgroundColor: excluded ? const Color(0xFF2A1414) : const Color(0xFF222222),
+    backgroundColor:
+        excluded ? const Color(0xFF2A1414) : const Color(0xFF222222),
     deleteIconColor: excluded ? const Color(0xFFFF6B6B) : Colors.white54,
-    side: excluded ? const BorderSide(color: Color(0xFF4A2020)) : BorderSide.none,
+    side:
+        excluded ? const BorderSide(color: Color(0xFF4A2020)) : BorderSide.none,
     onDeleted: onDeleted,
   );
 }
 
-Widget _excludeModeToggle({required bool excludeMode, required ValueChanged<bool> onChanged}) {
+Widget _excludeModeToggle(
+    {required bool excludeMode, required ValueChanged<bool> onChanged}) {
   return Container(
-    decoration: BoxDecoration(color: const Color(0xFF1A1A1A), borderRadius: BorderRadius.circular(8)),
+    decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A), borderRadius: BorderRadius.circular(8)),
     padding: const EdgeInsets.all(3),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _toggleSegment(label: '+', selected: !excludeMode, color: const Color(0xFF3D7EFF), onTap: () => onChanged(false)),
-        _toggleSegment(label: '−', selected: excludeMode, color: const Color(0xFFFF6B6B), onTap: () => onChanged(true)),
+        _toggleSegment(
+            label: '+',
+            selected: !excludeMode,
+            color: const Color(0xFF3D7EFF),
+            onTap: () => onChanged(false)),
+        _toggleSegment(
+            label: '−',
+            selected: excludeMode,
+            color: const Color(0xFFFF6B6B),
+            onTap: () => onChanged(true)),
       ],
     ),
   );
 }
 
-Widget _toggleSegment({required String label, required bool selected, required Color color, required VoidCallback onTap}) {
+Widget _toggleSegment(
+    {required String label,
+    required bool selected,
+    required Color color,
+    required VoidCallback onTap}) {
   return GestureDetector(
     onTap: onTap,
     child: Container(
@@ -1404,25 +1583,38 @@ Widget _toggleSegment({required String label, required bool selected, required C
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: selected ? color : Colors.transparent),
       ),
-      child: Text(label, style: TextStyle(color: selected ? color : Colors.white38, fontWeight: FontWeight.bold, fontSize: 16)),
+      child: Text(label,
+          style: TextStyle(
+              color: selected ? color : Colors.white38,
+              fontWeight: FontWeight.bold,
+              fontSize: 16)),
     ),
   );
 }
 
-Widget _combineModeButton({required String label, required bool selected, required VoidCallback onTap}) {
+Widget _combineModeButton(
+    {required String label,
+    required bool selected,
+    required VoidCallback onTap}) {
   return GestureDetector(
     onTap: onTap,
     child: Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFF3D7EFF).withOpacity(0.15) : const Color(0xFF1A1A1A),
+        color: selected
+            ? const Color(0xFF3D7EFF).withOpacity(0.15)
+            : const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: selected ? const Color(0xFF3D7EFF) : const Color(0xFF262626)),
+        border: Border.all(
+            color:
+                selected ? const Color(0xFF3D7EFF) : const Color(0xFF262626)),
       ),
       child: Text(label,
           style: TextStyle(
-              color: selected ? const Color(0xFF3D7EFF) : Colors.white54, fontSize: 12, fontWeight: FontWeight.w700)),
+              color: selected ? const Color(0xFF3D7EFF) : Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w700)),
     ),
   );
 }
@@ -1431,7 +1623,8 @@ InputDecoration _fieldDecoration({String? hint}) {
   return InputDecoration(
     filled: true,
     fillColor: const Color(0xFF1A1A1A),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+    border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     hintText: hint,
     hintStyle: const TextStyle(color: Colors.white30),

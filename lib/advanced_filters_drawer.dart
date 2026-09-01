@@ -20,6 +20,17 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
 
   late TextEditingController _minWidthCtrl;
   late TextEditingController _minHeightCtrl;
+  late TextEditingController _maxWidthCtrl;
+  late TextEditingController _maxHeightCtrl;
+  late TextEditingController _minFileSizeCtrl;
+  late TextEditingController _maxFileSizeCtrl;
+  // true = values in the two fields above are MB, false = KB. Purely a
+  // drawer-local display choice — SearchState.minFileSizeBytes/
+  // maxFileSizeBytes are always raw bytes on the wire (see
+  // search_service.dart's own comment on filesize:), so conversion only
+  // happens once, at _applyFilters time.
+  bool _fileSizeUnitMB = true;
+  int? _colorDepthBits;
   late TextEditingController _latCtrl;
   late TextEditingController _lngCtrl;
   late TextEditingController _radiusCtrl;
@@ -32,6 +43,18 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
   bool _deepCategoryMode = false;
   bool _categoriesUnionMode = false;
   TextEditingController? _categoryFieldController;
+
+  // hastemplate: generalized beyond the hardcoded QualityFilter presets —
+  // GLAM/institutional sets (e.g. "Institution:Metropolitan Museum of Art"),
+  // granular PD templates (e.g. "PD-USGov-NASA"), or anything else a
+  // template marks. Always AND'd (see buildQuery) — unlike categories/
+  // depicts/statements there's no union/intersection toggle here. No
+  // autocomplete backend exists for template names, so entry is manual
+  // free text via the "+" button/Enter, same as excludeTerms elsewhere.
+  Set<String> _templatesInclude = {};
+  Set<String> _templatesExclude = {};
+  bool _templateExcludeMode = false;
+  TextEditingController? _templateFieldController;
 
   Set<DepictsEntity> _depictsInclude = {};
   Set<DepictsEntity> _depictsExclude = {};
@@ -63,6 +86,25 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
         TextEditingController(text: state.minWidth?.toString() ?? '');
     _minHeightCtrl =
         TextEditingController(text: state.minHeight?.toString() ?? '');
+    _maxWidthCtrl =
+        TextEditingController(text: state.maxWidth?.toString() ?? '');
+    _maxHeightCtrl =
+        TextEditingController(text: state.maxHeight?.toString() ?? '');
+
+    // SearchState's bytes are converted to MB for display up front — the
+    // unit toggle only affects how _applyFilters converts back, not how
+    // this initial value is read.
+    String bytesToMBText(int? bytes) =>
+        bytes == null ? '' : (bytes / (1024 * 1024)).toString();
+    _minFileSizeCtrl =
+        TextEditingController(text: bytesToMBText(state.minFileSizeBytes));
+    _maxFileSizeCtrl =
+        TextEditingController(text: bytesToMBText(state.maxFileSizeBytes));
+    _colorDepthBits = state.colorDepthBits;
+
+    _templatesInclude = Set.from(state.templates);
+    _templatesExclude = Set.from(state.excludeTemplates);
+
     _latCtrl =
         TextEditingController(text: state.nearCoord?.lat.toString() ?? '');
     _lngCtrl =
@@ -97,6 +139,10 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
   void dispose() {
     _minWidthCtrl.dispose();
     _minHeightCtrl.dispose();
+    _maxWidthCtrl.dispose();
+    _maxHeightCtrl.dispose();
+    _minFileSizeCtrl.dispose();
+    _maxFileSizeCtrl.dispose();
     _latCtrl.dispose();
     _lngCtrl.dispose();
     _radiusCtrl.dispose();
@@ -114,6 +160,22 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
   void _applyFilters() {
     final w = int.tryParse(_minWidthCtrl.text);
     final h = int.tryParse(_minHeightCtrl.text);
+    final maxW = int.tryParse(_maxWidthCtrl.text);
+    final maxH = int.tryParse(_maxHeightCtrl.text);
+
+    // filesize: is always raw bytes on the wire (see
+    // search_service.dart) — convert from whichever display unit is
+    // currently selected only here, at commit time.
+    final unitBytes = _fileSizeUnitMB ? 1024 * 1024 : 1024;
+    int? parseFileSize(String text) {
+      final value = double.tryParse(text.trim());
+      if (value == null) return null;
+      return (value * unitBytes).round();
+    }
+
+    final minFileSize = parseFileSize(_minFileSizeCtrl.text);
+    final maxFileSize = parseFileSize(_maxFileSizeCtrl.text);
+
     final lat = double.tryParse(_latCtrl.text);
     final lng = double.tryParse(_lngCtrl.text);
     final rad = double.tryParse(_radiusCtrl.text) ?? 10.0;
@@ -152,6 +214,18 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
       clearMinWidth: w == null,
       minHeight: h,
       clearMinHeight: h == null,
+      maxWidth: maxW,
+      clearMaxWidth: maxW == null,
+      maxHeight: maxH,
+      clearMaxHeight: maxH == null,
+      minFileSizeBytes: minFileSize,
+      clearMinFileSizeBytes: minFileSize == null,
+      maxFileSizeBytes: maxFileSize,
+      clearMaxFileSizeBytes: maxFileSize == null,
+      colorDepthBits: _colorDepthBits,
+      clearColorDepthBits: _colorDepthBits == null,
+      templates: _templatesInclude,
+      excludeTemplates: _templatesExclude,
       nearCoord: coordFilter,
       clearNearCoord: coordFilter == null,
       nearTitle: titleFilter,
@@ -1003,7 +1077,7 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
                   ),
                   const SizedBox(height: 24),
 
-                  _buildSectionHeader('MINIMUM RESOLUTION'),
+                  _buildSectionHeader('RESOLUTION BOUNDS'),
                   Row(
                     children: [
                       Expanded(
@@ -1015,7 +1089,7 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           decoration:
-                              _inputDecoration().copyWith(hintText: 'Width px'),
+                              _inputDecoration().copyWith(hintText: 'Min width px'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1028,8 +1102,188 @@ class _AdvancedFiltersDrawerState extends ConsumerState<AdvancedFiltersDrawer> {
                             FilteringTextInputFormatter.digitsOnly
                           ],
                           decoration: _inputDecoration()
-                              .copyWith(hintText: 'Height px'),
+                              .copyWith(hintText: 'Min height px'),
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _maxWidthCtrl,
+                          style: const TextStyle(color: Colors.white),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          decoration:
+                              _inputDecoration().copyWith(hintText: 'Max width px'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _maxHeightCtrl,
+                          style: const TextStyle(color: Colors.white),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly
+                          ],
+                          decoration: _inputDecoration()
+                              .copyWith(hintText: 'Max height px'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader('FILE SIZE & COLOR DEPTH'),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCombineModeButton(
+                          label: 'MB',
+                          selected: _fileSizeUnitMB,
+                          onTap: () => setState(() => _fileSizeUnitMB = true),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildCombineModeButton(
+                          label: 'KB',
+                          selected: !_fileSizeUnitMB,
+                          onTap: () => setState(() => _fileSizeUnitMB = false),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _minFileSizeCtrl,
+                          style: const TextStyle(color: Colors.white),
+                          keyboardType:
+                              const TextInputType.numberWithOptions(decimal: true),
+                          decoration: _inputDecoration().copyWith(
+                              hintText: _fileSizeUnitMB ? 'Min size (MB)' : 'Min size (KB)'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: _maxFileSizeCtrl,
+                          style: const TextStyle(color: Colors.white),
+                          keyboardType:
+                              const TextInputType.numberWithOptions(decimal: true),
+                          decoration: _inputDecoration().copyWith(
+                              hintText: _fileSizeUnitMB ? 'Max size (MB)' : 'Max size (KB)'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int?>(
+                    dropdownColor: const Color(0xFF1E1E1E),
+                    decoration:
+                        _inputDecoration().copyWith(hintText: 'Any color depth'),
+                    value: _colorDepthBits,
+                    items: const [
+                      DropdownMenuItem(value: null, child: Text('Any color depth', style: TextStyle(color: Colors.white70))),
+                      DropdownMenuItem(value: 1, child: Text('1-bit (monochrome)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 8, child: Text('8-bit', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 16, child: Text('16-bit', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 24, child: Text('24-bit', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 32, child: Text('32-bit', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) => setState(() => _colorDepthBits = val),
+                  ),
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader('TEMPLATES'),
+                  Text(
+                    'Matches files carrying a specific template — e.g. a GLAM/institutional '
+                    'set ("Institution:Metropolitan Museum of Art") or a granular PD template '
+                    '("PD-USGov-NASA"). Always required (AND), no union mode.',
+                    style: const TextStyle(
+                        color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                  ),
+                  const SizedBox(height: 12),
+                  if (_templatesInclude.isNotEmpty || _templatesExclude.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        ..._templatesInclude.map((t) => _buildFilterChip(
+                              label: t,
+                              excluded: false,
+                              onDeleted: () =>
+                                  setState(() => _templatesInclude.remove(t)),
+                            )),
+                        ..._templatesExclude.map((t) => _buildFilterChip(
+                              label: t,
+                              excluded: true,
+                              onDeleted: () =>
+                                  setState(() => _templatesExclude.remove(t)),
+                            )),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Builder(builder: (context) {
+                          final controller = _templateFieldController ??=
+                              TextEditingController();
+                          void addFromField() {
+                            final val = controller.text.trim();
+                            if (val.isEmpty) return;
+                            setState(() {
+                              if (_templateExcludeMode) {
+                                _templatesInclude.remove(val);
+                                _templatesExclude.add(val);
+                              } else {
+                                _templatesExclude.remove(val);
+                                _templatesInclude.add(val);
+                              }
+                            });
+                            controller.clear();
+                          }
+
+                          return TextField(
+                            keyboardType: (kIsWeb &&
+                                    (defaultTargetPlatform ==
+                                            TargetPlatform.iOS ||
+                                        defaultTargetPlatform ==
+                                            TargetPlatform.android))
+                                ? TextInputType.text
+                                : TextInputType.url,
+                            controller: controller,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: _inputDecoration().copyWith(
+                              hintText: _templateExcludeMode
+                                  ? 'Exclude template name...'
+                                  : 'e.g. PD-USGov-NASA',
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.add,
+                                    color: Colors.white54, size: 18),
+                                onPressed: addFromField,
+                              ),
+                            ),
+                            onSubmitted: (_) => addFromField(),
+                          );
+                        }),
+                      ),
+                      const SizedBox(width: 10),
+                      _buildExcludeModeToggle(
+                        excludeMode: _templateExcludeMode,
+                        onChanged: (val) =>
+                            setState(() => _templateExcludeMode = val),
                       ),
                     ],
                   ),

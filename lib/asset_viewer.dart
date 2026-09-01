@@ -273,17 +273,14 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(searchControllerProvider).activeSession;
-    final portfolioSession = _authorName != null
-        ? ref.watch(authorPortfolioProvider(_authorName!))
-        : null;
+    final portfolioSession =
+        _authorName != null ? ref.watch(authorPortfolioProvider(_authorName!)) : null;
     final mapSession =
         _isMapMode ? ref.watch(mapSearchControllerProvider).session : null;
     final items = _getCombinedItems();
 
     final isLoading = (_isStandalone && _isFetchingInjected) ||
-        (portfolioSession != null &&
-            portfolioSession.loading &&
-            items.isEmpty) ||
+        (portfolioSession != null && portfolioSession.loading && items.isEmpty) ||
         (mapSession != null && mapSession.loading && items.isEmpty) ||
         (_authorName == null &&
             !_isStandalone &&
@@ -685,16 +682,40 @@ class _MetadataInspector extends StatelessWidget {
     return html.replaceAll(exp, '').trim();
   }
 
+  /// Shared section header, used everywhere below instead of one-off
+  /// Text+Divider blocks, so every section in the panel reads with the
+  /// same rhythm as it flows from Title -> Author -> Download -> 
+  /// Description -> Dates -> Metadata -> Global Usage.
+  Widget _sectionHeader(String label, {bool withDivider = true}) {
+    return Padding(
+      padding: EdgeInsets.only(top: withDivider ? 0 : 24, bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (withDivider) ...[
+            const Divider(color: Color(0xFF222222)),
+            const SizedBox(height: 24),
+          ],
+          Text(
+            label,
+            style: const TextStyle(
+              color: Color(0xFF666666),
+              fontSize: 10,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cleanArtist = _cleanHtml(item.artistHtml);
-    final dimensions = (item.width > 0 && item.height > 0)
-        ? '${item.width} × ${item.height} px'
-        : '';
-
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
+        // 1. TITLE
         SelectableText(
           item.title,
           style: const TextStyle(
@@ -704,146 +725,172 @@ class _MetadataInspector extends StatelessWidget {
             height: 1.3,
           ),
         ),
-        const SizedBox(height: 24),
-        _DownloadSection(
-          item: item,
-          onLaunchCommons: onLaunchCommons,
-        ),
+
+        // 2. AUTHOR — who made it and who uploaded it, together, right
+        // under the title since that's the first thing after "what is
+        // this" that a person orients on.
+        _buildAuthorSection(context),
+
+        // 3. DOWNLOAD — get the file, plus the one action that starts a
+        // new exploration from this file: finding everything else shot
+        // near it.
+        _sectionHeader('DOWNLOAD & ACTIONS', withDivider: false),
+        _DownloadSection(item: item, onLaunchCommons: onLaunchCommons),
         if (item.hasCoordinates) ...[
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => context.push(
-                Uri(path: '/map', queryParameters: {
-                  'lat': item.resolvedLatitude!.toStringAsFixed(6),
-                  'lng': item.resolvedLongitude!.toStringAsFixed(6),
-                  'radiusKm': '10',
-                }).toString(),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF7AABFF),
-                side: const BorderSide(color: Color(0xFF2A2A2A)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              icon: const Icon(Icons.travel_explore, size: 16),
-              label: const Text('View Photos Clicked Nearby',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-            ),
-          ),
+          _NearbyMediaButton(item: item),
         ],
-        const SizedBox(height: 32),
-        _buildPropertyRow('FILE TYPE', item.mime.toUpperCase()),
-        _buildPropertyRow('EXTENSION', item.extension.toUpperCase()),
-        _buildPropertyRow('DIMENSIONS', dimensions),
-        _buildPropertyRow('AUTHOR / CREATOR', cleanArtist),
-        _buildPropertyRow('DATE ORIGINAL', item.dateTimeOriginal),
-        _buildUploaderRow(context, item.uploader),
-        _buildPropertyRow('UPLOAD TIMESTAMP', item.timestamp ?? ''),
-        _buildLicenseRow(
-          context,
-          'LICENSE',
-          _cleanHtml(item.licenseShortName),
-          item.licenseUrl,
-        ),
-        const SizedBox(height: 24),
-        const Divider(color: Color(0xFF222222)),
-        const SizedBox(height: 24),
-        const Text(
-          'DESCRIPTION',
-          style: TextStyle(
-            color: Color(0xFF666666),
-            fontSize: 10,
-            letterSpacing: 1.5,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SelectableText(
-          item.snippet.isEmpty
-              ? 'No description provided by the archivist.'
-              : _cleanHtml(item.snippet),
-          style: const TextStyle(
-            color: Color(0xFFB0B0B0),
-            fontSize: 14,
-            height: 1.6,
-          ),
-        ),
-        _buildAdditionalDetailsSection(),
+
+        // 4. DESCRIPTION — every free-text descriptive field together,
+        // rather than split between a top-level "snippet" and a buried
+        // "Additional Details" entry.
+        _buildDescriptionSection(),
+
+        // 5. DATES — created vs. uploaded, side by side.
+        _buildDatesSection(),
+
+        // 6. METADATA — structural/technical facts (type, dimensions,
+        // categories, license/rights, GPS) plus, lazily, Structured Data
+        // on Commons statements (creator/institution/depicts and anything
+        // else editors have added as SDC claims).
+        _buildMetadataSection(context),
+
+        // 7. RELATED MEDIA — CirrusSearch's own similarity engine
+        // (morelike:), for "find me more like this" discovery.
+        _RelatedMediaSection(fileTitle: item.title),
+
+        // 8. GLOBAL USAGE — a real-world "is this used anywhere" signal,
+        // the natural last stop after everything the file itself says
+        // about itself.
+        _GlobalUsageSection(fileTitle: item.title),
       ],
     );
   }
 
-  /// Everything Commons' extmetadata returns that doesn't earn a permanent
-  /// spot above — collapsed by default since most files won't populate
-  /// most of these, and even the ones that do are secondary to the core
-  /// fields already on display.
-  Widget _buildAdditionalDetailsSection() {
-    final coordinates = (item.gpsLatitude.trim().isNotEmpty &&
-            item.gpsLongitude.trim().isNotEmpty)
-        ? '${item.gpsLatitude}, ${item.gpsLongitude}'
-        : '';
+  Widget _buildAuthorSection(BuildContext context) {
+    final cleanArtist = _cleanHtml(item.artistHtml);
+    if (cleanArtist.isEmpty && item.uploader.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPropertyRow('AUTHOR / CREATOR', cleanArtist),
+          _buildUploaderRow(context, item.uploader),
+        ],
+      ),
+    );
+  }
 
-    final rows = <Widget>[
-      _buildPropertyRow('OBJECT NAME', item.objectName.trim()),
-      _buildPropertyRow(
-          'IMAGE DESCRIPTION', _cleanHtml(item.imageDescriptionHtml)),
-      _buildPropertyRow('CATEGORIES', item.categories.trim()),
-      _buildPropertyRow('ASSESSMENTS', item.assessments.trim()),
-      _buildPropertyRow('CREDIT', _cleanHtml(item.creditHtml)),
-      _buildPropertyRow('USAGE TERMS', item.usageTerms.trim()),
-      _buildPropertyRow('COPYRIGHT STATUS', item.copyrighted.trim()),
-      _buildPropertyRow('RESTRICTIONS', item.restrictions.trim()),
-      _buildPropertyRow('UPLOAD DATE/TIME', item.uploadDateTime.trim()),
-      _buildPropertyRow('GPS COORDINATES', coordinates),
-      _buildPropertyRow('PERMISSION', _cleanHtml(item.permissionHtml)),
-      _buildPropertyRow(
-          'ATTRIBUTION REQUIRED', item.attributionRequired.trim()),
-    ];
+  Widget _buildDescriptionSection() {
+    final snippet =
+        item.snippet.isEmpty ? '' : _cleanHtml(item.snippet);
+    final imageDescription = _cleanHtml(item.imageDescriptionHtml);
+    final objectName = item.objectName.trim();
 
-    // _buildPropertyRow already collapses an empty value to
-    // SizedBox.shrink(); if every row did that, there's nothing to show
-    // and the section header itself shouldn't render either.
-    final hasAnyValue = [
-      item.objectName,
-      item.imageDescriptionHtml,
-      item.categories,
-      item.assessments,
-      item.creditHtml,
-      item.usageTerms,
-      item.copyrighted,
-      item.restrictions,
-      item.uploadDateTime,
-      coordinates,
-      item.permissionHtml,
-      item.attributionRequired,
-    ].any((v) => v.trim().isNotEmpty);
-
-    if (!hasAnyValue) return const SizedBox.shrink();
+    final hasAnyDescription = snippet.isNotEmpty ||
+        imageDescription.isNotEmpty ||
+        objectName.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.only(top: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Divider(color: Color(0xFF222222)),
-          const SizedBox(height: 14),
-          const Text(
-            'ADDITIONAL DETAILS',
-            style: TextStyle(
-              color: Color(0xFF666666),
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: FontWeight.w800,
-            ),
+          _sectionHeader('DESCRIPTION'),
+          if (!hasAnyDescription)
+            const Text(
+              'No description provided by the archivist.',
+              style: TextStyle(
+                color: Color(0xFFB0B0B0),
+                fontSize: 14,
+                height: 1.6,
+              ),
+            )
+          else ...[
+            _buildPropertyRow('OBJECT NAME', objectName),
+            _buildPropertyRow('IMAGE DESCRIPTION', imageDescription),
+            if (snippet.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: SelectableText(
+                  snippet,
+                  style: const TextStyle(
+                    color: Color(0xFFB0B0B0),
+                    fontSize: 14,
+                    height: 1.6,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDatesSection() {
+    final created = item.dateTimeOriginal.trim();
+    final uploaded = item.uploadDateTime.trim().isNotEmpty
+        ? item.uploadDateTime.trim()
+        : (item.timestamp ?? '').trim();
+
+    if (created.isEmpty && uploaded.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader('DATES'),
+          _buildPropertyRow('CREATED', created),
+          _buildPropertyRow('UPLOADED', uploaded),
+        ],
+      ),
+    );
+  }
+
+  /// Structural/technical facts, license/rights, and location — everything
+  /// that isn't "who made it", "what does it show", or "when" — plus,
+  /// lazily, the file's Structured Data on Commons statements (creator,
+  /// institution, depicts, and anything else editors have added), fetched
+  /// the same on-expand-only way as Global Usage below.
+  Widget _buildMetadataSection(BuildContext context) {
+    final dimensions = (item.width > 0 && item.height > 0)
+        ? '${item.width} × ${item.height} px'
+        : '';
+    final coordinates = (item.gpsLatitude.trim().isNotEmpty &&
+            item.gpsLongitude.trim().isNotEmpty)
+        ? '${item.gpsLatitude}, ${item.gpsLongitude}'
+        : '';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader('METADATA'),
+          _buildPropertyRow('FILE TYPE', item.mime.toUpperCase()),
+          _buildPropertyRow('EXTENSION', item.extension.toUpperCase()),
+          _buildPropertyRow('DIMENSIONS', dimensions),
+          _buildPropertyRow('CATEGORIES', item.categories.trim()),
+          _buildPropertyRow('ASSESSMENTS', item.assessments.trim()),
+          _buildLicenseRow(
+            context,
+            'LICENSE',
+            _cleanHtml(item.licenseShortName),
+            item.licenseUrl,
           ),
-          const SizedBox(height: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: rows,
-          ),
+          _buildPropertyRow('USAGE TERMS', item.usageTerms.trim()),
+          _buildPropertyRow('COPYRIGHT STATUS', item.copyrighted.trim()),
+          _buildPropertyRow('RESTRICTIONS', item.restrictions.trim()),
+          _buildPropertyRow('CREDIT', _cleanHtml(item.creditHtml)),
+          _buildPropertyRow('PERMISSION', _cleanHtml(item.permissionHtml)),
+          _buildPropertyRow(
+              'ATTRIBUTION REQUIRED', item.attributionRequired.trim()),
+          _buildPropertyRow('GPS COORDINATES', coordinates),
+          _StructuredDataSection(fileTitle: item.title),
         ],
       ),
     );
@@ -994,6 +1041,396 @@ class _MetadataInspector extends StatelessWidget {
   }
 }
 
+/// Deep-links into the map's browse mode around this file's coordinates.
+/// Named for what geosearch actually returns — every media kind in the
+/// File: namespace within range (see SearchService.geosearch's
+/// ggsnamespace:'6' with no filetype: clause), not just images — so the
+/// label doesn't overpromise "photos" when a document or video could
+/// legitimately show up in the results too.
+class _NearbyMediaButton extends StatelessWidget {
+  final SearchItem item;
+  const _NearbyMediaButton({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () => context.push(
+          Uri(path: '/map', queryParameters: {
+            'lat': item.resolvedLatitude!.toStringAsFixed(6),
+            'lng': item.resolvedLongitude!.toStringAsFixed(6),
+            'radiusKm': '10',
+          }).toString(),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF7AABFF),
+          side: const BorderSide(color: Color(0xFF2A2A2A)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        icon: const Icon(Icons.travel_explore, size: 16),
+        label: const Text('Search All Media Near This File',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
+
+/// Collapsed-by-default Structured Data on Commons read-back — captions
+/// plus every claim (creator, institution, depicts, coordinates of
+/// depicted place, and anything else editors have added), lazily fetched
+/// via [structuredDataProvider] the same on-expand-only way as
+/// [_GlobalUsageSection]. This is what actually backs "depicts" in the
+/// panel — SearchItem itself never carries depicts, since that's an SDC
+/// statement, not an extmetadata field.
+class _StructuredDataSection extends ConsumerStatefulWidget {
+  final String fileTitle;
+  const _StructuredDataSection({required this.fileTitle});
+
+  @override
+  ConsumerState<_StructuredDataSection> createState() =>
+      _StructuredDataSectionState();
+}
+
+class _StructuredDataSectionState extends ConsumerState<_StructuredDataSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                const Text(
+                  'STRUCTURED DATA (WIKIDATA)',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 16,
+                  color: const Color(0xFF5C5C5C),
+                ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 12),
+            Consumer(builder: (context, ref, _) {
+              final sdcAsync = ref.watch(structuredDataProvider(widget.fileTitle));
+
+              return sdcAsync.when(
+                loading: () => const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+                ),
+                error: (_, __) => const Text(
+                  'Could not load structured data.',
+                  style: TextStyle(color: Color(0xFF666666), fontSize: 13),
+                ),
+                data: (result) {
+                  if (result == null || result.statements.isEmpty) {
+                    return const Text(
+                      'No structured data statements on this file.',
+                      style: TextStyle(color: Color(0xFF888888), fontSize: 13, height: 1.5),
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: result.statements.map((s) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '${s.propertyLabel}: ',
+                                style: const TextStyle(
+                                  color: Color(0xFF9A9A9A),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              TextSpan(
+                                text: s.valueDisplay,
+                                style: const TextStyle(
+                                  color: Color(0xFFE0E0E0),
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Collapsed-by-default "find more like this" strip, backed by
+/// [morelikeProvider] — CirrusSearch's own `morelike:` similarity engine,
+/// the same mechanism the advanced filters drawer exposes as a manual
+/// search input, run here as a one-off query against just this file.
+/// Fetch only fires on first expand, same contract as every other lazy
+/// section in this panel.
+class _RelatedMediaSection extends ConsumerStatefulWidget {
+  final String fileTitle;
+  const _RelatedMediaSection({required this.fileTitle});
+
+  @override
+  ConsumerState<_RelatedMediaSection> createState() =>
+      _RelatedMediaSectionState();
+}
+
+class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(color: Color(0xFF222222)),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                const Text(
+                  'RELATED MEDIA',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 16,
+                  color: const Color(0xFF5C5C5C),
+                ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 12),
+            Consumer(builder: (context, ref, _) {
+              final relatedAsync = ref.watch(morelikeProvider(widget.fileTitle));
+
+              return relatedAsync.when(
+                loading: () => const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+                ),
+                error: (_, __) => const Text(
+                  'Could not load related media.',
+                  style: TextStyle(color: Color(0xFF666666), fontSize: 13),
+                ),
+                data: (items) {
+                  if (items.isEmpty) {
+                    return const Text(
+                      'No related media found.',
+                      style: TextStyle(color: Color(0xFF888888), fontSize: 13, height: 1.5),
+                    );
+                  }
+                  return SizedBox(
+                    height: 96,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: items.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, i) {
+                        final related = items[i];
+                        return Tooltip(
+                          message: related.title,
+                          child: GestureDetector(
+                            onTap: () => context.push(
+                              Uri(path: '/view', queryParameters: {'id': related.title})
+                                  .toString(),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: 96,
+                                height: 96,
+                                color: const Color(0xFF1A1A1A),
+                                child: related.thumb.isNotEmpty
+                                    ? Image.network(
+                                        related.thumb,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Icon(
+                                            Icons.image, size: 24, color: Colors.white24),
+                                      )
+                                    : const Icon(Icons.image, size: 24, color: Colors.white24),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Collapsed-by-default section showing every Wikimedia page (any
+/// language, any project) currently embedding this file — see
+/// [CommonsBackend.globalUsage] / [globalUsageProvider]. The fetch only
+/// fires the first time this is expanded (Riverpod's FutureProvider only
+/// runs once something actually watches it), so browsing a results grid
+/// or scrolling through the asset viewer never costs an extra request per
+/// file — only opening this section does, and only once per file per
+/// session.
+class _GlobalUsageSection extends ConsumerStatefulWidget {
+  final String fileTitle;
+  const _GlobalUsageSection({required this.fileTitle});
+
+  @override
+  ConsumerState<_GlobalUsageSection> createState() => _GlobalUsageSectionState();
+}
+
+class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
+  bool _expanded = false;
+
+  Future<void> _launch(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(color: Color(0xFF222222)),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                const Text(
+                  'GLOBAL USAGE',
+                  style: TextStyle(
+                    color: Color(0xFF666666),
+                    fontSize: 10,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  size: 16,
+                  color: const Color(0xFF5C5C5C),
+                ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: 14),
+            Consumer(builder: (context, ref, _) {
+              final usageAsync = ref.watch(globalUsageProvider(widget.fileTitle));
+
+              return usageAsync.when(
+                loading: () => const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+                ),
+                error: (_, __) => const Text(
+                  'Could not load usage data.',
+                  style: TextStyle(color: Color(0xFF666666), fontSize: 13),
+                ),
+                data: (entries) {
+                  if (entries.isEmpty) {
+                    // An explicit empty state, not a hidden section — for
+                    // a dataset curator, "not used anywhere else" is
+                    // itself a meaningful quality signal, not a null
+                    // result worth suppressing.
+                    return const Text(
+                      'Not currently used on any Wikimedia project.',
+                      style: TextStyle(color: Color(0xFF888888), fontSize: 13, height: 1.5),
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: entries.map((entry) {
+                      final hasUrl = (entry.url ?? '').trim().isNotEmpty;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: InkWell(
+                          onTap: hasUrl ? () => _launch(entry.url!) : null,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${entry.wiki}  ',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: entry.title,
+                                  style: TextStyle(
+                                    color: hasUrl ? const Color(0xFF7AABFF) : const Color(0xFFB0B0B0),
+                                    fontSize: 13,
+                                    decoration: hasUrl ? TextDecoration.underline : null,
+                                    decorationColor: const Color(0xFF7AABFF),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _DownloadSection extends StatelessWidget {
   final SearchItem item;
   final VoidCallback onLaunchCommons;
@@ -1026,7 +1463,7 @@ class _DownloadSection extends StatelessWidget {
     return item.url;
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     final isScalable =
         item.mediaKind == MediaKind.image || item.mediaKind == MediaKind.vector;

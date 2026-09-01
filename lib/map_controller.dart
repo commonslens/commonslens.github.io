@@ -13,12 +13,13 @@ import 'search_models.dart';
 ///   set on [SearchState] — every other filter (category, depicts,
 ///   license, quality, date, format...) still applies, ANDed with a
 ///   radius clause via CirrusSearch's `nearcoord:` keyword.
-/// - [imported]: not a fetch at all — items already sitting in the main
-///   search page's session, plotted here by whatever coordinates they
-///   happen to carry (see [SearchItem.hasCoordinates]). This is the
-///   "search → map" direction: take what you already found and see where
-///   it is, as opposed to [browse]/[filtered] which are "map → search":
-///   tap/draw somewhere and find new things there.
+/// - [imported]: not a fetch at all — a live view of whatever items are
+///   currently sitting in the main search page's session, plotted here by
+///   whatever coordinates they happen to carry (see
+///   [SearchItem.hasCoordinates]). This is the "search → map" direction:
+///   take what you already found and see where it is, as opposed to
+///   [browse]/[filtered] which are "map → search": tap/draw somewhere and
+///   find new things there.
 enum GeoMode { browse, filtered, imported }
 
 class MapViewState {
@@ -36,13 +37,6 @@ class MapViewState {
   final double radiusMeters;
   final List<double>? boundingBox;
 
-  /// The items currently plotted for [GeoMode.imported] — a snapshot of
-  /// the main search page's results at the moment they were imported,
-  /// filtered down to whichever ones actually carry coordinates. Persists
-  /// across mode switches so flipping to browse/filtered and back doesn't
-  /// lose it.
-  final List<SearchItem> importedItems;
-
   const MapViewState({
     this.mode = GeoMode.browse,
     this.session = const SearchSession(),
@@ -51,7 +45,6 @@ class MapViewState {
     this.centerLng,
     this.radiusMeters = 2000,
     this.boundingBox,
-    this.importedItems = const [],
   });
 
   bool get hasPoint => centerLat != null && centerLng != null;
@@ -64,7 +57,6 @@ class MapViewState {
     double? centerLng,
     double? radiusMeters,
     List<double>? boundingBox,
-    List<SearchItem>? importedItems,
     bool clearPoint = false,
     bool clearBoundingBox = false,
   }) {
@@ -76,7 +68,6 @@ class MapViewState {
       centerLng: clearPoint ? null : (centerLng ?? this.centerLng),
       radiusMeters: radiusMeters ?? this.radiusMeters,
       boundingBox: clearBoundingBox ? null : (boundingBox ?? this.boundingBox),
-      importedItems: importedItems ?? this.importedItems,
     );
   }
 }
@@ -86,8 +77,10 @@ final mapSearchControllerProvider =
 
 /// Riverpod-facing wrapper around two live engines — [GeoBrowseSession] for
 /// [GeoMode.browse] and [CommonsSearchSession] for [GeoMode.filtered] — plus
-/// [GeoMode.imported], which has no engine at all: it's just whatever items
-/// [importFromItems] was last handed, re-displayed with no network call.
+/// [GeoMode.imported], which has no engine and no stored session at all:
+/// MapPage derives its plotted items live from searchControllerProvider on
+/// every build while that mode is active (see _MapPageState.build), so
+/// there is nothing here to fetch, cache, or keep in sync.
 class MapSearchController extends Notifier<MapViewState> {
   late final GeoBrowseSession _browseEngine;
   late final CommonsSearchSession _filteredEngine;
@@ -99,9 +92,6 @@ class MapSearchController extends Notifier<MapViewState> {
     return const MapViewState();
   }
 
-  SearchSession _importedSession(List<SearchItem> items) =>
-      SearchSession(items: items, hasSearched: true);
-
   SearchSession _activeSessionFor(GeoMode mode) {
     switch (mode) {
       case GeoMode.browse:
@@ -109,7 +99,10 @@ class MapSearchController extends Notifier<MapViewState> {
       case GeoMode.filtered:
         return _filteredEngine.activeSession;
       case GeoMode.imported:
-        return _importedSession(state.importedItems);
+        // Placeholder only — see class doc. MapPage never reads
+        // state.session while in this mode; it reads
+        // searchControllerProvider directly instead.
+        return const SearchSession();
     }
   }
 
@@ -117,34 +110,16 @@ class MapSearchController extends Notifier<MapViewState> {
     state = state.copyWith(session: _activeSessionFor(state.mode));
   }
 
-  /// Switches which engine's (or, for [GeoMode.imported], which snapshot's)
-  /// results are shown. Does not re-run anything.
+  /// Switches to "search → map" display mode. Not a fetch and not a
+  /// snapshot — MapPage reads the main search session live every build
+  /// while this mode is active, so there is nothing here to keep in sync.
   void setMode(GeoMode mode) {
     if (mode == state.mode) return;
     state = state.copyWith(mode: mode, session: _activeSessionFor(mode));
   }
 
-  /// "Search → map": plots [items] — normally the main search page's
-  /// current results — by whatever coordinates they carry. Not a fetch;
-  /// this is purely a client-side reinterpretation of data that already
-  /// exists. Items without [SearchItem.hasCoordinates] are dropped from
-  /// the plotted set (they simply can't go on a map), but nothing here
-  /// touches the source those items came from.
-  void importFromItems(List<SearchItem> items) {
-    final withCoords = items.where((i) => i.hasCoordinates).toList();
-    state = state.copyWith(
-      mode: GeoMode.imported,
-      importedItems: withCoords,
-      session: _importedSession(withCoords),
-      clearPoint: true,
-      clearBoundingBox: true,
-    );
-  }
-
   /// Radius search around [lat]/[lng] against whichever engine
-  /// [state.mode] currently points at — see [GeoMode] doc. Always leaves
-  /// [GeoMode.imported] for [GeoMode.filtered] if the person was viewing
-  /// imported results and then taps/enters coordinates.
+  /// [state.mode] currently points at — see [GeoMode] doc.
   Future<void> searchRadius(double lat, double lng, double radiusMeters) async {
     state = state.copyWith(
       mode: GeoMode.filtered,
@@ -195,8 +170,11 @@ class MapSearchController extends Notifier<MapViewState> {
     _syncSession();
   }
 
+  /// Next page for whichever engine is active. No-op in [GeoMode.imported]
+  /// — pagination there is driven by paging the *main* search session
+  /// instead (see MapPage's onLoadMore wiring), since imported mode has no
+  /// fetch of its own to page.
   Future<void> loadMore() async {
-    // Imported results are a static snapshot — there's nothing to page.
     if (state.mode == GeoMode.imported) return;
 
     if (state.mode == GeoMode.browse) {

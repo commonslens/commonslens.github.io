@@ -519,6 +519,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       next = current.copyWith(clearMinWidth: true);
     } else if (chip.id == 'minHeight') {
       next = current.copyWith(clearMinHeight: true);
+    } else if (chip.id == 'maxWidth') {
+      next = current.copyWith(clearMaxWidth: true);
+    } else if (chip.id == 'maxHeight') {
+      next = current.copyWith(clearMaxHeight: true);
+    } else if (chip.id == 'minFileSize') {
+      next = current.copyWith(clearMinFileSizeBytes: true);
+    } else if (chip.id == 'maxFileSize') {
+      next = current.copyWith(clearMaxFileSizeBytes: true);
+    } else if (chip.id == 'colorDepth') {
+      next = current.copyWith(clearColorDepthBits: true);
+    } else if (chip.id.startsWith('template:')) {
+      final templateName = chip.id.substring('template:'.length);
+      next = current.copyWith(
+          templates: Set<String>.from(current.templates)..remove(templateName));
+    } else if (chip.id.startsWith('excludeTemplate:')) {
+      final templateName = chip.id.substring('excludeTemplate:'.length);
+      next = current.copyWith(
+          excludeTemplates: Set<String>.from(current.excludeTemplates)
+            ..remove(templateName));
     } else if (chip.id == 'nearCoord') {
       next = current.copyWith(clearNearCoord: true);
     } else if (chip.id == 'nearTitle') {

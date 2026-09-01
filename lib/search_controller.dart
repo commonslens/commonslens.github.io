@@ -3,6 +3,55 @@ import 'search_models.dart';
 import 'search_view_state.dart';
 import 'search_url_codec.dart';
 import 'commons_engine.dart';
+import 'commons_backend.dart';
+
+/// Every Wikimedia page (any language, any project) currently embedding a
+/// given file — see [CommonsBackend.globalUsage]. Keyed by file title,
+/// deliberately a plain [FutureProvider.family] rather than something
+/// eagerly populated alongside the rest of a [SearchItem]: this needs no
+/// auth and is cheap, but it's still one extra request per file, and most
+/// files in a results grid are never opened. Riverpod only calls the
+/// fetch function the first time something actually watches a given
+/// title — i.e. only once the asset viewer's Global Usage section is
+/// expanded for that file — and caches the result for the life of the
+/// provider container after that.
+final globalUsageProvider =
+    FutureProvider.family<List<GlobalUsageEntry>, String>((ref, fileTitle) {
+  return CommonsBackend().globalUsage(fileTitle);
+});
+
+/// A file's full Structured Data on Commons entity — captions plus every
+/// claim (creator, institution, depicts, coordinates of depicted place,
+/// etc.) — see [CommonsBackend.structuredData]. Same lazy,
+/// fetch-only-when-watched contract as [globalUsageProvider]: SearchItem
+/// itself never carries depicts or other SDC statements (those live in a
+/// separate Wikibase entity, not the extmetadata block SearchItem is
+/// built from), so this is what actually backs the asset viewer's
+/// Structured Data section.
+final structuredDataProvider =
+    FutureProvider.family<StructuredDataResult?, String>((ref, fileTitle) {
+  return CommonsBackend().structuredData(fileTitle);
+});
+
+/// Files CirrusSearch considers similar to [fileTitle], via its own
+/// `morelike:` keyword (see SearchService.buildQuery / SearchState.
+/// morelikeTitles) — the same mechanism the advanced filters drawer
+/// already exposes as a search input, here run as a one-off single-file
+/// query instead. Same lazy, fetch-only-when-watched contract as
+/// [globalUsageProvider]/[structuredDataProvider]. CirrusSearch's
+/// similarity engine occasionally echoes the source file back in its own
+/// results — filtered out here so "related to this file" never lists the
+/// file itself.
+final morelikeProvider =
+    FutureProvider.family<List<SearchItem>, String>((ref, fileTitle) async {
+  final result =
+      await CommonsBackend().search(SearchState(morelikeTitles: {fileTitle}));
+  final normalized = fileTitle.replaceFirst('File:', '').trim().toLowerCase();
+  return result.items
+      .where((i) =>
+          i.title.replaceFirst('File:', '').trim().toLowerCase() != normalized)
+      .toList();
+});
 
 final searchControllerProvider =
     NotifierProvider<SearchController, SearchViewState>(SearchController.new);

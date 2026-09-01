@@ -187,17 +187,17 @@ class _MapPageState extends ConsumerState<MapPage> {
     });
   }
 
-  /// "Search → map" tab: pulls the main search page's current results and
-  /// plots whichever ones carry coordinates. Re-tapping the tab re-imports
-  /// (in case the main search changed since last time).
+  /// "Search → map" tab: switches display to the main search page's live
+  /// results. Nothing is copied — build() derives the plotted set fresh
+  /// from searchControllerProvider every time, so this is just a mode
+  /// flip plus a one-time camera fit to whatever's plottable right now.
   void _handleSelectImport() {
     setState(() {
       _drawingBbox = false;
       _bboxFirstPoint = null;
     });
-    final items = ref.read(searchControllerProvider).activeSession.items;
-    ref.read(mapSearchControllerProvider.notifier).importFromItems(items);
-    _fitToItems(items);
+    ref.read(mapSearchControllerProvider.notifier).setMode(GeoMode.imported);
+    _fitToItems(ref.read(searchControllerProvider).activeSession.items);
   }
 
   void _handleSelectExplore() {
@@ -378,11 +378,27 @@ class _MapPageState extends ConsumerState<MapPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(mapSearchControllerProvider);
-    final mainSearchItems = ref.watch(searchControllerProvider).activeSession.items;
-    final session = state.session;
+    final mainSearchSession = ref.watch(searchControllerProvider).activeSession;
+    final mainSearchItems = mainSearchSession.items;
+    final isImportMode = state.mode == GeoMode.imported;
+
+    // Live-derived, not a stored snapshot — recomputes on every rebuild
+    // this widget gets from watching searchControllerProvider, so a
+    // loadMore fired from the main search page (or from this page's own
+    // results pane below) shows up immediately without re-toggling modes.
+    final importedPlottable =
+        mainSearchItems.where((i) => i.hasCoordinates).toList();
+    final session = isImportMode
+        ? SearchSession(
+            items: importedPlottable,
+            hasSearched: true,
+            loading: mainSearchSession.loading,
+            loadingMore: mainSearchSession.loadingMore,
+            hasMore: mainSearchSession.hasMore,
+          )
+        : state.session;
     final plottable = session.items.where((i) => i.hasCoordinates).toList();
     final clusters = _clusterItems(plottable, _currentZoom);
-    final isImportMode = state.mode == GeoMode.imported;
 
     return Scaffold(
       backgroundColor: _kBg,
@@ -665,7 +681,9 @@ class _MapPageState extends ConsumerState<MapPage> {
 
               final results = _ResultsPane(
                 session: session,
-                onLoadMore: () => ref.read(mapSearchControllerProvider.notifier).loadMore(),
+                onLoadMore: () => isImportMode
+                    ? ref.read(searchControllerProvider.notifier).loadMore()
+                    : ref.read(mapSearchControllerProvider.notifier).loadMore(),
                 onOpenInMainSearch: isImportMode ? null : () => _openInMainSearch(state),
                 onOpenItem: _openItem,
                 searchState: state.mode == GeoMode.filtered ? state.filterState : const SearchState(),
@@ -673,7 +691,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                     ? 'None of your current search results have location data.'
                     : 'No media found here.',
                 noteText: isImportMode
-                    ? '${state.importedItems.length} of ${mainSearchItems.length} results have location data.'
+                    ? '${importedPlottable.length} of ${mainSearchItems.length} results have location data.'
                     : null,
               );
 

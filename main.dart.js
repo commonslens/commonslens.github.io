@@ -52738,7 +52738,7 @@ $iah:1,
 $ib4:1}
 A.Q0.prototype={
 H(a){var s=A.br(a,null,t.w).w.a.a
-return new A.Sf(B.fO,s<480?s*0.92:420,B.Ml,null)}}
+return new A.Sf(B.fO,s<480?s:420,B.Ml,null)}}
 A.xE.prototype={
 ab(){return new A.KN(new A.lz())}}
 A.KN.prototype={

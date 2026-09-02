@@ -1,0 +1,29 @@
+name: Backend Filter Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Live-API health check independent of code changes — Commons data or
+    # CirrusSearch behavior can drift even when nothing here was touched.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  filter-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Run filter/search sweep
+        run: flutter test test/backend_filters_test.dart --reporter expanded

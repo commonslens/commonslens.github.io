@@ -26,7 +26,22 @@
     function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
 
-    gtag('config', 'G-LBBV97ZD24');
+    // send_page_view: false — this is a single-page app (go_router swaps
+    // views client-side, no full page load per route), so GA's automatic
+    // page_view would only ever fire once, on initial load. Manual
+    // page_view events are fired instead on every route change, from
+    // router.dart's _AnalyticsNavObserver.
+    //
+    // allow_google_signals / allow_ad_personalization_signals: false —
+    // opts out of Google Signals (cross-device tracking, ads-audience
+    // building, demographics/interest reports tied to a visitor's Google
+    // account). Keeps this to anonymous, aggregate interaction trends only
+    // — no per-visitor identity, no ads use of the data.
+    gtag('config', 'G-LBBV97ZD24', {
+      send_page_view: false,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    });
   </script>
   <base href="/commons_lens/">
   <meta charset="UTF-8">

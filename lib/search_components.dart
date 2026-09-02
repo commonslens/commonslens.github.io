@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'search_models.dart';
 import 'search_service.dart';
 import 'search_url_codec.dart';
+import 'analytics_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // -----------------------------------------------------------------------------
@@ -459,6 +460,16 @@ class _MediaCardState extends ConsumerState<MediaCard> {
     }
 
     // 2. Otherwise, normal navigation
+    AnalyticsService.mediaOpened(
+      title: widget.item.title,
+      mediaKind: widget.item.mediaKind.name,
+      // extraParams['from'] is set to 'map' by the map results pane;
+      // extraParams also carries 'author' on the portfolio page's cards.
+      // Anything else came from the main search grid.
+      source: widget.extraParams['from'] ??
+          (widget.extraParams.containsKey('author') ? 'author' : 'search'),
+    );
+
     final params = <String, String>{
       'id': widget.item.title,
       ...SearchUrlCodec.toQueryParams(widget.searchState),

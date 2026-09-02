@@ -4,39 +4,65 @@ import 'package:go_router/go_router.dart';
 import 'search_service.dart';
 import 'search_controller.dart';
 import 'search_models.dart';
+import 'analytics_service.dart';
 
-class BrowsePage extends StatelessWidget {
+class BrowsePage extends StatefulWidget {
   const BrowsePage({super.key});
 
   @override
+  State<BrowsePage> createState() => _BrowsePageState();
+}
+
+class _BrowsePageState extends State<BrowsePage>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+  static const _tabNames = ['categories', 'templates', 'depicts'];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    AnalyticsService.browseTabOpened(_tabNames[0]);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) return;
+      AnalyticsService.browseTabOpened(_tabNames[_tabController.index]);
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0B0B0B),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF111111),
-          title: const Text('Browse Directories', style: TextStyle(color: Colors.white, fontSize: 16)),
-          iconTheme: const IconThemeData(color: Colors.white),
-          bottom: const TabBar(
-            indicatorColor: Color(0xFF3D7EFF),
-            labelColor: Color(0xFF3D7EFF),
-            unselectedLabelColor: Colors.white54,
-            tabs: [
-              Tab(text: 'Categories'),
-              Tab(text: 'Templates'),
-              Tab(text: 'Depicts (Q-Codes)'),
-            ],
-          ),
-        ),
-        body: const TabBarView(
-          physics: NeverScrollableScrollPhysics(),
-          children: [
-            _CategoryTab(),
-            _TemplateTab(),
-            _DepictsTab(),
+    return Scaffold(
+      backgroundColor: const Color(0xFF0B0B0B),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF111111),
+        title: const Text('Browse Directories', style: TextStyle(color: Colors.white, fontSize: 16)),
+        iconTheme: const IconThemeData(color: Colors.white),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: const Color(0xFF3D7EFF),
+          labelColor: const Color(0xFF3D7EFF),
+          unselectedLabelColor: Colors.white54,
+          tabs: const [
+            Tab(text: 'Categories'),
+            Tab(text: 'Templates'),
+            Tab(text: 'Depicts (Q-Codes)'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: const [
+          _CategoryTab(),
+          _TemplateTab(),
+          _DepictsTab(),
+        ],
       ),
     );
   }
@@ -77,6 +103,7 @@ class _CategoryTabState extends ConsumerState<_CategoryTab> {
   }
 
   void _select(String category) {
+    AnalyticsService.browseItemSelected('category', category);
     ref.read(searchControllerProvider.notifier).applyFilterUpdate((c) => 
       c.copyWith(categories: {...c.categories, category})
     );
@@ -155,6 +182,7 @@ class _TemplateTabState extends ConsumerState<_TemplateTab> {
   }
 
   void _select(String template) {
+    AnalyticsService.browseItemSelected('template', template);
     ref.read(searchControllerProvider.notifier).applyFilterUpdate((c) => 
       c.copyWith(templates: {...c.templates, template})
     );
@@ -220,6 +248,7 @@ class _DepictsTabState extends ConsumerState<_DepictsTab> {
   }
 
   void _select(DepictsEntity entity) {
+    AnalyticsService.browseItemSelected('depicts', entity.label);
     ref.read(searchControllerProvider.notifier).applyFilterUpdate((c) => 
       c.copyWith(depictsInclude: {...c.depictsInclude, entity})
     );

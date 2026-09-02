@@ -1,13 +1,40 @@
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:commonslens/browse_page.dart';
+import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'search_page.dart';
 import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
 import 'map_page.dart';
+import 'analytics_service.dart';
+
+/// Fires a GA4 page_view on every route push/pop/replace — GA's automatic
+/// page_view only fires once, on the initial script load, since this is a
+/// single-page app and go_router never triggers another full page load.
+/// Reads the live browser URL (accurate thanks to usePathUrlStrategy() in
+/// main.dart) rather than trying to reconstruct a path from GoRouter's own
+/// route objects, which is simpler and can't drift out of sync with what's
+/// actually in the address bar.
+class _AnalyticsNavObserver extends NavigatorObserver {
+  void _track() {
+    final loc = html.window.location;
+    AnalyticsService.pageView('${loc.pathname}${loc.search}');
+  }
+
+  @override
+  void didPush(Route route, Route? previousRoute) => _track();
+  @override
+  void didPop(Route route, Route? previousRoute) => _track();
+  @override
+  void didReplace({Route? newRoute, Route? oldRoute}) => _track();
+}
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
+  observers: [_AnalyticsNavObserver()],
   routes: [
     GoRoute(
       path: '/',

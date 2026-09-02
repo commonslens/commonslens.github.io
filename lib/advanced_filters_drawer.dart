@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_service.dart';
+import 'analytics_service.dart';
 
 // -----------------------------------------------------------------------------
 // Container: mobile-only Drawer wrapper. Desktop docks FilterPanelContent
@@ -196,6 +197,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Resolution / file size / color depth ----
 
   void _applyResolutionAndSize() {
+    AnalyticsService.filterApplied('resolution_size_apply', 'applied');
     final w = int.tryParse(_minWidthCtrl.text);
     final h = int.tryParse(_minHeightCtrl.text);
     final maxW = int.tryParse(_maxWidthCtrl.text);
@@ -231,6 +233,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Geolocation ----
 
   void _applyGeolocation() {
+    AnalyticsService.filterApplied(
+        'geolocation_apply',
+        _nearTitleCtrl.text.trim().isNotEmpty ? 'near_title' : 'near_coord');
     final lat = double.tryParse(_latCtrl.text);
     final lng = double.tryParse(_lngCtrl.text);
     final rad = double.tryParse(_radiusCtrl.text) ?? 10.0;
@@ -257,6 +262,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Dates ----
 
   void _applyDates() {
+    AnalyticsService.filterApplied('date_range_apply', 'applied');
     final cFrom = _createdFromCtrl.text.trim();
     final cTo = _createdToCtrl.text.trim();
     final eFrom = _editedFromCtrl.text.trim();
@@ -295,6 +301,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Categories (instant) ----
 
   void _addCategory(String value, bool exclude) {
+    AnalyticsService.filterApplied(
+        exclude ? 'category_exclude' : 'category_add', value);
     _update((c) => exclude
         ? c.copyWith(
             excludeCategories: {...c.excludeCategories, value},
@@ -315,6 +323,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Templates (instant) ----
 
   void _addTemplate(String value, bool exclude) {
+    AnalyticsService.filterApplied(
+        exclude ? 'template_exclude' : 'template_add', value);
     _update((c) => exclude
         ? c.copyWith(
             excludeTemplates: {...c.excludeTemplates, value},
@@ -335,6 +345,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Depicts (instant) ----
 
   void _addDepicts(DepictsEntity value, bool exclude) {
+    AnalyticsService.filterApplied(
+        exclude ? 'depicts_exclude' : 'depicts_add', value.label);
     _update((c) => exclude
         ? c.copyWith(
             depictsExclude: {...c.depictsExclude, value},
@@ -363,6 +375,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Statements (instant, two-step property -> value) ----
 
   void _addStatement(WikidataStatement stmt, bool exclude) {
+    AnalyticsService.filterApplied(
+        exclude ? 'statement_exclude' : 'statement_add',
+        '${stmt.property.label}:${stmt.value.label}');
     _update((c) => exclude
         ? c.copyWith(
             statementsExclude: {...c.statementsExclude, stmt},

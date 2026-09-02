@@ -8,6 +8,7 @@ import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
+import 'analytics_service.dart';
 
 final selectionModeProvider = StateProvider<bool>((ref) => false);
 final selectedItemsProvider = StateProvider<Set<SearchItem>>((ref) => {});
@@ -178,6 +179,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   void _startBulkDownload(List<SearchItem> items) {
+    AnalyticsService.bulkDownloadStarted(items.length);
     final job = _DownloadJob(id: _nextDownloadJobId++, total: items.length);
     setState(() => _downloadJobs.add(job));
 
@@ -203,6 +205,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     ).then((_) {
       if (!mounted) return;
       setState(() => job.done = true);
+      AnalyticsService.bulkDownloadCompleted(
+        total: job.total,
+        failed: job.failed.length,
+        cancelled: job.cancelled,
+      );
       // Successful jobs clear themselves after a few seconds; failed and
       // cancelled ones stay visible until the person dismisses them, since
       // "silently vanished" is exactly what looked broken before — and a
@@ -471,6 +478,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   void _removeChip(QueryChipData chip) {
+    // Bypasses applyFilterUpdate's diff tracking below (this calls
+    // .search() directly with overrideState), so it needs its own event —
+    // the chip id itself (e.g. "category:Paris", "license") is already a
+    // decent coarse filter-type label once the value suffix is stripped.
+    AnalyticsService.filterRemoved(chip.id.split(':').first);
     final current = ref.read(searchControllerProvider).filterState;
     SearchState next = current;
 

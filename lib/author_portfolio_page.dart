@@ -7,6 +7,7 @@ import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
 import 'search_page.dart' show selectionModeProvider, selectedItemsProvider;
+import 'analytics_service.dart';
 
 /// Tracks one in-flight (or just-finished) bulk download — see the same
 /// class in search_page.dart for the full rationale. Duplicated locally
@@ -44,12 +45,14 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    AnalyticsService.authorPortfolioViewed(widget.username);
   }
 
   @override
   void didUpdateWidget(covariant AuthorPortfolioPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.username != widget.username) {
+      AnalyticsService.authorPortfolioViewed(widget.username);
       _authorCtrl.text = widget.username;
       // Switching authors — a bulk selection from the previous grid
       // shouldn't silently carry over into the new one.
@@ -127,6 +130,7 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
   }
 
   void _startBulkDownload(List<SearchItem> items) {
+    AnalyticsService.bulkDownloadStarted(items.length);
     final job = _DownloadJob(id: _nextDownloadJobId++, total: items.length);
     setState(() => _downloadJobs.add(job));
 
@@ -149,6 +153,11 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
     ).then((_) {
       if (!mounted) return;
       setState(() => job.done = true);
+      AnalyticsService.bulkDownloadCompleted(
+        total: job.total,
+        failed: job.failed.length,
+        cancelled: false,
+      );
       if (job.failed.isEmpty) {
         Future.delayed(const Duration(seconds: 4), () {
           if (!mounted) return;

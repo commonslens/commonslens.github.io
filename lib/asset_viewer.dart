@@ -16,6 +16,7 @@ import 'search_service.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'map_controller.dart';
+import 'analytics_service.dart';
 
 class AssetViewer extends ConsumerStatefulWidget {
   final String fileId;
@@ -1058,13 +1059,16 @@ class _NearbyMediaButton extends StatelessWidget {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () => context.push(
-          Uri(path: '/map', queryParameters: {
-            'lat': item.resolvedLatitude!.toStringAsFixed(6),
-            'lng': item.resolvedLongitude!.toStringAsFixed(6),
-            'radiusKm': '10',
-          }).toString(),
-        ),
+        onPressed: () {
+          AnalyticsService.nearbyMediaFromAssetOpened(item.title);
+          context.push(
+            Uri(path: '/map', queryParameters: {
+              'lat': item.resolvedLatitude!.toStringAsFixed(6),
+              'lng': item.resolvedLongitude!.toStringAsFixed(6),
+              'radiusKm': '10',
+            }).toString(),
+          );
+        },
         style: OutlinedButton.styleFrom(
           foregroundColor: const Color(0xFF7AABFF),
           side: const BorderSide(color: Color(0xFF2A2A2A)),
@@ -1107,7 +1111,10 @@ class _StructuredDataSectionState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () {
+              if (!_expanded) AnalyticsService.sectionExpanded('structured_data');
+              setState(() => _expanded = !_expanded);
+            },
             child: Row(
               children: [
                 const Text(
@@ -1222,7 +1229,10 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
           const Divider(color: Color(0xFF222222)),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () {
+              if (!_expanded) AnalyticsService.sectionExpanded('related_media');
+              setState(() => _expanded = !_expanded);
+            },
             child: Row(
               children: [
                 const Text(
@@ -1281,12 +1291,18 @@ class _RelatedMediaSectionState extends ConsumerState<_RelatedMediaSection> {
                         return Tooltip(
                           message: related.title,
                           child: GestureDetector(
-                            onTap: () => context.push(
-                              Uri(
-                                      path: '/view',
-                                      queryParameters: {'id': related.title})
-                                  .toString(),
-                            ),
+                            onTap: () {
+                              AnalyticsService.relatedMediaClicked(
+                                fromTitle: widget.fileTitle,
+                                toTitle: related.title,
+                              );
+                              context.push(
+                                Uri(
+                                        path: '/view',
+                                        queryParameters: {'id': related.title})
+                                    .toString(),
+                              );
+                            },
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Container(
@@ -1358,7 +1374,10 @@ class _GlobalUsageSectionState extends ConsumerState<_GlobalUsageSection> {
           const Divider(color: Color(0xFF222222)),
           const SizedBox(height: 14),
           GestureDetector(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () {
+              if (!_expanded) AnalyticsService.sectionExpanded('global_usage');
+              setState(() => _expanded = !_expanded);
+            },
             child: Row(
               children: [
                 const Text(
@@ -1469,6 +1488,19 @@ class _DownloadSection extends StatelessWidget {
   });
 
   Future<void> _handleDownload(BuildContext context, String url) async {
+    AnalyticsService.mediaDownloaded(
+      title: item.title,
+      size: url == item.url
+          ? 'original'
+          : url.contains('/640px-')
+              ? 'small'
+              : url.contains('/1280px-')
+                  ? 'medium'
+                  : url.contains('/1920px-')
+                      ? 'large'
+                      : 'original',
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Downloading media...'),
@@ -1549,7 +1581,10 @@ class _DownloadSection extends StatelessWidget {
         ],
         const SizedBox(height: 10),
         OutlinedButton.icon(
-          onPressed: onLaunchCommons,
+          onPressed: () {
+            AnalyticsService.sourcePageOpened(item.title);
+            onLaunchCommons();
+          },
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFFAAAAAA),
             side: const BorderSide(color: Color(0xFF2A2A2A)),

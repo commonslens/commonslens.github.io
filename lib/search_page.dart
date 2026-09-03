@@ -98,6 +98,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   bool _showQueryPreview = false;
   bool? _isFiltersExpanded;
 
+  // Desktop-only: whether the docked filters sidebar (see build's
+  // isDesktop branch) is minimized to a thin rail. Independent from
+  // _isFiltersExpanded above, which toggles the FileType-filter row
+  // beneath the top bar on every viewport — this instead hides the whole
+  // 380px docked panel down to a reopen affordance, for when someone
+  // wants the extra width back for results without losing their filter
+  // state (unlike the mobile Drawer, collapsing never clears anything).
+  bool _filtersSidebarCollapsed = false;
+
   // Tracks the query params this page has already "consumed" — either by
   // hydrating from them, or by being the one that pushed them via the
   // ref.listen below. `null` means nothing has been synced yet (only true
@@ -660,14 +669,24 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ? Row(
               children: [
                 Expanded(child: mainColumn),
-                Container(
-                  width: 380,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF111111),
-                    border: Border(left: BorderSide(color: Color(0xFF1E1E1E))),
+                if (_filtersSidebarCollapsed)
+                  _CollapsedFiltersRail(
+                    onExpand: () =>
+                        setState(() => _filtersSidebarCollapsed = false),
+                  )
+                else
+                  Container(
+                    width: 380,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF111111),
+                      border:
+                          Border(left: BorderSide(color: Color(0xFF1E1E1E))),
+                    ),
+                    child: FilterPanelContent(
+                      onCollapse: () =>
+                          setState(() => _filtersSidebarCollapsed = true),
+                    ),
                   ),
-                  child: const FilterPanelContent(),
-                ),
               ],
             )
           : mainColumn,
@@ -1261,5 +1280,62 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       case SortMode.oldestCreated:
         return 'Oldest created';
     }
+  }
+}
+
+/// The desktop filters sidebar's minimized state — a thin 44px rail with a
+/// single reopen affordance, replacing the full 380px docked
+/// FilterPanelContent so the person can get results width back without
+/// losing any filter state (unlike closing the mobile Drawer, which just
+/// hides the same live FilterPanelContent — nothing here is torn down or
+/// reset, it's purely a layout swap in SearchPage.build).
+class _CollapsedFiltersRail extends StatelessWidget {
+  final VoidCallback onExpand;
+  const _CollapsedFiltersRail({required this.onExpand});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 44,
+      decoration: const BoxDecoration(
+        color: Color(0xFF111111),
+        border: Border(left: BorderSide(color: Color(0xFF1E1E1E))),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Tooltip(
+              message: 'Show filters',
+              child: IconButton(
+                icon: const Icon(Icons.chevron_left, color: Colors.white54),
+                onPressed: onExpand,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: GestureDetector(
+                onTap: onExpand,
+                behavior: HitTestBehavior.opaque,
+                child: const Center(
+                  child: RotatedBox(
+                    quarterTurns: 3,
+                    child: Text(
+                      'FILTERS',
+                      style: TextStyle(
+                        color: Color(0xFF555555),
+                        fontSize: 11,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

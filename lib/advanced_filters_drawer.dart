@@ -60,7 +60,17 @@ class AdvancedFiltersDrawer extends StatelessWidget {
 
 class FilterPanelContent extends ConsumerStatefulWidget {
   final bool showCloseButton;
-  const FilterPanelContent({super.key, this.showCloseButton = false});
+  // Non-null only in the desktop docked layout (see search_page.dart's
+  // isDesktop branch). Renders a collapse chevron in the header next to
+  // (or instead of) the close button, so the sidebar can be minimized to a
+  // thin rail without a Drawer to pop — a docked panel is never "closed",
+  // only collapsed and re-expandable in place.
+  final VoidCallback? onCollapse;
+  const FilterPanelContent({
+    super.key,
+    this.showCloseButton = false,
+    this.onCollapse,
+  });
 
   @override
   ConsumerState<FilterPanelContent> createState() => _FilterPanelContentState();
@@ -427,11 +437,23 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         fontSize: 12,
                         letterSpacing: 2,
                         fontWeight: FontWeight.w800)),
-                if (widget.showCloseButton)
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white54),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onCollapse != null)
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right,
+                            color: Colors.white54),
+                        tooltip: 'Collapse filters',
+                        onPressed: widget.onCollapse,
+                      ),
+                    if (widget.showCloseButton)
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white54),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

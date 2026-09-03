@@ -114,8 +114,43 @@ class _SearchTopBarState extends State<SearchTopBar> {
     );
   }
 
+  /// Compact icon-only variant of the Map/Filters buttons, used once the
+  /// bar drops to mobile width (see build's isMobile). Same visual
+  /// language (outlined, dark) as the labeled buttons, just square and
+  /// without the text — three labeled buttons plus the search field no
+  /// longer fit side by side on a phone-width screen.
+  Widget _iconOnlyButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 38,
+        height: 38,
+        child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF2A2A2A)),
+              foregroundColor: const Color(0xFFB0B0B0),
+              padding: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6))),
+          onPressed: onPressed,
+          child: Icon(icon, size: 17),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Below this width: Map/Filters collapse to icon-only, and the Search
+    // button disappears entirely (Enter in the field, or the field's own
+    // submit action, already triggers a search — a third, separate Search
+    // button was redundant crowding on a narrow bar next to Map+Filters).
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF101010),
@@ -230,57 +265,71 @@ class _SearchTopBarState extends State<SearchTopBar> {
               ),
             ),
             const SizedBox(width: 10),
-            SizedBox(
-              height: 38,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF2A2A2A)),
-                    foregroundColor: const Color(0xFFB0B0B0),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14)),
-                onPressed: () => context.push('/map'),
-                icon: const Icon(Icons.map_outlined, size: 16),
-                label: const Text('Map',
-                    style:
-                        TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
-              ),
-            ),
+            isMobile
+                ? _iconOnlyButton(
+                    icon: Icons.map_outlined,
+                    tooltip: 'Map',
+                    onPressed: () => context.push('/map'),
+                  )
+                : SizedBox(
+                    height: 38,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFF2A2A2A)),
+                          foregroundColor: const Color(0xFFB0B0B0),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14)),
+                      onPressed: () => context.push('/map'),
+                      icon: const Icon(Icons.map_outlined, size: 16),
+                      label: const Text('Map',
+                          style:
+                              TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
             if (widget.showFiltersButton) ...[
+              const SizedBox(width: 8),
+              isMobile
+                  ? _iconOnlyButton(
+                      icon: Icons.tune,
+                      tooltip: 'Filters',
+                      onPressed: () => Scaffold.of(context).openEndDrawer(),
+                    )
+                  : SizedBox(
+                      height: 38,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF2A2A2A)),
+                            foregroundColor: const Color(0xFFB0B0B0),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.symmetric(horizontal: 14)),
+                        onPressed: () => Scaffold.of(context).openEndDrawer(),
+                        child: const Text('Filters',
+                            style: TextStyle(
+                                fontSize: 12.5, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+            ],
+            if (!isMobile) ...[
               const SizedBox(width: 8),
               SizedBox(
                 height: 38,
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF2A2A2A)),
-                      foregroundColor: const Color(0xFFB0B0B0),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3D7EFF),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14)),
-                  onPressed: () => Scaffold.of(context).openEndDrawer(),
-                  child: const Text('Filters',
-                      style: TextStyle(
-                          fontSize: 12.5, fontWeight: FontWeight.w600)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18)),
+                  onPressed: () => widget.onSearch(_fieldController?.text ?? ''),
+                  child: const Text('Search',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 ),
               ),
             ],
-            const SizedBox(width: 8),
-            SizedBox(
-              height: 38,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF3D7EFF),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6)),
-                    padding: const EdgeInsets.symmetric(horizontal: 18)),
-                onPressed: () => widget.onSearch(_fieldController?.text ?? ''),
-                child: const Text('Search',
-                    style:
-                        TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-              ),
-            ),
           ],
         ),
       ),

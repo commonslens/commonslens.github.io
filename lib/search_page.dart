@@ -699,7 +699,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       children: [
         // 1. The Beautiful Background Image
         Image.network(
-          'https://upload.wikimedia.org/wikipedia/commons/1/12/Breil-Brigels._Uitzichtpunt._20-09-2025._%28actm.%29_11.jpg',
+          'https://upload.wikimedia.org/wikipedia/commons/4/4d/Night_landscape_northern_lights_scenic_aurora_borealis.jpg',
           fit: BoxFit.cover,
           // Fade in the background smoothly
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {

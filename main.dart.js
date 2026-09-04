@@ -54609,7 +54609,7 @@ o=a.c
 if(o.length!==0)p.push(A.Fi(o,n,B.el,n,n,n,n))
 o=A.b1t(20,20)
 p.push(A.b_G(A.cf(n,n,B.n,B.p.jP(0.65),n,n,n,n,n,n,n,n,n),!0,o))
-p.push(A.dP(A.bO(A.b([A.iJ(s,B.qW,n,72),B.e4,A.aO(r,n,n,n,n,B.a0t,n,n),B.Ep,A.Er(B.Nv,B.a4Y,new A.aKz(a),A.nw(n,n,B.o,n,n,n,0,n,n,B.j,n,n,B.Mu,n,new A.cr(A.bN(30),B.l),n,n,n,n,n))],q),B.u,B.m,B.as),n,n))
+p.push(A.dP(A.bO(A.b([A.iJ(s,B.qW,n,72),B.e4,A.aO(r,n,n,n,n,B.a0t,n,n),B.Ep,A.Er(B.Nv,B.a4Z,new A.aKz(a),A.nw(n,n,B.o,n,n,n,0,n,n,B.j,n,n,B.Mu,n,new A.cr(A.bN(30),B.l),n,n,n,n,n))],q),B.u,B.m,B.as),n,n))
 return A.ht(B.bf,p,B.t,B.oL,n)}}
 A.aKA.prototype={
 $1(a){var s,r,q,p,o=this,n="100%",m="object-fit",l="none"
@@ -54801,11 +54801,11 @@ A.aQy.prototype={
 $0(){return B.oD},
 $S:152}
 A.aQx.prototype={
-$2(a,b){return B.a4Z},
+$2(a,b){return B.a5_},
 $S:151}
 A.aQw.prototype={
 $1(a){var s,r
-if(a==null||a.c.length===0)return B.a4W
+if(a==null||a.c.length===0)return B.a4X
 s=a.c
 r=A.V(s).h("S<1,aX>")
 s=A.N(new A.S(s,new A.aQv(),r),r.h("ae.E"))
@@ -57204,7 +57204,7 @@ n=A.bn(n,q,t.w).w
 s=t.UR
 s=A.N(new A.S(B.Qg,new A.aOx(this),s),s.h("ae.E"))
 r=t.p
-return A.ht(B.bf,A.b([p,o,A.dP(A.b3C(new A.dx(new A.ab(0,n.a.a*0.95,0,1/0),A.bO(A.b([B.a6T,B.Ep,B.a4o,B.e4,B.a5_,B.Eq,A.vS(B.pb,s,12,12),B.Zh,A.yl(new A.aOy()),B.e6,B.a4m,B.Eq],r),B.u,B.m,B.as),q),q,B.r,B.Mv,q,B.aC),q,q)],r),B.t,B.oL,q)},
+return A.ht(B.bf,A.b([p,o,A.dP(A.b3C(new A.dx(new A.ab(0,n.a.a*0.95,0,1/0),A.bO(A.b([B.a6T,B.Ep,B.a4o,B.e4,B.a4W,B.Eq,A.vS(B.pb,s,12,12),B.Zh,A.yl(new A.aOy()),B.e6,B.a4m,B.Eq],r),B.u,B.m,B.as),q),q,B.r,B.Mv,q,B.aC),q,q)],r),B.t,B.oL,q)},
 ail(a,b){var s,r,q=null
 if(a.e)return B.qh
 s=a.r
@@ -118995,8 +118995,8 @@ B.a4F=new A.bl("8-bit",null,B.a0,null,null,null,null,null,null,null)
 B.Lw=new A.eF(8,B.a4F,B.be,null,t.EP)
 B.a4C=new A.bl("16-bit",null,B.a0,null,null,null,null,null,null,null)
 B.Ly=new A.eF(16,B.a4C,B.be,null,t.EP)
-B.a4X=new A.bl("24-bit",null,B.a0,null,null,null,null,null,null,null)
-B.Lz=new A.eF(24,B.a4X,B.be,null,t.EP)
+B.a4Y=new A.bl("24-bit",null,B.a0,null,null,null,null,null,null,null)
+B.Lz=new A.eF(24,B.a4Y,B.be,null,t.EP)
 B.a4R=new A.bl("32-bit",null,B.a0,null,null,null,null,null,null,null)
 B.LC=new A.eF(32,B.a4R,B.be,null,t.EP)
 B.Po=s([B.LD,B.LA,B.Lw,B.Ly,B.Lz,B.LC],A.ar("x<eF<o?>>"))
@@ -121269,12 +121269,12 @@ B.a0d=new A.p(!0,null,null,null,null,null,13,B.aU,null,null,null,null,null,null,
 B.a4S=new A.bl("Search",null,B.a0d,null,null,null,null,null,null,null)
 B.a4T=new A.bl("Cancel download",null,B.F5,null,null,null,null,null,null,null)
 B.a4U=new A.bl("No related media found.",null,B.kr,null,null,null,null,null,null,null)
-B.a4W=new A.bl("No structured data statements on this file.",null,B.kr,null,null,null,null,null,null,null)
-B.a1a=new A.p(!0,null,null,null,null,null,14,B.aU,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a4Y=new A.bl("Open Media / Download",null,B.a1a,null,null,null,null,null,null,null)
-B.a4Z=new A.bl("Could not load structured data.",null,B.oV,null,null,null,null,null,null,null)
 B.a0D=new A.p(!0,B.lN,null,null,null,null,18,B.z,null,null,null,null,1.6,null,null,null,null,null,null,null,null,null,null,null,null,null)
-B.a5_=new A.bl("Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.",null,B.a0D,B.co,null,null,null,null,null,null)
+B.a4W=new A.bl("Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen-source and free forever.",null,B.a0D,B.co,null,null,null,null,null,null)
+B.a4X=new A.bl("No structured data statements on this file.",null,B.kr,null,null,null,null,null,null,null)
+B.a1a=new A.p(!0,null,null,null,null,null,14,B.aU,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
+B.a4Z=new A.bl("Open Media / Download",null,B.a1a,null,null,null,null,null,null,null)
+B.a5_=new A.bl("Could not load structured data.",null,B.oV,null,null,null,null,null,null,null)
 B.a50=new A.bl("FILTERS FOR NEXT RADIUS SEARCH",null,B.F7,null,null,null,null,null,null,null)
 B.a_E=new A.p(!0,B.j,null,null,null,null,12,B.dK,null,2,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null)
 B.a51=new A.bl("FILTERS",null,B.a_E,null,null,null,null,null,null,null)

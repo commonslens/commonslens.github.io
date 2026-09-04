@@ -567,17 +567,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       final parts = chip.id.substring('excludeStatement:'.length).split(':');
       if (parts.length == 2) {
         next = current.copyWith(
-            statementsExclude: Set<WikidataStatement>.from(current.statementsExclude)
-              ..removeWhere(
-                  (s) => s.property.qid == parts[0] && s.value.qid == parts[1]));
+            statementsExclude:
+                Set<WikidataStatement>.from(current.statementsExclude)
+                  ..removeWhere((s) =>
+                      s.property.qid == parts[0] && s.value.qid == parts[1]));
       }
     } else if (chip.id.startsWith('statement:')) {
       final parts = chip.id.substring('statement:'.length).split(':');
       if (parts.length == 2) {
         next = current.copyWith(
-            statementsInclude: Set<WikidataStatement>.from(current.statementsInclude)
-              ..removeWhere(
-                  (s) => s.property.qid == parts[0] && s.value.qid == parts[1]));
+            statementsInclude:
+                Set<WikidataStatement>.from(current.statementsInclude)
+                  ..removeWhere((s) =>
+                      s.property.qid == parts[0] && s.value.qid == parts[1]));
       }
     } else if (chip.id.startsWith('exclude:')) {
       final excludeName = chip.id.substring('exclude:'.length);
@@ -699,7 +701,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       children: [
         // 1. The Beautiful Background Image
         Image.network(
-          'https://upload.wikimedia.org/wikipedia/commons/4/4d/Night_landscape_northern_lights_scenic_aurora_borealis.jpg',
+          'https://upload.wikimedia.org/wikipedia/commons/8/86/Lofoten%2C_Norway_%28Unsplash%29.jpg',
           fit: BoxFit.cover,
           // Fade in the background smoothly
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
@@ -719,7 +721,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: const [0.0, 0.4, 1.0],
+              stops: const [0.0, 0.2, 1.0],
               colors: [
                 const Color(0xFF0B0B0B).withValues(alpha: 0.65),
                 const Color(0xFF0B0B0B).withValues(alpha: 0.85),
@@ -732,23 +734,22 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         // 3. The Scrollable Content
         Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 60),
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.95),
+              constraints: BoxConstraints(),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const WikiLogo(),
                   const SizedBox(height: 32),
-
                   // Hero Copy
-                  const Text('CommonsLens',
+                  const Text('COMMONSLENS',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 42,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                           color: Colors.white,
-                          letterSpacing: -1.0,
+                          letterSpacing: 20,
                           height: 1.1)),
                   const SizedBox(height: 16),
                   const Text(
@@ -811,106 +812,106 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           group('SEMANTIC & METADATA SEARCH', [
-                              _FeatureCard(
-                                icon: Icons.travel_explore,
-                                title: 'Wikidata Depicts Search',
-                                description:
-                                    'Search by exact visual subject via Wikidata Q-codes, with independent include and exclude sets.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.category_outlined,
-                                title: 'Category Include / Exclude',
-                                description:
-                                    'Multi-select Commons categories: isolate or eliminate entire category trees, deep-traversal included.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.merge_type,
-                                title: 'Multi-Term OR Search',
-                                description:
-                                    'Combine unrelated searches into one query with "+", e.g. "eiffel tower + colosseum".',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.filter_alt_outlined,
-                                title: 'Filter-Only Search',
-                                description:
-                                    'Run a full search from filters alone: depicts, category, license, etc. No text query required.',
-                                width: cardWidth,
-                              ),
-                            ]),
-                            group('PRECISION FILTERING', [
-                              _FeatureCard(
-                                icon: Icons.copyright,
-                                title: 'License Filtering',
-                                description:
-                                    'Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, or Public Domain.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.verified_outlined,
-                                title: 'Quality Assessment',
-                                description:
-                                    'Isolate Commons-reviewed Quality Images and Valued Images.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.location_on_outlined,
-                                title: 'Geolocation Search',
-                                description:
-                                    'Find media captured near an exact latitude and longitude, with adjustable radius.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.calendar_month_outlined,
-                                title: 'Date Range Filtering',
-                                description:
-                                    'Filter by creation date and last-edited date, independently.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.perm_media_outlined,
-                                title: 'File-Type Precision',
-                                description:
-                                    'Isolate exact formats: images, vectors, audio, video, documents.',
-                                width: cardWidth,
-                              ),
-                            ]),
-                            group('DISCOVERY', [
-                              _FeatureCard(
-                                icon: Icons.person_search_outlined,
-                                title: 'Author Portfolios',
-                                description:
-                                    'Browse every upload from a single contributor, fully paginated.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.link,
-                                title: 'Shareable Search State',
-                                description:
-                                    'Every query, filter combination, and asset view is a URL you can send.',
-                                width: cardWidth,
-                              ),
-                            ]),
-                            group('RESEARCH WORKFLOW', [
-                              _FeatureCard(
-                                icon: Icons.archive_outlined,
-                                title: 'Bulk Export',
-                                description:
-                                    'Select any subset of results and download as one .zip, entirely in-browser.',
-                                width: cardWidth,
-                              ),
-                              _FeatureCard(
-                                icon: Icons.bolt,
-                                title: 'High-Volume Rendering',
-                                description:
-                                    'Staggered lazy-loading handles large result sets without UI lockup.',
-                                width: cardWidth,
-                              ),
-                            ]),
-                          ],
-                        );
+                            _FeatureCard(
+                              icon: Icons.travel_explore,
+                              title: 'Wikidata Depicts Search',
+                              description:
+                                  'Search by exact visual subject via Wikidata Q-codes, with independent include and exclude sets.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.category_outlined,
+                              title: 'Category Include / Exclude',
+                              description:
+                                  'Multi-select Commons categories: isolate or eliminate entire category trees, deep-traversal included.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.merge_type,
+                              title: 'Multi-Term OR Search',
+                              description:
+                                  'Combine unrelated searches into one query with "+", e.g. "eiffel tower + colosseum".',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.filter_alt_outlined,
+                              title: 'Filter-Only Search',
+                              description:
+                                  'Run a full search from filters alone: depicts, category, license, etc. No text query required.',
+                              width: cardWidth,
+                            ),
+                          ]),
+                          group('PRECISION FILTERING', [
+                            _FeatureCard(
+                              icon: Icons.copyright,
+                              title: 'License Filtering',
+                              description:
+                                  'Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, or Public Domain.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.verified_outlined,
+                              title: 'Quality Assessment',
+                              description:
+                                  'Isolate Commons-reviewed Quality Images and Valued Images.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.location_on_outlined,
+                              title: 'Geolocation Search',
+                              description:
+                                  'Find media captured near an exact latitude and longitude, with adjustable radius.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.calendar_month_outlined,
+                              title: 'Date Range Filtering',
+                              description:
+                                  'Filter by creation date and last-edited date, independently.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.perm_media_outlined,
+                              title: 'File-Type Precision',
+                              description:
+                                  'Isolate exact formats: images, vectors, audio, video, documents.',
+                              width: cardWidth,
+                            ),
+                          ]),
+                          group('DISCOVERY', [
+                            _FeatureCard(
+                              icon: Icons.person_search_outlined,
+                              title: 'Author Portfolios',
+                              description:
+                                  'Browse every upload from a single contributor, fully paginated.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.link,
+                              title: 'Shareable Search State',
+                              description:
+                                  'Every query, filter combination, and asset view is a URL you can send.',
+                              width: cardWidth,
+                            ),
+                          ]),
+                          group('RESEARCH WORKFLOW', [
+                            _FeatureCard(
+                              icon: Icons.archive_outlined,
+                              title: 'Bulk Export',
+                              description:
+                                  'Select any subset of results and download as one .zip, entirely in-browser.',
+                              width: cardWidth,
+                            ),
+                            _FeatureCard(
+                              icon: Icons.bolt,
+                              title: 'High-Volume Rendering',
+                              description:
+                                  'Staggered lazy-loading handles large result sets without UI lockup.',
+                              width: cardWidth,
+                            ),
+                          ]),
+                        ],
+                      );
                     },
                   ),
 
@@ -1028,8 +1029,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
           const Spacer(),
           if (session.hasSearched) ...[
-            Text(
-                '${session.items.length} RESULTS${session.hasMore ? '+' : ''}',
+            Text('${session.items.length} RESULTS${session.hasMore ? '+' : ''}',
                 style: const TextStyle(
                     color: Color(0xFF323232),
                     fontSize: 10,

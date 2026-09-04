@@ -59,6 +59,22 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   // to.
   bool _isMapMode = false;
 
+  // Whether _currentIndex has actually been located against a REAL,
+  // populated gallery list yet — as opposed to just defaulted to 0
+  // because the gallery hadn't loaded when didChangeDependencies first
+  // ran. On a fresh page load/reload (the URL-hydrate branch below),
+  // hydrateFromUrl's search is only *scheduled* (postFrameCallback) and
+  // its network request hasn't resolved by the time the initial index
+  // lookup happens synchronously right after — so that first lookup
+  // always runs against an empty list, always finds nothing, and always
+  // falls back to index 0. Previously nothing ever revisited that once
+  // the real results streamed in, so a reload of e.g. "23 of 50" silently
+  // reopened on "1 of 50" every time. See _maybeResolveInitialIndex,
+  // called from build() once the gallery this viewer actually reads from
+  // has items, which re-locates widget.fileId in the real list and jumps
+  // the PageView to it if the initial guess (page 0) was wrong.
+  bool _initialIndexResolved = false;
+
   @override
   void initState() {
     super.initState();
@@ -128,6 +144,20 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
       // _getCombinedItems()'s branching — instead of always reading the
       // main search session regardless of mode, which is what caused every
       // author-page (and, previously, map) tap to open on page 0.
+      //
+      // IMPORTANT: on a fresh page load via the hasSearchContext branch
+      // above (a reload, or any direct/shared link), hydrateFromUrl's
+      // actual network fetch hasn't run yet at this point — it's merely
+      // scheduled. So `initialItems` here is very often still empty, and
+      // this lookup can only ever fall back to index 0. That's expected
+      // and fine: _initialIndexResolved below is left false whenever the
+      // list we searched was empty, and build()'s
+      // _maybeResolveInitialIndex re-runs this same lookup once the
+      // gallery this viewer actually reads from (search/author/map)
+      // populates for real, correcting the page if needed. Standalone
+      // mode has no gallery to search against (a single injected item is
+      // inserted at index 0 by _getCombinedItems), so it's always
+      // considered resolved.
       final initialItems = _authorName != null
           ? ref.read(authorPortfolioProvider(_authorName!)).items
           : _isMapMode
@@ -140,7 +170,40 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
 
       _currentIndex = startIndex >= 0 ? startIndex : 0;
       _pageController = PageController(initialPage: _currentIndex);
+      _initialIndexResolved =
+          _isStandalone || startIndex >= 0 || initialItems.isNotEmpty;
     }
+  }
+
+  /// Re-locates widget.fileId inside [items] and jumps the PageView to it,
+  /// if — and only if — the very first lookup in didChangeDependencies
+  /// couldn't have been trusted (i.e. it ran against a still-empty
+  /// gallery, see the comment there). This is what fixes a reload landing
+  /// on "1 of N" instead of the linked position: build() re-runs
+  /// automatically once the watched provider's items populate, giving
+  /// this a real list to search the *first* time one exists.
+  ///
+  /// Only ever does something once (`_initialIndexResolved` latches true
+  /// on the first real list it sees, found or not) — this is strictly an
+  /// initial-load correction, not a general "keep re-syncing to the URL"
+  /// mechanism. Ongoing file-to-file navigation within an already-loaded
+  /// gallery is handled separately by didUpdateWidget.
+  void _maybeResolveInitialIndex(List<SearchItem> items) {
+    if (_initialIndexResolved) return;
+    if (items.isEmpty) return; // still loading — nothing real to check yet
+    _initialIndexResolved = true;
+
+    final targetId = _normalizedTitle(widget.fileId);
+    final found = items.indexWhere((it) => _normalizedTitle(it.title) == targetId);
+    if (found < 0 || found == _currentIndex) return;
+
+    _currentIndex = found;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(found);
+      }
+    });
   }
 
   @override
@@ -280,6 +343,11 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
     final mapSession =
         _isMapMode ? ref.watch(mapSearchControllerProvider).session : null;
     final items = _getCombinedItems();
+
+    // Initial-load correction — see _maybeResolveInitialIndex's doc. No-op
+    // after the first time it sees a populated list (found or not), so
+    // this never fights ordinary page-swipe navigation.
+    _maybeResolveInitialIndex(items);
 
     final isLoading = (_isStandalone && _isFetchingInjected) ||
         (portfolioSession != null &&

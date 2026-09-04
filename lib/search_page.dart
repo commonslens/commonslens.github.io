@@ -749,11 +749,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           fontSize: 42,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
-                          letterSpacing: 20,
+                          letterSpacing: 10,
                           height: 1.1)),
                   const SizedBox(height: 16),
                   const Text(
-                      'A place to explore the world\'s largest free media archive: Wikimedia Commons\nStart your search using the textbox and filters above! No sign-up or payment needed; this tool is open-source and free forever.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.',
+                      'Navigate, filter, and extract WikiMedia Commons\' library intuitively and effortlessly.\nOpen-source and free forever.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Color(0xFFCCCCCC),

@@ -757,7 +757,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           height: 1.1)),
                   const SizedBox(height: 16),
                   const Text(
-                      'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.',
+                      'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen-source and free forever.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Color(0xFFCCCCCC),

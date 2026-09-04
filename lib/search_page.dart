@@ -704,7 +704,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       children: [
         // 1. The Beautiful Background Image
         Image.network(
-          'https://upload.wikimedia.org/wikipedia/commons/1/12/Breil-Brigels._Uitzichtpunt._20-09-2025._%28actm.%29_11.jpg',
+          'https://upload.wikimedia.org/wikipedia/commons/8/86/Lofoten%2C_Norway_%28Unsplash%29.jpg',
           fit: BoxFit.cover,
           // Fade in the background smoothly
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
@@ -726,8 +726,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               end: Alignment.bottomCenter,
               stops: const [0.0, 0.4, 1.0],
               colors: [
-                const Color(0xFF0B0B0B).withValues(alpha: 0.65),
-                const Color(0xFF0B0B0B).withValues(alpha: 0.85),
+                const Color(0xFF0B0B0B).withValues(alpha: 0.55),
+                const Color(0xFF0B0B0B).withValues(alpha: 0.80),
                 const Color(0xFF0B0B0B),
               ],
             ),
@@ -747,17 +747,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   const SizedBox(height: 32),
 
                   // Hero Copy
-                  const Text('CommonsLens',
+                  const Text('COMMONSLENS',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontSize: 42,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w500,
                           color: Colors.white,
-                          letterSpacing: -1.0,
+                          letterSpacing: 5,
                           height: 1.1)),
                   const SizedBox(height: 16),
                   const Text(
-                      'A place to explore the world\'s largest free media archive: Wikimedia Commons\nStart your search using the textbox and filters above! No sign-up or payment needed; this tool is open-source and free forever.\nEngineered for explorers and researchers to navigate, filter, and extract media intuitively and effortlessly.',
+                      'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           color: Color(0xFFCCCCCC),

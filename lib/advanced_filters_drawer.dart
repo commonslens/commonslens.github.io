@@ -382,6 +382,22 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   void _setStatementsUnion(bool union) =>
       _update((c) => c.copyWith(statementsUnion: union));
 
+  // ---- License (instant, multi-select — a file only ever carries one
+  // license, so this is always an OR/"matches any selected" filter) ----
+
+  void _toggleLicense(LicensePreset preset) {
+    AnalyticsService.filterApplied('license_toggle', preset.name);
+    _update((c) {
+      final next = Set<LicensePreset>.from(c.licensePresets);
+      if (next.contains(preset)) {
+        next.remove(preset);
+      } else {
+        next.add(preset);
+      }
+      return c.copyWith(licensePresets: next);
+    });
+  }
+
   // ---- Statements (instant, two-step property -> value) ----
 
   void _addStatement(WikidataStatement stmt, bool exclude) {
@@ -686,20 +702,56 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 _sectionDivider('LICENSE'),
                 const SizedBox(height: 20),
                 _sectionHeader('LICENSE / RIGHTS'),
-                DropdownButtonFormField<LicensePreset>(
+                Text(
+                  'Select one or more — a file matching ANY selected license '
+                  'is included (a file only ever carries one license, so this '
+                  'is always OR, never AND).',
+                  style: const TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: LicensePreset.values
+                      .map((preset) => _licenseToggleChip(
+                            label: licensePresetLabel(preset),
+                            selected: state.licensePresets.contains(preset),
+                            onTap: () => _toggleLicense(preset),
+                          ))
+                      .toList(),
+                ),
+                const SizedBox(height: 24),
+                _sectionHeader('ATTRIBUTION'),
+                Text(
+                  'No CirrusSearch keyword covers this — it\'s filtered '
+                  'client-side after each page loads, so a page can come '
+                  'back with fewer than the usual result count.',
+                  style: const TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<bool?>(
                   dropdownColor: const Color(0xFF1E1E1E),
                   decoration: _fieldDecoration(),
-                  value: state.licensePreset,
-                  items: LicensePreset.values
-                      .map((preset) => DropdownMenuItem(
-                          value: preset,
-                          child: Text(licensePresetLabel(preset),
-                              style: const TextStyle(color: Colors.white))))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null)
-                      _update((c) => c.copyWith(licensePreset: val));
-                  },
+                  value: state.attributionRequired,
+                  items: const [
+                    DropdownMenuItem(
+                        value: null,
+                        child: Text('Any attribution',
+                            style: TextStyle(color: Colors.white70))),
+                    DropdownMenuItem(
+                        value: true,
+                        child: Text('Attribution required',
+                            style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: false,
+                        child: Text('No attribution required',
+                            style: TextStyle(color: Colors.white))),
+                  ],
+                  onChanged: (val) => _update((c) => c.copyWith(
+                      attributionRequired: val,
+                      clearAttributionRequired: val == null)),
                 ),
                 const SizedBox(height: 24),
                 _sectionDivider('METADATA AND LOCATION'),
@@ -1643,6 +1695,33 @@ Widget _combineModeButton(
             ? const Color(0xFF3D7EFF).withOpacity(0.15)
             : const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+            color:
+                selected ? const Color(0xFF3D7EFF) : const Color(0xFF262626)),
+      ),
+      child: Text(label,
+          style: TextStyle(
+              color: selected ? const Color(0xFF3D7EFF) : Colors.white54,
+              fontSize: 12,
+              fontWeight: FontWeight.w700)),
+    ),
+  );
+}
+
+Widget _licenseToggleChip(
+    {required String label,
+    required bool selected,
+    required VoidCallback onTap}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: selected
+            ? const Color(0xFF3D7EFF).withOpacity(0.15)
+            : const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
             color:
                 selected ? const Color(0xFF3D7EFF) : const Color(0xFF262626)),

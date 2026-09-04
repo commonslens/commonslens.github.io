@@ -63,7 +63,6 @@ enum SortMode {
 }
 
 enum LicensePreset {
-  any,
   cc0,
   ccBy4,
   ccBySa4,
@@ -72,8 +71,6 @@ enum LicensePreset {
 
 String licensePresetLabel(LicensePreset preset) {
   switch (preset) {
-    case LicensePreset.any:
-      return 'Any license';
     case LicensePreset.cc0:
       return 'CC0';
     case LicensePreset.ccBy4:
@@ -234,7 +231,7 @@ class DepictsEntity {
 
 /// An arbitrary Wikidata property=value pair, for haswbstatement: search
 /// beyond the two hardcoded properties (P180 depicts, P275 license) that
-/// depictsInclude/licensePreset already cover. Reuses DepictsEntity's shape
+/// depictsInclude/licensePresets already cover. Reuses DepictsEntity's shape
 /// for both sides — the "property" field's .qid holds a P-code (e.g.
 /// "P1071") rather than a Q-code, which is a minor naming imprecision
 /// that's a fair trade for not duplicating an identical class.
@@ -282,8 +279,17 @@ class SearchState {
   final DateFilter? createdDate;
   final DateFilter? editedDate;
   final SortMode sortMode;
-  final LicensePreset licensePreset;
+  // Multiple licenses select ANY-match (union) — a single file only ever
+  // carries one license, so there's no meaningful "AND" reading here, only
+  // "match if it has any of these". Empty set = no license filter applied.
+  final Set<LicensePreset> licensePresets;
   final QualityFilter qualityFilter;
+  // True = only files whose extmetadata AttributionRequired flag is set;
+  // false = only files where it's explicitly not set; null = no filter.
+  // There is no CirrusSearch keyword for this (it's a MediaWiki-computed
+  // flag derived from the license, not a Wikidata statement) — see the
+  // note in SearchService.buildQuery for how this is actually applied.
+  final bool? attributionRequired;
   final int? minWidth;
   final int? minHeight;
   final Set<DepictsEntity> depictsInclude;
@@ -351,8 +357,9 @@ class SearchState {
     this.createdDate,
     this.editedDate,
     this.sortMode = SortMode.relevance,
-    this.licensePreset = LicensePreset.any,
+    this.licensePresets = const {},
     this.qualityFilter = QualityFilter.any,
+    this.attributionRequired,
     this.minWidth,
     this.minHeight,
     this.depictsInclude = const {},
@@ -391,8 +398,10 @@ class SearchState {
     DateFilter? createdDate,
     DateFilter? editedDate,
     SortMode? sortMode,
-    LicensePreset? licensePreset,
+    Set<LicensePreset>? licensePresets,
     QualityFilter? qualityFilter,
+    bool? attributionRequired,
+    bool clearAttributionRequired = false,
     int? minWidth,
     int? minHeight,
     Set<DepictsEntity>? depictsInclude,
@@ -448,8 +457,11 @@ class SearchState {
       editedDate:
           clearEditedDate ? null : (editedDate ?? this.editedDate),
       sortMode: sortMode ?? this.sortMode,
-      licensePreset: licensePreset ?? this.licensePreset,
+      licensePresets: licensePresets ?? this.licensePresets,
       qualityFilter: qualityFilter ?? this.qualityFilter,
+      attributionRequired: clearAttributionRequired
+          ? null
+          : (attributionRequired ?? this.attributionRequired),
       minWidth: clearMinWidth ? null : (minWidth ?? this.minWidth),
       minHeight: clearMinHeight ? null : (minHeight ?? this.minHeight),
       depictsInclude: depictsInclude ?? this.depictsInclude,
@@ -500,8 +512,9 @@ class SearchState {
         'createdDate': createdDate?.toJson(),
         'editedDate': editedDate?.toJson(),
         'sortMode': sortMode.name,
-        'licensePreset': licensePreset.name,
+        'licensePresets': licensePresets.map((l) => l.name).toList(),
         'qualityFilter': qualityFilter.name,
+        'attributionRequired': attributionRequired,
         'minWidth': minWidth,
         'minHeight': minHeight,
         'depictsInclude': depictsInclude.map((e) => e.toJson()).toList(),
@@ -581,10 +594,15 @@ class SearchState {
           ? DateFilter.fromJson(Map<String, dynamic>.from(editedDateRaw))
           : null,
       sortMode: _enumFromJson(SortMode.values, json['sortMode'], SortMode.relevance),
-      licensePreset:
-          _enumFromJson(LicensePreset.values, json['licensePreset'], LicensePreset.any),
+      licensePresets: (json['licensePresets'] is List)
+          ? (json['licensePresets'] as List)
+              .map((l) => _enumFromJsonOrNull(LicensePreset.values, l))
+              .whereType<LicensePreset>()
+              .toSet()
+          : const {},
       qualityFilter:
           _enumFromJson(QualityFilter.values, json['qualityFilter'], QualityFilter.any),
+      attributionRequired: json['attributionRequired'] as bool?,
       minWidth: (json['minWidth'] as num?)?.toInt(),
       minHeight: (json['minHeight'] as num?)?.toInt(),
       depictsInclude: depictsSet(json['depictsInclude']),

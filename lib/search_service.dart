@@ -949,16 +949,51 @@ class SearchService {
       }
     }
 
-    // License (structured-data statement — see _licenseClauses)
-    if (state.licensePreset != LicensePreset.any) {
-      final clause = _licenseClauses[state.licensePreset];
+    // License (structured-data statement — see _licenseClauses). A file
+    // only ever carries one license, so selecting more than one is always
+    // an OR match ("any of these"), never an AND. With 2+ selected, Cirrus
+    // can't reliably OR this clause together with every other active
+    // AND'd filter in one query string (same precedence hazard noted
+    // elsewhere in this file), so this join is a preview only — the real
+    // OR execution happens via per-license fan-out in _fetchPageForLicense
+    // further down, same shape as categories/depicts/statements union mode.
+    final selectedLicenses = state.licensePresets.toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    if (selectedLicenses.length == 1) {
+      final clause = _licenseClauses[selectedLicenses.first];
       if (clause != null) {
         parts.add(clause);
         chips.add(QueryChipData(
-          id: 'license',
-          label: licensePresetLabel(state.licensePreset),
+          id: 'license:${selectedLicenses.first.name}',
+          label: licensePresetLabel(selectedLicenses.first),
         ));
       }
+    } else if (selectedLicenses.length > 1) {
+      final clauses = selectedLicenses
+          .map((l) => _licenseClauses[l])
+          .whereType<String>()
+          .toList();
+      if (clauses.isNotEmpty) parts.add(clauses.join(' OR '));
+      for (final l in selectedLicenses) {
+        chips.add(QueryChipData(id: 'license:${l.name}', label: licensePresetLabel(l)));
+      }
+    }
+
+    // Attribution requirement — no CirrusSearch keyword exposes this
+    // directly (it's a MediaWiki-computed extmetadata flag derived from
+    // the license, not a Wikidata statement, and nothing in Cirrus's own
+    // keyword docs/Phabricator covers it), so unlike every other filter in
+    // this method it can't be folded into srsearch. It's applied as a
+    // client-side post-filter instead — see _matchesAttribution and its
+    // call site in _fetchSingleAttempt below. Still surfaced as a chip
+    // here so it appears in the active filters bar like everything else.
+    if (state.attributionRequired != null) {
+      chips.add(QueryChipData(
+        id: 'attributionRequired',
+        label: state.attributionRequired!
+            ? 'Attribution required'
+            : 'No attribution required',
+      ));
     }
 
     if (state.qualityFilter != QualityFilter.any) {
@@ -1082,7 +1117,7 @@ class SearchService {
     // as depicts (P180) above, but for any property the user picks. P180
     // and P275 (license) are deliberately excluded from the property picker
     // itself (see searchWikidataProperties) so this set can never overlap
-    // or contradict depictsInclude/Exclude or licensePreset.
+    // or contradict depictsInclude/Exclude or licensePresets.
     //
     // Union mode (OR) is NOT expressed as a single "A OR B" query string
     // here — mixed with other required clauses (category, license, etc.),
@@ -1491,7 +1526,7 @@ class SearchService {
     final includeStatements = state.statementsInclude.toList();
 
     if (!state.statementsUnion || includeStatements.length <= 1) {
-      return _fetchPageForCategory(state, continueParams: continueParams);
+      return _fetchPageForLicense(state, continueParams: continueParams);
     }
 
     return _fanOutFetch<WikidataStatement>(
@@ -1499,9 +1534,37 @@ class SearchService {
       keyOf: (stmt) => '${stmt.property.qid}=${stmt.value.qid}',
       stateFor: (stmt) => state.copyWith(statementsInclude: {stmt}),
       nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForCategory(branchState, continueParams: branchContinue),
+          _fetchPageForLicense(branchState, continueParams: branchContinue),
       continueParams: continueParams,
       continueBucketKey: '_stmt',
+      sortMode: state.sortMode,
+    );
+  }
+
+  /// Fans out one independent search per selected license when 2+ are
+  /// selected — see the note in buildQuery: a file only ever carries one
+  /// license, so multi-select is always OR, and Cirrus can't reliably OR
+  /// this clause together with the rest of an AND'd query. Every other
+  /// active filter (category, depicts, quality, etc.) still applies
+  /// identically to each per-license branch.
+  Future<SearchResponse?> _fetchPageForLicense(
+    SearchState state, {
+    required Map<String, dynamic>? continueParams,
+  }) async {
+    final licenses = state.licensePresets.toList();
+
+    if (licenses.length <= 1) {
+      return _fetchPageForCategory(state, continueParams: continueParams);
+    }
+
+    return _fanOutFetch<LicensePreset>(
+      branches: licenses,
+      keyOf: (l) => l.name,
+      stateFor: (l) => state.copyWith(licensePresets: {l}),
+      nextFetch: (_, branchState, branchContinue) =>
+          _fetchPageForCategory(branchState, continueParams: branchContinue),
+      continueParams: continueParams,
+      continueBucketKey: '_license',
       sortMode: state.sortMode,
     );
   }
@@ -1787,11 +1850,24 @@ class SearchService {
         if (item != null) items.add(item);
       }
 
-      final filteredItems = overrideFormat == null
+      var filteredItems = overrideFormat == null
           ? items
               .where((item) => _matchesMacroFormat(item, state.formats))
               .toList()
           : items;
+
+      // Client-side only — see the note in buildQuery on why attribution
+      // requirement can't be expressed as a CirrusSearch keyword. This can
+      // only filter items already present on the page just fetched, so
+      // (same limitation as the format filter above) a page can come back
+      // with fewer than pageSize items even when more would exist further
+      // into the underlying, unfiltered result set.
+      if (state.attributionRequired != null) {
+        filteredItems = filteredItems
+            .where((item) =>
+                _matchesAttribution(item, state.attributionRequired!))
+            .toList();
+      }
 
       // ignore: avoid_print
       print(
@@ -1885,6 +1961,19 @@ class SearchService {
       case FileFormat.mp4:
         return 'video/mp4';
     }
+  }
+
+  /// Best-effort match against the extmetadata `AttributionRequired` flag
+  /// — see the note in buildQuery for why this is a client-side filter
+  /// rather than a query clause. A file with no value at all for this
+  /// field (rare, but it happens) can't be confidently said to match
+  /// either state, so it's excluded from both "required" and "not
+  /// required" rather than guessed at.
+  bool _matchesAttribution(SearchItem item, bool required) {
+    final raw = item.attributionRequired.trim().toLowerCase();
+    if (raw.isEmpty) return false;
+    final isRequired = raw == 'true' || raw == 'yes' || raw == '1';
+    return isRequired == required;
   }
 
   bool _matchesMacroFormat(SearchItem item, Set<FileFormat> formats) {

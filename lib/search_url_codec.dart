@@ -96,8 +96,13 @@ class SearchUrlCodec {
       params['sort'] = state.sortMode.name;
     }
 
-    if (state.licensePreset != LicensePreset.any) {
-      params['license'] = state.licensePreset.name;
+    if (state.licensePresets.isNotEmpty) {
+      final names = state.licensePresets.map((l) => l.name).toList()..sort();
+      params['licenses'] = names.join(',');
+    }
+
+    if (state.attributionRequired != null) {
+      params['attrReq'] = state.attributionRequired! ? '1' : '0';
     }
 
     if (state.qualityFilter != QualityFilter.any) {
@@ -223,13 +228,40 @@ class SearchUrlCodec {
             orElse: () => SortMode.relevance,
           );
 
-    final licenseParam = params['license'];
-    final licensePreset = licenseParam == null
-        ? base.licensePreset
-        : LicensePreset.values.firstWhere(
-            (l) => l.name == licenseParam,
-            orElse: () => base.licensePreset,
-          );
+    // 'licenses' (plural) is the current multi-select format — a
+    // comma-separated list of preset names. 'license' (singular) is kept
+    // as a read-only fallback so older shared/bookmarked URLs from before
+    // multi-select existed still restore correctly, as a single-item set.
+    final licensesParam = params['licenses'];
+    final legacyLicenseParam = params['license'];
+    Set<LicensePreset> licensePresets;
+    if (licensesParam != null && licensesParam.isNotEmpty) {
+      licensePresets = licensesParam
+          .split(',')
+          .map((name) {
+            try {
+              return LicensePreset.values.firstWhere((l) => l.name == name);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<LicensePreset>()
+          .toSet();
+    } else if (legacyLicenseParam != null) {
+      try {
+        licensePresets = {
+          LicensePreset.values.firstWhere((l) => l.name == legacyLicenseParam)
+        };
+      } catch (_) {
+        licensePresets = base.licensePresets;
+      }
+    } else {
+      licensePresets = base.licensePresets;
+    }
+
+    final attrReqParam = params['attrReq'];
+    final attributionRequired =
+        attrReqParam == null ? base.attributionRequired : attrReqParam == '1';
 
     final qualityParam = params['quality'];
     final qualityFilter = qualityParam == null
@@ -281,8 +313,10 @@ class SearchUrlCodec {
       createdDate: createdDate,
       editedDate: editedDate,
       sortMode: sortMode,
-      licensePreset: licensePreset,
+      licensePresets: licensePresets,
       qualityFilter: qualityFilter,
+      attributionRequired: attributionRequired,
+      clearAttributionRequired: attributionRequired == null,
       minWidth: minWidth,
       clearMinWidth: minWidth == null,
       minHeight: minHeight,

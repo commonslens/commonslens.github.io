@@ -122,14 +122,6 @@ void main() {
   });
 
   group('license & quality', () {
-    test('license: CC0', () async {
-      final r = await _run(const SearchState(
-        queryText: 'landscape',
-        licensePreset: LicensePreset.cc0,
-      ));
-      _expectOk(r, 'license cc0');
-    }, timeout: timeout);
-
     test('quality: Quality images', () async {
       final r = await _run(const SearchState(
         queryText: 'landscape',

@@ -199,8 +199,13 @@ class SearchController extends Notifier<SearchViewState> {
           'wikidata_statement', '${next.statementsInclude.length}');
       return;
     }
-    if (prev.licensePreset != next.licensePreset) {
-      AnalyticsService.filterApplied('license', next.licensePreset.name);
+    if (prev.licensePresets != next.licensePresets) {
+      AnalyticsService.filterApplied('license', '${next.licensePresets.length}');
+      return;
+    }
+    if (prev.attributionRequired != next.attributionRequired) {
+      AnalyticsService.filterApplied(
+          'attribution_required', '${next.attributionRequired}');
       return;
     }
     if (prev.qualityFilter != next.qualityFilter) {

@@ -316,8 +316,12 @@ class _MapPageState extends ConsumerState<MapPage> {
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (context) {
-        LicensePreset license = current.licensePreset;
+        // A file only ever carries one license, so multi-select here is
+        // always OR/"any of these" — same convention as the main filters
+        // drawer's license picker (see FilterPanelContent._toggleLicense).
+        final licenses = Set<LicensePreset>.from(current.licensePresets);
         QualityFilter quality = current.qualityFilter;
+        bool? attributionRequired = current.attributionRequired;
         final queryCtrl = TextEditingController(text: current.queryText);
 
         return StatefulBuilder(builder: (context, setSheetState) {
@@ -344,17 +348,46 @@ class _MapPageState extends ConsumerState<MapPage> {
                   decoration: _fieldDecoration(hint: 'Optional text query…'),
                 ),
                 const SizedBox(height: 14),
-                DropdownButtonFormField<LicensePreset>(
-                  dropdownColor: const Color(0xFF1E1E1E),
-                  value: license,
-                  decoration: _fieldDecoration(),
-                  items: LicensePreset.values
-                      .map((p) => DropdownMenuItem(
-                          value: p,
-                          child: Text(licensePresetLabel(p),
-                              style: const TextStyle(color: Colors.white))))
-                      .toList(),
-                  onChanged: (v) => setSheetState(() => license = v ?? license),
+                const Text('LICENSE (MATCHES ANY SELECTED)',
+                    style: TextStyle(
+                        color: Color(0xFF666666),
+                        fontSize: 9.5,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: LicensePreset.values.map((preset) {
+                    final selected = licenses.contains(preset);
+                    return GestureDetector(
+                      onTap: () => setSheetState(() {
+                        if (selected) {
+                          licenses.remove(preset);
+                        } else {
+                          licenses.add(preset);
+                        }
+                      }),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 140),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? _kAccent.withOpacity(0.15)
+                              : const Color(0xFF1A1A1A),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                              color: selected ? _kAccent : _kBorder),
+                        ),
+                        child: Text(licensePresetLabel(preset),
+                            style: TextStyle(
+                                color: selected ? _kAccent : Colors.white54,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<QualityFilter>(
@@ -369,6 +402,28 @@ class _MapPageState extends ConsumerState<MapPage> {
                       .toList(),
                   onChanged: (v) => setSheetState(() => quality = v ?? quality),
                 ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<bool?>(
+                  dropdownColor: const Color(0xFF1E1E1E),
+                  value: attributionRequired,
+                  decoration: _fieldDecoration(hint: 'Attribution'),
+                  items: const [
+                    DropdownMenuItem(
+                        value: null,
+                        child: Text('Any attribution',
+                            style: TextStyle(color: Colors.white70))),
+                    DropdownMenuItem(
+                        value: true,
+                        child: Text('Attribution required',
+                            style: TextStyle(color: Colors.white))),
+                    DropdownMenuItem(
+                        value: false,
+                        child: Text('No attribution required',
+                            style: TextStyle(color: Colors.white))),
+                  ],
+                  onChanged: (v) =>
+                      setSheetState(() => attributionRequired = v),
+                ),
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
@@ -382,8 +437,10 @@ class _MapPageState extends ConsumerState<MapPage> {
                       AnalyticsService.filterApplied('map_search_filters', 'set');
                       notifier.updateFilters((s) => s.copyWith(
                           queryText: queryCtrl.text.trim(),
-                          licensePreset: license,
-                          qualityFilter: quality));
+                          licensePresets: licenses,
+                          qualityFilter: quality,
+                          attributionRequired: attributionRequired,
+                          clearAttributionRequired: attributionRequired == null));
                       Navigator.of(context).pop();
                     },
                     child: const Text('Apply',

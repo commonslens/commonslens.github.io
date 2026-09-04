@@ -57114,7 +57114,7 @@ if(k.z)h.push(new A.a_Z(new A.aOT(k),j))
 else h.push(A.cd(j,new A.xS(!1,new A.aOU(k),j),B.n,j,j,B.lg,j,j,j,j,j,j,380))
 h=A.bU(h,B.u,B.m,B.p,0)}else h=l
 return A.zz(j,B.ca,h,i)},
-ai6(){var s,r,q=null,p=A.Fh("https://upload.wikimedia.org/wikipedia/commons/1/12/Breil-Brigels._Uitzichtpunt._20-09-2025._%28actm.%29_11.jpg",q,B.el,new A.aOk(),q,q,q),o=A.cd(q,q,B.n,q,q,new A.bC(q,q,q,q,q,new A.qe(B.l8,B.l7,B.eb,A.b([B.ca.jP(0.65),B.ca.jP(0.85),B.ca],t.t_),B.PN,q),B.G),q,q,q,q,q,q,q),n=this.c
+ai6(){var s,r,q=null,p=A.Fh("https://upload.wikimedia.org/wikipedia/commons/4/4d/Night_landscape_northern_lights_scenic_aurora_borealis.jpg",q,B.el,new A.aOk(),q,q,q),o=A.cd(q,q,B.n,q,q,new A.bC(q,q,q,q,q,new A.qe(B.l8,B.l7,B.eb,A.b([B.ca.jP(0.65),B.ca.jP(0.85),B.ca],t.t_),B.PN,q),B.G),q,q,q,q,q,q,q),n=this.c
 n.toString
 n=A.bm(n,q,t.w).w
 s=t.UR

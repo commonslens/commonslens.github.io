@@ -721,10 +721,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              stops: const [0.0, 0.2, 1.0],
+              stops: const [0.0, 0.4, 1],
               colors: [
-                const Color(0xFF0B0B0B).withValues(alpha: 0.65),
-                const Color(0xFF0B0B0B).withValues(alpha: 0.85),
+                const Color(0xFF0B0B0B).withValues(alpha: 0.45),
+                const Color(0xFF0B0B0B).withValues(alpha: 0.75),
                 const Color(0xFF0B0B0B),
               ],
             ),

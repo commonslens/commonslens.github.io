@@ -738,9 +738,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.95),
-              child: Column(
+            child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const WikiLogo(),
@@ -933,7 +931,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   const SizedBox(height: 40),
                 ],
               ),
-            ),
           ),
         ),
       ],

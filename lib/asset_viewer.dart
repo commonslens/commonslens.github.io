@@ -16,6 +16,7 @@ import 'search_service.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'map_controller.dart';
+import 'pipeline_controller.dart';
 import 'analytics_service.dart';
 
 class AssetViewer extends ConsumerStatefulWidget {
@@ -58,6 +59,13 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   // hijack the main page's search session the way hydrating it here used
   // to.
   bool _isMapMode = false;
+
+  // Pipeline previews already own complete SearchItem objects in the
+  // PipelineController's last-run output. Keep that exact in-memory list as
+  // the viewer gallery instead of re-fetching a tapped title and losing the
+  // surrounding results needed by the previous/next carousel.
+  bool _isPipelineMode = false;
+  String? _pipelineNodeId;
 
   // Whether _currentIndex has actually been located against a REAL,
   // populated gallery list yet — as opposed to just defaulted to 0
@@ -126,6 +134,23 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         } else {
           _isMapMode = true;
         }
+      } else if (from == 'pipeline') {
+        final nodeId = params['pipelineNode']?.trim();
+        final pipelineItems = nodeId == null || nodeId.isEmpty
+            ? null
+            : ref
+                .read(pipelineControllerProvider.notifier)
+                .materializedItemsFor(nodeId);
+        if (pipelineItems == null || pipelineItems.isEmpty) {
+          // Pipeline run outputs are intentionally in-memory. A direct link
+          // or browser reload may no longer have them, so retain the existing
+          // single-file fallback for that case.
+          _isStandalone = true;
+          _fetchInjectedTarget();
+        } else {
+          _isPipelineMode = true;
+          _pipelineNodeId = nodeId;
+        }
       } else if (SearchUrlCodec.hasSearchContext(params)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -162,7 +187,12 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
           ? ref.read(authorPortfolioProvider(_authorName!)).items
           : _isMapMode
               ? ref.read(mapSearchControllerProvider).session.items
-              : ref.read(searchControllerProvider).activeSession.items;
+              : _isPipelineMode
+                  ? ref
+                          .read(pipelineControllerProvider.notifier)
+                          .materializedItemsFor(_pipelineNodeId!) ??
+                      const <SearchItem>[]
+                  : ref.read(searchControllerProvider).activeSession.items;
 
       final targetId = _normalizedTitle(widget.fileId);
       final startIndex = initialItems
@@ -194,7 +224,8 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
     _initialIndexResolved = true;
 
     final targetId = _normalizedTitle(widget.fileId);
-    final found = items.indexWhere((it) => _normalizedTitle(it.title) == targetId);
+    final found =
+        items.indexWhere((it) => _normalizedTitle(it.title) == targetId);
     if (found < 0 || found == _currentIndex) return;
 
     _currentIndex = found;
@@ -262,6 +293,15 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
       gallery = const <SearchItem>[];
     } else if (_isMapMode) {
       gallery = ref.watch(mapSearchControllerProvider).session.items;
+    } else if (_isPipelineMode) {
+      // Watch the public pipeline state so this viewer rebuilds if the
+      // controller is replaced, while reading the runtime output through
+      // its dedicated accessor.
+      ref.watch(pipelineControllerProvider);
+      gallery = ref
+              .read(pipelineControllerProvider.notifier)
+              .materializedItemsFor(_pipelineNodeId!) ??
+          const <SearchItem>[];
     } else {
       gallery = ref.watch(searchControllerProvider).activeSession.items;
     }
@@ -303,7 +343,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         // MapSearchController) — a no-op in most geosearch cases, but the
         // correct call regardless of geo mode.
         ref.read(mapSearchControllerProvider.notifier).loadMore();
-      } else {
+      } else if (!_isPipelineMode) {
         ref.read(searchControllerProvider.notifier).loadMore();
       }
     }
@@ -357,6 +397,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         (_authorName == null &&
             !_isStandalone &&
             !_isMapMode &&
+            !_isPipelineMode &&
             session.loading &&
             items.isEmpty);
 
@@ -1180,7 +1221,9 @@ class _StructuredDataSectionState
         children: [
           GestureDetector(
             onTap: () {
-              if (!_expanded) AnalyticsService.sectionExpanded('structured_data');
+              if (!_expanded) {
+                AnalyticsService.sectionExpanded('structured_data');
+              }
               setState(() => _expanded = !_expanded);
             },
             child: Row(

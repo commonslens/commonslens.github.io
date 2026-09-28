@@ -6,7 +6,8 @@ import 'download_service.dart';
 import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
-import 'search_page.dart' show selectionModeProvider, selectedItemsProvider;
+import 'bulk_download_tray.dart'
+    show selectionModeProvider, selectedItemsProvider;
 import 'analytics_service.dart';
 
 /// Tracks one in-flight (or just-finished) bulk download — see the same
@@ -74,7 +75,8 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
     // authorPortfolioProvider is keyed by username, so navigating here just
     // rebuilds this same page watching a different family instance — no
     // extra state plumbing needed, GoRouter + Riverpod already do the work.
-    context.go(Uri(path: '/author', queryParameters: {'name': name}).toString());
+    context
+        .go(Uri(path: '/author', queryParameters: {'name': name}).toString());
   }
 
   void _onScroll() {
@@ -114,7 +116,8 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
                 borderSide: BorderSide.none),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(6),
-                borderSide: const BorderSide(color: Color(0xFF3D7EFF), width: 1)),
+                borderSide:
+                    const BorderSide(color: Color(0xFF3D7EFF), width: 1)),
             prefixIcon: const Icon(Icons.person_search_rounded,
                 size: 18, color: Color(0xFF3A3A3A)),
             suffixIcon: IconButton(
@@ -179,7 +182,7 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected
-              ? const Color(0xFF3D7EFF).withOpacity(0.15)
+              ? const Color(0xFF3D7EFF).withValues(alpha: 0.15)
               : const Color(0xFF1A1A1A),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
@@ -227,7 +230,8 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
                 : 'Downloading ${job.completed} / ${job.total}'
                     '${hasFailed ? ' — ${job.failed.length} failed' : ''}…',
             style: TextStyle(
-              color: hasFailed ? const Color(0xFFFF6B6B) : const Color(0xFF888888),
+              color:
+                  hasFailed ? const Color(0xFFFF6B6B) : const Color(0xFF888888),
               fontSize: 11,
             ),
           ),
@@ -347,8 +351,7 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
         iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
         title: const Text(
           'AUTHOR PORTFOLIO',
@@ -376,8 +379,8 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
         child: SizedBox(
           width: 22,
           height: 22,
-          child:
-              CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
+          child: CircularProgressIndicator(
+              strokeWidth: 1.5, color: Color(0xFF3D7EFF)),
         ),
       );
     }

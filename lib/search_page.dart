@@ -3,30 +3,12 @@ import 'package:commonslens/advanced_filters_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'download_service.dart';
 import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
 import 'analytics_service.dart';
-
-final selectionModeProvider = StateProvider<bool>((ref) => false);
-final selectedItemsProvider = StateProvider<Set<SearchItem>>((ref) => {});
-
-/// Tracks one in-flight (or just-finished) bulk download. Multiple of these
-/// can exist at once — starting a new download never has to wait for a
-/// prior one to finish, each just gets its own row in the progress list.
-class _DownloadJob {
-  final int id;
-  int completed = 0;
-  int total;
-  List<String> failed = [];
-  bool done = false;
-  bool cancelled = false;
-  final DownloadCancelToken cancelToken = DownloadCancelToken();
-
-  _DownloadJob({required this.id, required this.total});
-}
+import 'bulk_download_tray.dart';
 
 class _FeatureCard extends StatefulWidget {
   final IconData icon;
@@ -126,10 +108,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   // loop, no redundant re-fetch on every internal filter change.
   Map<String, String>? _lastSyncedParams;
 
-  final List<_DownloadJob> _downloadJobs = [];
-  int _nextDownloadJobId = 0;
-  bool _downloadFullRes = true;
-
   static const _examples = [
     'Apollo 11',
     'Pride and Prejudice',
@@ -185,275 +163,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (pos.pixels >= pos.maxScrollExtent - 500) {
       ref.read(searchControllerProvider.notifier).loadMore();
     }
-  }
-
-  void _startBulkDownload(List<SearchItem> items) {
-    AnalyticsService.bulkDownloadStarted(items.length);
-    final job = _DownloadJob(id: _nextDownloadJobId++, total: items.length);
-    setState(() => _downloadJobs.add(job));
-
-    // Capture the current selection into this job, then clear it — so the
-    // person can immediately select a fresh batch and start another
-    // download without waiting on this one. This job keeps running
-    // independently of whatever gets selected next.
-    ref.read(selectedItemsProvider.notifier).state = {};
-
-    DownloadService.downloadBulkZip(
-      items,
-      zipName: 'selected_commons_media.zip',
-      maxWidth: _downloadFullRes ? null : 1280,
-      cancelToken: job.cancelToken,
-      onProgress: (completed, total, failedTitles) {
-        if (!mounted) return;
-        setState(() {
-          job.completed = completed;
-          job.total = total;
-          job.failed = failedTitles;
-        });
-      },
-    ).then((_) {
-      if (!mounted) return;
-      setState(() => job.done = true);
-      AnalyticsService.bulkDownloadCompleted(
-        total: job.total,
-        failed: job.failed.length,
-        cancelled: job.cancelled,
-      );
-      // Successful jobs clear themselves after a few seconds; failed and
-      // cancelled ones stay visible until the person dismisses them, since
-      // "silently vanished" is exactly what looked broken before — and a
-      // cancelled job disappearing on its own would hide the confirmation
-      // that it actually stopped.
-      if (job.failed.isEmpty && !job.cancelled) {
-        Future.delayed(const Duration(seconds: 4), () {
-          if (!mounted) return;
-          setState(() => _downloadJobs.remove(job));
-        });
-      }
-    });
-  }
-
-  void _cancelDownload(_DownloadJob job) {
-    job.cancelToken.cancel();
-    setState(() => job.cancelled = true);
-    // Auto-dismiss the cancelled row 5 seconds after it appears, instead
-    // of leaving it sitting there greyed out forever.
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!mounted) return;
-      setState(() => _downloadJobs.remove(job));
-    });
-  }
-
-  Widget _buildResolutionButton({
-    required String label,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? const Color(0xFF3D7EFF).withOpacity(0.15)
-              : const Color(0xFF1A1A1A),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: selected ? const Color(0xFF3D7EFF) : const Color(0xFF262626),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? const Color(0xFF3D7EFF) : Colors.white54,
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildJobProgressRow(_DownloadJob job) {
-    final fraction = job.total == 0 ? null : job.completed / job.total;
-    final hasFailed = job.failed.isNotEmpty;
-    final isActive = !job.done && !job.cancelled;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: (job.done || job.cancelled) ? 1.0 : fraction,
-                    minHeight: 5,
-                    backgroundColor: const Color(0xFF2A2A2A),
-                    valueColor: AlwaysStoppedAnimation(
-                      job.cancelled
-                          ? const Color(0xFF888888)
-                          : hasFailed
-                              ? const Color(0xFFFF6B6B)
-                              : const Color(0xFF3D7EFF),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  job.cancelled
-                      ? 'Cancelled — ${job.completed} of ${job.total} downloaded'
-                      : job.done
-                          ? (hasFailed
-                              ? 'Done — ${job.failed.length} of ${job.total} failed'
-                              : 'Done — ${job.total} files')
-                          : 'Downloading ${job.completed} / ${job.total}'
-                              '${hasFailed ? ' — ${job.failed.length} failed' : ''}…',
-                  style: TextStyle(
-                    color: job.cancelled
-                        ? const Color(0xFF888888)
-                        : hasFailed
-                            ? const Color(0xFFFF6B6B)
-                            : const Color(0xFF888888),
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Only shown while the job is actually running — a finished,
-          // failed, or already-cancelled job has nothing left to stop.
-          // Deliberately a prominent labeled button (not a bare icon) so
-          // it reads distinctly from the "Minimize" action in the bulk
-          // action bar below.
-          if (isActive)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: TextButton.icon(
-                onPressed: () => _cancelDownload(job),
-                style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF6B6B),
-                  backgroundColor: const Color(0xFF2A1414),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6)),
-                ),
-                icon: const Icon(Icons.close, size: 15),
-                label: const Text('Cancel download',
-                    style:
-                        TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBulkActionBar(SearchSession session) {
-    final isSelectionMode = ref.watch(selectionModeProvider);
-    final selectedItems = ref.watch(selectedItemsProvider);
-
-    // Keep showing download progress even if selection mode gets exited —
-    // otherwise closing the selection bar would hide in-flight downloads.
-    if (!isSelectionMode && _downloadJobs.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF131313),
-        border: Border(top: BorderSide(color: Color(0xFF202020))),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_downloadJobs.isNotEmpty) ...[
-              ..._downloadJobs.map(_buildJobProgressRow),
-              const SizedBox(height: 4),
-            ],
-            if (isSelectionMode) ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildResolutionButton(
-                      label: 'Full Resolution',
-                      selected: _downloadFullRes,
-                      onTap: () => setState(() => _downloadFullRes = true),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildResolutionButton(
-                      label: 'Web-Optimized (1280px)',
-                      selected: !_downloadFullRes,
-                      onTap: () => setState(() => _downloadFullRes = false),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ref.read(selectionModeProvider.notifier).state = false;
-                      ref.read(selectedItemsProvider.notifier).state = {};
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2A2A2A),
-                      foregroundColor: Colors.white,
-                    ),
-                    icon: const Icon(Icons.arrow_downward, size: 18),
-                    label: const Text('Minimize'),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: session.items.isEmpty
-                        ? null
-                        : () {
-                            ref.read(selectedItemsProvider.notifier).state =
-                                session.items.toSet();
-                          },
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Color(0xFF3D7EFF)),
-                      foregroundColor: const Color(0xFF3D7EFF),
-                    ),
-                    icon: const Icon(Icons.select_all, size: 18),
-                    label: const Text('Select All'),
-                  ),
-                  const Spacer(),
-                  ElevatedButton.icon(
-                    onPressed: selectedItems.isEmpty
-                        ? null
-                        : () => _startBulkDownload(selectedItems.toList()),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF3D7EFF)),
-                    icon: const Icon(Icons.download,
-                        size: 18, color: Colors.white),
-                    label: Text(
-                      'Download (${selectedItems.length})',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
   }
 
   void _search(String query) =>
@@ -665,7 +374,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             child: session.hasSearched
                 ? _buildResults(session, filterState)
                 : _buildLanding()),
-        if (session.hasSearched) _buildBulkActionBar(session),
+        BulkDownloadTray(availableItems: session.items),
       ],
     );
 
@@ -765,7 +474,51 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         height: 1.6,
                         fontWeight: FontWeight.w400)),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 410),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => context.push('/pipeline'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.transparent,
+                        side: const BorderSide(
+                            color: Color(0xFF3D7EFF), width: 1.2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.account_tree_outlined,
+                              size: 18, color: Color(0xFF3D7EFF)),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'COMMONSLENS VISUAL ETL PIPELINES',
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 1.8,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
 
                 // Search Examples
                 Wrap(
@@ -1069,7 +822,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFF3D7EFF).withOpacity(0.12)
+                        ? const Color(0xFF3D7EFF).withValues(alpha: 0.12)
                         : const Color(0xFF161616),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
@@ -1117,7 +870,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                 decoration: BoxDecoration(
                     color: selected
-                        ? const Color(0xFF3D7EFF).withOpacity(0.14)
+                        ? const Color(0xFF3D7EFF).withValues(alpha: 0.14)
                         : const Color(0xFF151515),
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(

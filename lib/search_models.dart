@@ -160,7 +160,8 @@ class NearCoordFilter {
     );
   }
 
-  Map<String, dynamic> toJson() => {'lat': lat, 'lng': lng, 'radiusKm': radiusKm};
+  Map<String, dynamic> toJson() =>
+      {'lat': lat, 'lng': lng, 'radiusKm': radiusKm};
 
   static NearCoordFilter fromJson(Map<String, dynamic> json) => NearCoordFilter(
         lat: (json['lat'] as num?)?.toDouble() ?? 0,
@@ -210,8 +211,7 @@ class DepictsEntity {
   });
 
   @override
-  bool operator ==(Object other) =>
-      other is DepictsEntity && other.qid == qid;
+  bool operator ==(Object other) => other is DepictsEntity && other.qid == qid;
 
   @override
   int get hashCode => qid.hashCode;
@@ -255,9 +255,10 @@ class WikidataStatement {
 
   static WikidataStatement fromJson(Map<String, dynamic> json) =>
       WikidataStatement(
-        property:
-            DepictsEntity.fromJson(Map<String, dynamic>.from(json['property'] as Map)),
-        value: DepictsEntity.fromJson(Map<String, dynamic>.from(json['value'] as Map)),
+        property: DepictsEntity.fromJson(
+            Map<String, dynamic>.from(json['property'] as Map)),
+        value: DepictsEntity.fromJson(
+            Map<String, dynamic>.from(json['value'] as Map)),
       );
 }
 
@@ -452,10 +453,8 @@ class SearchState {
           clearLanguageCode ? null : (languageCode ?? this.languageCode),
       contentModel:
           clearContentModel ? null : (contentModel ?? this.contentModel),
-      createdDate:
-          clearCreatedDate ? null : (createdDate ?? this.createdDate),
-      editedDate:
-          clearEditedDate ? null : (editedDate ?? this.editedDate),
+      createdDate: clearCreatedDate ? null : (createdDate ?? this.createdDate),
+      editedDate: clearEditedDate ? null : (editedDate ?? this.editedDate),
       sortMode: sortMode ?? this.sortMode,
       licensePresets: licensePresets ?? this.licensePresets,
       qualityFilter: qualityFilter ?? this.qualityFilter,
@@ -560,7 +559,8 @@ class SearchState {
     Set<WikidataStatement> statementsSet(dynamic raw) => raw is List
         ? raw
             .whereType<Map>()
-            .map((m) => WikidataStatement.fromJson(Map<String, dynamic>.from(m)))
+            .map(
+                (m) => WikidataStatement.fromJson(Map<String, dynamic>.from(m)))
             .toSet()
         : const {};
 
@@ -578,7 +578,8 @@ class SearchState {
 
     return SearchState(
       queryText: json['queryText'] as String? ?? '',
-      tab: _enumFromJson(MediaTabType.values, json['tab'], MediaTabType.allMedia),
+      tab: _enumFromJson(
+          MediaTabType.values, json['tab'], MediaTabType.allMedia),
       formats: formatsSet(json['formats']),
       categories: stringSet(json['categories']),
       deepCategoryMode: json['deepCategoryMode'] as bool? ?? false,
@@ -593,15 +594,16 @@ class SearchState {
       editedDate: editedDateRaw is Map
           ? DateFilter.fromJson(Map<String, dynamic>.from(editedDateRaw))
           : null,
-      sortMode: _enumFromJson(SortMode.values, json['sortMode'], SortMode.relevance),
+      sortMode:
+          _enumFromJson(SortMode.values, json['sortMode'], SortMode.relevance),
       licensePresets: (json['licensePresets'] is List)
           ? (json['licensePresets'] as List)
               .map((l) => _enumFromJsonOrNull(LicensePreset.values, l))
               .whereType<LicensePreset>()
               .toSet()
           : const {},
-      qualityFilter:
-          _enumFromJson(QualityFilter.values, json['qualityFilter'], QualityFilter.any),
+      qualityFilter: _enumFromJson(
+          QualityFilter.values, json['qualityFilter'], QualityFilter.any),
       attributionRequired: json['attributionRequired'] as bool?,
       minWidth: (json['minWidth'] as num?)?.toInt(),
       minHeight: (json['minHeight'] as num?)?.toInt(),
@@ -609,10 +611,12 @@ class SearchState {
       depictsExclude: depictsSet(json['depictsExclude']),
       depictsUnion: json['depictsUnion'] as bool? ?? false,
       excludeCategories: stringSet(json['excludeCategories']),
-      nearCoord:
-          nearCoordRaw is Map ? NearCoordFilter.fromJson(Map<String, dynamic>.from(nearCoordRaw)) : null,
-      nearTitle:
-          nearTitleRaw is Map ? NearTitleFilter.fromJson(Map<String, dynamic>.from(nearTitleRaw)) : null,
+      nearCoord: nearCoordRaw is Map
+          ? NearCoordFilter.fromJson(Map<String, dynamic>.from(nearCoordRaw))
+          : null,
+      nearTitle: nearTitleRaw is Map
+          ? NearTitleFilter.fromJson(Map<String, dynamic>.from(nearTitleRaw))
+          : null,
       statementsInclude: statementsSet(json['statementsInclude']),
       statementsExclude: statementsSet(json['statementsExclude']),
       statementsUnion: json['statementsUnion'] as bool? ?? false,
@@ -856,7 +860,8 @@ class SearchItem {
   final String usageTerms;
   final String copyrighted;
   final String restrictions;
-  final String uploadDateTime; // upload time — distinct from dateTimeOriginal (capture time)
+  final String
+      uploadDateTime; // upload time — distinct from dateTimeOriginal (capture time)
   final String gpsLatitude;
   final String gpsLongitude;
   final String permissionHtml;
@@ -919,7 +924,8 @@ class SearchItem {
   /// never dropped from the result set, it just can't be placed on a map.
   double? get resolvedLatitude => latitude ?? double.tryParse(gpsLatitude);
   double? get resolvedLongitude => longitude ?? double.tryParse(gpsLongitude);
-  bool get hasCoordinates => resolvedLatitude != null && resolvedLongitude != null;
+  bool get hasCoordinates =>
+      resolvedLatitude != null && resolvedLongitude != null;
 
   /// Flat map of every field — every value here is already a JSON-native
   /// primitive (String/bool/int), no nested encoding needed.
@@ -1209,8 +1215,9 @@ class SearchSession {
               .map((m) => SearchItem.fromJson(Map<String, dynamic>.from(m)))
               .toList()
           : const [],
-      continueParams:
-          continueParamsRaw is Map ? Map<String, dynamic>.from(continueParamsRaw) : null,
+      continueParams: continueParamsRaw is Map
+          ? Map<String, dynamic>.from(continueParamsRaw)
+          : null,
       hasMore: json['hasMore'] as bool? ?? false,
       hasSearched: json['hasSearched'] as bool? ?? false,
       loading: json['loading'] as bool? ?? false,
@@ -1314,7 +1321,7 @@ class StructuredDataStatement {
       );
 }
 
-/// The full SDC entity ("M<pageid>") attached to one Commons file: its
+/// The full SDC entity (`M<pageid>`) attached to one Commons file: its
 /// multilingual captions (Wikibase labels — distinct from the legacy,
 /// single free-text `ImageDescription` extmetadata field SearchItem
 /// already carries) plus every structured statement.

@@ -9,6 +9,7 @@ import 'search_page.dart';
 import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
 import 'map_page.dart';
+import 'pipeline_page.dart';
 import 'analytics_service.dart';
 
 /// Fires a GA4 page_view on every route push/pop/replace — GA's automatic
@@ -49,6 +50,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const MapPage(),
     ),
     GoRoute(
+      path: '/pipeline',
+      builder: (context, state) => const PipelinePage(),
+    ),
+    GoRoute(
       path: '/author',
       builder: (context, state) {
         final name = state.uri.queryParameters['name'] ?? '';
@@ -75,6 +80,8 @@ final GoRouter appRouter = GoRouter(
           // silently ignored and this fell through to the '/' case below —
           // which is what sent map taps back to the main search page.
           returnUrl = '/map';
+        } else if (from == 'pipeline') {
+          returnUrl = '/pipeline';
         } else if (author != null && author.trim().isNotEmpty) {
           returnUrl = Uri(path: '/author', queryParameters: {'name': author})
               .toString();

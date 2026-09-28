@@ -23,7 +23,20 @@ void _expectOk(MediaSearchResult result, String label) {
 }
 
 void main() {
-  const timeout = Timeout(Duration(seconds: 30));
+  const runLive = bool.fromEnvironment('RUN_LIVE_WIKIMEDIA_TESTS');
+  if (!runLive) {
+    test(
+      'live Wikimedia backend smoke tests',
+      () {},
+      skip: 'Opt in with --dart-define=RUN_LIVE_WIKIMEDIA_TESTS=true.',
+    );
+    return;
+  }
+
+  // The shared request gate deliberately paces Commons calls. Keep this
+  // comfortably above one request window so safety throttling is not
+  // mistaken for a backend regression.
+  const timeout = Timeout(Duration(seconds: 90));
 
   group('text & tab', () {
     test('plain text query', () async {

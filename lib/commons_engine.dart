@@ -303,7 +303,8 @@ class GeoBrowseSession {
   /// (10–10,000m) inside [CommonsBackend.geosearch]/[SearchService.geosearch]
   /// — passing something outside that range doesn't error, it just gets
   /// silently clamped there, same as the backend already does.
-  Future<SearchSession> searchRadius(double lat, double lng, double radiusMeters) async {
+  Future<SearchSession> searchRadius(
+      double lat, double lng, double radiusMeters) async {
     final generation = ++_generation;
     _lat = lat;
     _lng = lng;
@@ -311,7 +312,8 @@ class GeoBrowseSession {
     _boundingBox = null;
 
     _session = const SearchSession().copyWith(hasSearched: true, loading: true);
-    final result = await _backend.geosearch(lat: lat, lng: lng, radiusMeters: radiusMeters);
+    final result = await _backend.geosearch(
+        lat: lat, lng: lng, radiusMeters: radiusMeters);
     if (generation != _generation) return _session;
     _session = _fromResult(result);
     return _session;
@@ -354,7 +356,9 @@ class GeoBrowseSession {
     if (!anySuccess) {
       _session = SearchSession(
         hasSearched: true,
-        error: results.isNotEmpty ? results.first.error : 'Could not load nearby media.',
+        error: results.isNotEmpty
+            ? results.first.error
+            : 'Could not load nearby media.',
       );
       return _session;
     }
@@ -382,7 +386,8 @@ class GeoBrowseSession {
 
   /// Rough great-circle distance in km — good enough to pick a tile grid
   /// size, not meant for anything precision-sensitive.
-  static double _approxKmSpan(double lat1, double lon1, double lat2, double lon2) {
+  static double _approxKmSpan(
+      double lat1, double lon1, double lat2, double lon2) {
     const earthRadiusKm = 6371.0;
     double toRad(double deg) => deg * math.pi / 180;
     final dLat = toRad(lat2 - lat1);

@@ -243,8 +243,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   // ---- Geolocation ----
 
   void _applyGeolocation() {
-    AnalyticsService.filterApplied(
-        'geolocation_apply',
+    AnalyticsService.filterApplied('geolocation_apply',
         _nearTitleCtrl.text.trim().isNotEmpty ? 'near_title' : 'near_coord');
     final lat = double.tryParse(_latCtrl.text);
     final lng = double.tryParse(_lngCtrl.text);
@@ -618,7 +617,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: state.deepCategoryMode
-                          ? const Color(0xFF3D7EFF).withOpacity(0.4)
+                          ? const Color(0xFF3D7EFF).withValues(alpha: 0.4)
                           : const Color(0xFF262626),
                     ),
                   ),
@@ -694,8 +693,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                               style: const TextStyle(color: Colors.white))))
                       .toList(),
                   onChanged: (val) {
-                    if (val != null)
+                    if (val != null) {
                       _update((c) => c.copyWith(qualityFilter: val));
+                    }
                   },
                 ),
                 const SizedBox(height: 24),
@@ -1165,8 +1165,9 @@ class _StringSetPickerState extends State<_StringSetPicker> {
             Expanded(
               child: Autocomplete<String>(
                 optionsBuilder: (textEditingValue) async {
-                  if (textEditingValue.text.isEmpty)
+                  if (textEditingValue.text.isEmpty) {
                     return const Iterable<String>.empty();
+                  }
                   return await widget.search(textEditingValue.text);
                 },
                 onSelected: (selection) {
@@ -1318,8 +1319,9 @@ class _EntitySetPickerState<T extends Object>
               child: Autocomplete<T>(
                 displayStringForOption: widget.labelOf,
                 optionsBuilder: (textEditingValue) async {
-                  if (textEditingValue.text.isEmpty)
+                  if (textEditingValue.text.isEmpty) {
                     return const Iterable<Never>.empty();
+                  }
                   return await widget.search(textEditingValue.text);
                 },
                 onSelected: (selection) {
@@ -1488,8 +1490,9 @@ class _StatementsPickerState extends State<_StatementsPicker> {
                     : 'statement-value'),
                 displayStringForOption: (option) => option.label,
                 optionsBuilder: (textEditingValue) async {
-                  if (textEditingValue.text.isEmpty)
+                  if (textEditingValue.text.isEmpty) {
                     return const Iterable<DepictsEntity>.empty();
+                  }
                   return _pendingProperty == null
                       ? await widget.service
                           .searchWikidataProperties(textEditingValue.text)
@@ -1668,7 +1671,7 @@ Widget _toggleSegment(
       height: 32,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: selected ? color.withOpacity(0.2) : Colors.transparent,
+        color: selected ? color.withValues(alpha: 0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: selected ? color : Colors.transparent),
       ),
@@ -1692,7 +1695,7 @@ Widget _combineModeButton(
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: selected
-            ? const Color(0xFF3D7EFF).withOpacity(0.15)
+            ? const Color(0xFF3D7EFF).withValues(alpha: 0.15)
             : const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
@@ -1719,7 +1722,7 @@ Widget _licenseToggleChip(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
         color: selected
-            ? const Color(0xFF3D7EFF).withOpacity(0.15)
+            ? const Color(0xFF3D7EFF).withValues(alpha: 0.15)
             : const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(

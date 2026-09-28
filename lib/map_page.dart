@@ -374,11 +374,11 @@ class _MapPageState extends ConsumerState<MapPage> {
                             horizontal: 12, vertical: 9),
                         decoration: BoxDecoration(
                           color: selected
-                              ? _kAccent.withOpacity(0.15)
+                              ? _kAccent.withValues(alpha: 0.15)
                               : const Color(0xFF1A1A1A),
                           borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                              color: selected ? _kAccent : _kBorder),
+                          border:
+                              Border.all(color: selected ? _kAccent : _kBorder),
                         ),
                         child: Text(licensePresetLabel(preset),
                             style: TextStyle(
@@ -434,13 +434,15 @@ class _MapPageState extends ConsumerState<MapPage> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8))),
                     onPressed: () {
-                      AnalyticsService.filterApplied('map_search_filters', 'set');
+                      AnalyticsService.filterApplied(
+                          'map_search_filters', 'set');
                       notifier.updateFilters((s) => s.copyWith(
                           queryText: queryCtrl.text.trim(),
                           licensePresets: licenses,
                           qualityFilter: quality,
                           attributionRequired: attributionRequired,
-                          clearAttributionRequired: attributionRequired == null));
+                          clearAttributionRequired:
+                              attributionRequired == null));
                       Navigator.of(context).pop();
                     },
                     child: const Text('Apply',
@@ -602,7 +604,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                               ll.LatLng(
                                   state.boundingBox![2], state.boundingBox![1]),
                             ],
-                            color: _kAccent.withOpacity(0.15),
+                            color: _kAccent.withValues(alpha: 0.15),
                             borderColor: _kAccent,
                             borderStrokeWidth: 2,
                           ),
@@ -614,7 +616,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                                 ll.LatLng(state.centerLat!, state.centerLng!),
                             radius: state.radiusMeters,
                             useRadiusInMeter: true,
-                            color: _kAccent.withOpacity(0.12),
+                            color: _kAccent.withValues(alpha: 0.12),
                             borderColor: _kAccent,
                             borderStrokeWidth: 2,
                           ),
@@ -690,7 +692,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: _kPanelBg.withOpacity(0.96),
+                            color: _kPanelBg.withValues(alpha: 0.96),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(color: _kAccent),
                           ),
@@ -718,7 +720,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
-                              color: _kPanelBg.withOpacity(0.96),
+                              color: _kPanelBg.withValues(alpha: 0.96),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: _kBorder),
                             ),
@@ -909,7 +911,8 @@ class _ModeButton extends StatelessWidget {
         duration: const Duration(milliseconds: 140),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? _kAccent.withOpacity(0.14) : Colors.transparent,
+          color:
+              selected ? _kAccent.withValues(alpha: 0.14) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: selected ? _kAccent : _kBorder),
         ),
@@ -955,7 +958,7 @@ class _CoordPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: _kPanelBg.withOpacity(0.96),
+        color: _kPanelBg.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _kBorder),
       ),
@@ -1089,8 +1092,8 @@ class _OverlayIconButton extends StatelessWidget {
           height: 44,
           decoration: BoxDecoration(
             color: active
-                ? _kAccent.withOpacity(0.25)
-                : _kPanelBg.withOpacity(0.96),
+                ? _kAccent.withValues(alpha: 0.25)
+                : _kPanelBg.withValues(alpha: 0.96),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: active ? _kAccent : _kBorder),
           ),
@@ -1129,7 +1132,7 @@ class _MapNavigationControls extends StatelessWidget {
     return Container(
       width: 40,
       decoration: BoxDecoration(
-        color: _kPanelBg.withOpacity(0.96),
+        color: _kPanelBg.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _kBorder),
       ),
@@ -1286,8 +1289,9 @@ class _ResultsPane extends StatelessWidget {
                 )
               : NotificationListener<ScrollNotification>(
                   onNotification: (n) {
-                    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 400)
+                    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 400) {
                       onLoadMore();
+                    }
                     return false;
                   },
                   child: GridView.builder(

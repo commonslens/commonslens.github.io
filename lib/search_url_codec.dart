@@ -1,6 +1,6 @@
 import 'search_models.dart';
 
-/// Flat Map<String,String> codec for a SearchState. Despite the name, this
+/// Flat `Map<String, String>` codec for a SearchState. Despite the name, this
 /// is just a flat key/value serialization — it's equally useful as a URL
 /// querystring, a JSON-able map for an API/agent payload, or a cache key.
 class SearchUrlCodec {
@@ -23,13 +23,19 @@ class SearchUrlCodec {
     }
 
     if (state.categories.isNotEmpty) {
-      final cats = state.categories.map((c) => c.trim()).where((c) => c.isNotEmpty).toList()
+      final cats = state.categories
+          .map((c) => c.trim())
+          .where((c) => c.isNotEmpty)
+          .toList()
         ..sort();
       if (cats.isNotEmpty) params['cats'] = cats.join('|');
     }
 
     if (state.excludeCategories.isNotEmpty) {
-      final cats = state.excludeCategories.map((c) => c.trim()).where((c) => c.isNotEmpty).toList()
+      final cats = state.excludeCategories
+          .map((c) => c.trim())
+          .where((c) => c.isNotEmpty)
+          .toList()
         ..sort();
       if (cats.isNotEmpty) params['catsExclude'] = cats.join('|');
     }
@@ -39,12 +45,18 @@ class SearchUrlCodec {
     }
 
     if (state.depictsInclude.isNotEmpty) {
-      final entries = state.depictsInclude.map((d) => '${d.qid}~${d.label}').toList()..sort();
+      final entries = state.depictsInclude
+          .map((d) => '${d.qid}~${d.label}')
+          .toList()
+        ..sort();
       params['depictsIn'] = entries.join('|');
     }
 
     if (state.depictsExclude.isNotEmpty) {
-      final entries = state.depictsExclude.map((d) => '${d.qid}~${d.label}').toList()..sort();
+      final entries = state.depictsExclude
+          .map((d) => '${d.qid}~${d.label}')
+          .toList()
+        ..sort();
       params['depictsEx'] = entries.join('|');
     }
 
@@ -54,7 +66,8 @@ class SearchUrlCodec {
 
     if (state.statementsInclude.isNotEmpty) {
       final entries = state.statementsInclude
-          .map((s) => '${s.property.qid}~${s.property.label}~${s.value.qid}~${s.value.label}')
+          .map((s) =>
+              '${s.property.qid}~${s.property.label}~${s.value.qid}~${s.value.label}')
           .toList()
         ..sort();
       params['statementsIn'] = entries.join('|');
@@ -62,7 +75,8 @@ class SearchUrlCodec {
 
     if (state.statementsExclude.isNotEmpty) {
       final entries = state.statementsExclude
-          .map((s) => '${s.property.qid}~${s.property.label}~${s.value.qid}~${s.value.label}')
+          .map((s) =>
+              '${s.property.qid}~${s.property.label}~${s.value.qid}~${s.value.label}')
           .toList()
         ..sort();
       params['statementsEx'] = entries.join('|');
@@ -130,14 +144,16 @@ class SearchUrlCodec {
     }
 
     if (state.excludeTerms.isNotEmpty) {
-      final terms = state.excludeTerms.map((t) => t.trim()).where((t) => t.isNotEmpty).toList()
+      final terms = state.excludeTerms
+          .map((t) => t.trim())
+          .where((t) => t.isNotEmpty)
+          .toList()
         ..sort();
       if (terms.isNotEmpty) params['exclude'] = terms.join('|');
     }
 
     return params;
   }
-
 
   static SearchState fromQueryParams(
     Map<String, String> params,
@@ -169,12 +185,21 @@ class SearchUrlCodec {
     final catsParam = params['cats'];
     final categories = (catsParam == null || catsParam.isEmpty)
         ? <String>{}
-        : catsParam.split('|').map((c) => c.trim()).where((c) => c.isNotEmpty).toSet();
+        : catsParam
+            .split('|')
+            .map((c) => c.trim())
+            .where((c) => c.isNotEmpty)
+            .toSet();
 
     final catsExcludeParam = params['catsExclude'];
-    final excludeCategories = (catsExcludeParam == null || catsExcludeParam.isEmpty)
-        ? <String>{}
-        : catsExcludeParam.split('|').map((c) => c.trim()).where((c) => c.isNotEmpty).toSet();
+    final excludeCategories =
+        (catsExcludeParam == null || catsExcludeParam.isEmpty)
+            ? <String>{}
+            : catsExcludeParam
+                .split('|')
+                .map((c) => c.trim())
+                .where((c) => c.isNotEmpty)
+                .toSet();
 
     Set<DepictsEntity> parseDepicts(String? raw) {
       if (raw == null || raw.isEmpty) return <DepictsEntity>{};
@@ -193,16 +218,21 @@ class SearchUrlCodec {
 
     Set<WikidataStatement> parseStatements(String? raw) {
       if (raw == null || raw.isEmpty) return <WikidataStatement>{};
-      return raw.split('|').where((e) => e.isNotEmpty).map((entry) {
-        final parts = entry.split('~');
-        if (parts.length != 4) {
-          return null;
-        }
-        return WikidataStatement(
-          property: DepictsEntity(qid: parts[0], label: parts[1]),
-          value: DepictsEntity(qid: parts[2], label: parts[3]),
-        );
-      }).whereType<WikidataStatement>().toSet();
+      return raw
+          .split('|')
+          .where((e) => e.isNotEmpty)
+          .map((entry) {
+            final parts = entry.split('~');
+            if (parts.length != 4) {
+              return null;
+            }
+            return WikidataStatement(
+              property: DepictsEntity(qid: parts[0], label: parts[1]),
+              value: DepictsEntity(qid: parts[2], label: parts[3]),
+            );
+          })
+          .whereType<WikidataStatement>()
+          .toSet();
     }
 
     final statementsInclude = parseStatements(params['statementsIn']);
@@ -284,14 +314,19 @@ class SearchUrlCodec {
     final nearTitleParam = params['nearTitle'];
     final nearTitleRadius =
         double.tryParse(params['nearTitleRadius'] ?? '') ?? 10.0;
-    final nearTitle = (nearTitleParam != null && nearTitleParam.trim().isNotEmpty)
-        ? NearTitleFilter(title: nearTitleParam, radiusKm: nearTitleRadius)
-        : null;
+    final nearTitle =
+        (nearTitleParam != null && nearTitleParam.trim().isNotEmpty)
+            ? NearTitleFilter(title: nearTitleParam, radiusKm: nearTitleRadius)
+            : null;
 
     final excludeParam = params['exclude'];
     final excludeTerms = (excludeParam == null || excludeParam.isEmpty)
         ? <String>{}
-        : excludeParam.split('|').map((t) => t.trim()).where((t) => t.isNotEmpty).toSet();
+        : excludeParam
+            .split('|')
+            .map((t) => t.trim())
+            .where((t) => t.isNotEmpty)
+            .toSet();
 
     return base.copyWith(
       queryText: params['q'] ?? base.queryText,

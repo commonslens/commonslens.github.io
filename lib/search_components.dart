@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:commonslens/search_page.dart';
+import 'package:commonslens/bulk_download_tray.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +9,7 @@ import 'search_models.dart';
 import 'search_service.dart';
 import 'search_url_codec.dart';
 import 'analytics_service.dart';
+import 'download_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // -----------------------------------------------------------------------------
@@ -87,7 +88,8 @@ class _SearchTopBarState extends State<SearchTopBar> {
 
   String _cleanSuggestionLabel(String value) {
     return value.replaceAll(
-      RegExp(r'\.(jpg|png|svg|jpeg|gif|webm|tiff|djvu|pdf|oga|ogg|tif|webp)$', caseSensitive: false),
+      RegExp(r'\.(jpg|png|svg|jpeg|gif|webm|tiff|djvu|pdf|oga|ogg|tif|webp)$',
+          caseSensitive: false),
       '',
     );
   }
@@ -160,22 +162,24 @@ class _SearchTopBarState extends State<SearchTopBar> {
       child: SafeArea(
         bottom: false,
         child: Row(
-          children: [ 
+          children: [
             Expanded(
               child: SizedBox(
                 height: 38,
                 child: Autocomplete<String>(
                   optionsBuilder: _optionsBuilder,
                   onSelected: (String suggestion) {
-                    final newText =
-                        _applySuggestion(_fieldController?.text ?? '', suggestion);
+                    final newText = _applySuggestion(
+                        _fieldController?.text ?? '', suggestion);
                     _fieldController?.value = TextEditingValue(
                       text: newText,
-                      selection: TextSelection.collapsed(offset: newText.length),
+                      selection:
+                          TextSelection.collapsed(offset: newText.length),
                     );
                     widget.onSearch(newText);
                   },
-                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                  fieldViewBuilder:
+                      (context, controller, focusNode, onFieldSubmitted) {
                     if (_fieldController != controller) {
                       if (_listener != null) {
                         _fieldController?.removeListener(_listener!);
@@ -191,7 +195,8 @@ class _SearchTopBarState extends State<SearchTopBar> {
                     return TextField(
                       keyboardType: (kIsWeb &&
                               (defaultTargetPlatform == TargetPlatform.iOS ||
-                                  defaultTargetPlatform == TargetPlatform.android))
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.android))
                           ? TextInputType.text
                           : TextInputType.url,
                       textInputAction: TextInputAction.search,
@@ -203,9 +208,10 @@ class _SearchTopBarState extends State<SearchTopBar> {
                       focusNode: focusNode,
                       style: const TextStyle(fontSize: 14, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText: 'What would you like to find? The dropdown suggestions show direct file matches. To see all results for the search, just press enter/search.',
-                        hintStyle: const TextStyle(
-                            color: Colors.grey, fontSize: 14),
+                        hintText:
+                            'What would you like to find? The dropdown suggestions show direct file matches. To see all results for the search, just press enter/search.',
+                        hintStyle:
+                            const TextStyle(color: Colors.grey, fontSize: 14),
                         filled: true,
                         fillColor: const Color(0xFF181818),
                         contentPadding: const EdgeInsets.symmetric(
@@ -238,8 +244,8 @@ class _SearchTopBarState extends State<SearchTopBar> {
                         elevation: 4,
                         borderRadius: BorderRadius.circular(6),
                         child: ConstrainedBox(
-                          constraints:
-                              const BoxConstraints(maxHeight: 260, maxWidth: 460),
+                          constraints: const BoxConstraints(
+                              maxHeight: 260, maxWidth: 460),
                           child: ListView.builder(
                             padding: EdgeInsets.zero,
                             shrinkWrap: true,
@@ -283,8 +289,8 @@ class _SearchTopBarState extends State<SearchTopBar> {
                       onPressed: () => context.push('/map'),
                       icon: const Icon(Icons.map_outlined, size: 16),
                       label: const Text('Map',
-                          style:
-                              TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                          style: TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w600)),
                     ),
                   ),
             if (widget.showFiltersButton) ...[
@@ -303,7 +309,8 @@ class _SearchTopBarState extends State<SearchTopBar> {
                             foregroundColor: const Color(0xFFB0B0B0),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(6)),
-                            padding: const EdgeInsets.symmetric(horizontal: 14)),
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 14)),
                         onPressed: () => Scaffold.of(context).openEndDrawer(),
                         child: const Text('Filters',
                             style: TextStyle(
@@ -323,7 +330,8 @@ class _SearchTopBarState extends State<SearchTopBar> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(6)),
                       padding: const EdgeInsets.symmetric(horizontal: 18)),
-                  onPressed: () => widget.onSearch(_fieldController?.text ?? ''),
+                  onPressed: () =>
+                      widget.onSearch(_fieldController?.text ?? ''),
                   child: const Text('Search',
                       style:
                           TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
@@ -413,8 +421,18 @@ String _displayTitle(SearchItem item) {
 }
 
 const _cardMonthAbbrev = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
 ];
 
 /// "29 Aug '26" — tries the date of creation (capture time) first, since
@@ -459,11 +477,77 @@ Widget _buildCardSubtitle(SearchItem item) {
 
   return Row(
     children: [
-      Text(date, maxLines: 1, overflow: TextOverflow.ellipsis, style: _cardSubtitleStyle),
+      Text(date,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _cardSubtitleStyle),
       const Expanded(child: SizedBox.shrink()),
-      Text(license, maxLines: 1, overflow: TextOverflow.ellipsis, style: _cardSubtitleStyle),
+      Text(license,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: _cardSubtitleStyle),
     ],
   );
+}
+
+/// A small always-tappable circular button overlaid on a [MediaCard]'s
+/// thumbnail so any file the search grid, map, author portfolio, or
+/// pipeline preview produces can be grabbed immediately — no need to open
+/// the asset viewer first just to get the file. Single choke point: every
+/// surface in the app renders media through [MediaCard], so this one
+/// widget is what makes media "downloadable on the spot" everywhere at
+/// once. Downloads the original file, same as the asset viewer's
+/// "Download Original" action.
+class _QuickDownloadButton extends StatefulWidget {
+  final SearchItem item;
+  const _QuickDownloadButton({required this.item});
+
+  @override
+  State<_QuickDownloadButton> createState() => _QuickDownloadButtonState();
+}
+
+class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
+  bool _busy = false;
+
+  Future<void> _download() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    AnalyticsService.mediaDownloaded(
+        title: widget.item.title, size: 'original');
+    try {
+      await DownloadService.downloadSingleFile(
+          widget.item.url, widget.item.title, widget.item.extension);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Download original',
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.55),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: _download,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: _busy
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 1.6, color: Color(0xFF3D7EFF)),
+                  )
+                : const Icon(Icons.download_rounded,
+                    size: 15, color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MediaCard extends ConsumerStatefulWidget {
@@ -531,14 +615,14 @@ class _MediaCardState extends ConsumerState<MediaCard> {
 
   void _handleLongPress() {
     final isSelectionMode = ref.read(selectionModeProvider);
-    
+
     if (!isSelectionMode) {
       // 1. Turn on selection mode
       ref.read(selectionModeProvider.notifier).state = true;
-      
+
       // 2. Add this specific item to the selection immediately
       ref.read(selectedItemsProvider.notifier).state = {widget.item};
-      
+
       // 3. Trigger a tiny physical buzz on mobile devices! (Requires flutter/services.dart)
       HapticFeedback.lightImpact();
     }
@@ -567,6 +651,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
     final kind = item.mediaKind;
 
     final isSelected = ref.watch(selectedItemsProvider).contains(item);
+    final isSelectionMode = ref.watch(selectionModeProvider);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -614,22 +699,57 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                                 size: 12, color: const Color(0xFFCACACA)),
                             const SizedBox(width: 5),
                             Text(item.fileTypeLabel,
-                              style: const TextStyle(
-                                color: Color(0xFFE0E0E0),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.7)),
+                                style: const TextStyle(
+                                    color: Color(0xFFE0E0E0),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.7)),
                           ],
                         ),
                       ),
                     ),
+                    // Keep quick download available without leaving an
+                    // unexplained permanent circle on every card.
+                    if (!isSelectionMode && _hovered)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: _QuickDownloadButton(item: item),
+                      ),
+                    // Selection state is only shown while bulk selection is
+                    // active, so the circle has a single, obvious meaning.
+                    if (isSelectionMode)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isSelected
+                                ? const Color(0xFF3D7EFF)
+                                : Colors.black.withValues(alpha: 0.62),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF79A4FF)
+                                  : Colors.white38,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(Icons.check_rounded,
+                                  color: Colors.white, size: 17)
+                              : null,
+                        ),
+                      ),
                   ],
                 ),
               ),
 
               // 2. BOTTOM SECTION: Text Metadata
               Container(
-                padding: const EdgeInsets.only(left: 10, top: 10, bottom: 10, right: 10),
+                padding: const EdgeInsets.only(
+                    left: 10, top: 10, bottom: 10, right: 10),
                 decoration: const BoxDecoration(
                   border: Border(top: BorderSide(color: Color(0xFF202020))),
                 ),

@@ -73,7 +73,8 @@ class MapViewState {
 }
 
 final mapSearchControllerProvider =
-    NotifierProvider<MapSearchController, MapViewState>(MapSearchController.new);
+    NotifierProvider<MapSearchController, MapViewState>(
+        MapSearchController.new);
 
 /// Riverpod-facing wrapper around two live engines — [GeoBrowseSession] for
 /// [GeoMode.browse] and [CommonsSearchSession] for [GeoMode.filtered] — plus
@@ -130,7 +131,8 @@ class MapSearchController extends Notifier<MapViewState> {
     );
 
     final nextFilter = state.filterState.copyWith(
-      nearCoord: NearCoordFilter(lat: lat, lng: lng, radiusKm: radiusMeters / 1000),
+      nearCoord:
+          NearCoordFilter(lat: lat, lng: lng, radiusKm: radiusMeters / 1000),
       clearNearTitle: true,
     );
     state = state.copyWith(filterState: nextFilter);
@@ -163,7 +165,8 @@ class MapSearchController extends Notifier<MapViewState> {
   /// eastLng]. Browse-mode only — see [CommonsBackend.geosearch]. Always
   /// switches to [GeoMode.browse].
   Future<void> searchBoundingBox(List<double> box) async {
-    state = state.copyWith(mode: GeoMode.browse, boundingBox: box, clearPoint: true);
+    state = state.copyWith(
+        mode: GeoMode.browse, boundingBox: box, clearPoint: true);
     final future = _browseEngine.searchBoundingBox(box);
     _syncSession();
     await future;

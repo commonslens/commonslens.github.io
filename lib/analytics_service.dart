@@ -1,4 +1,4 @@
-// ignore: avoid_web_libraries_in_flutter
+// ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:js_util' as js_util;
 
@@ -90,8 +90,8 @@ class AnalyticsService {
 
   static void tabChanged(String tab) => event('tab_changed', {'tab': tab});
 
-  static void formatToggled(String format, bool selected) => event(
-      'format_toggled', {'format': format, 'selected': selected});
+  static void formatToggled(String format, bool selected) =>
+      event('format_toggled', {'format': format, 'selected': selected});
 
   // ---------------------------------------------------------------------
   // Media interaction
@@ -146,7 +146,8 @@ class AnalyticsService {
     required String fromTitle,
     required String toTitle,
   }) =>
-      event('related_media_clicked', {'from_file': fromTitle, 'to_file': toTitle});
+      event('related_media_clicked',
+          {'from_file': fromTitle, 'to_file': toTitle});
 
   // ---------------------------------------------------------------------
   // Map

@@ -69,6 +69,7 @@ final searchControllerProvider =
 /// restoring a stale cached result.
 class SearchController extends Notifier<SearchViewState> {
   late final CommonsSearchSession _engine;
+  bool _showingExternalResults = false;
 
   @override
   SearchViewState build() {
@@ -106,6 +107,7 @@ class SearchController extends Notifier<SearchViewState> {
   /// current filter is kept as-is — same contract every call site already
   /// relies on.
   Future<void> search(String query, {SearchState? overrideState}) async {
+    _showingExternalResults = false;
     final base = overrideState ?? state.filterState;
     final nextFilter = base.copyWith(queryText: query.trim());
 
@@ -133,6 +135,7 @@ class SearchController extends Notifier<SearchViewState> {
   }
 
   Future<void> loadMore() async {
+    if (_showingExternalResults) return;
     final future = _engine.loadMore();
     _syncFromEngine();
     await future;
@@ -200,7 +203,8 @@ class SearchController extends Notifier<SearchViewState> {
       return;
     }
     if (prev.licensePresets != next.licensePresets) {
-      AnalyticsService.filterApplied('license', '${next.licensePresets.length}');
+      AnalyticsService.filterApplied(
+          'license', '${next.licensePresets.length}');
       return;
     }
     if (prev.attributionRequired != next.attributionRequired) {
@@ -241,6 +245,34 @@ class SearchController extends Notifier<SearchViewState> {
       activeSession: state.activeSession.copyWith(scrollOffset: offset),
     );
   }
+
+  /// Displays an externally-produced result set (currently: a Pipeline
+  /// sink's materialized output — see pipeline_controller.dart's
+  /// sendToSearch) in the main search grid, without running a
+  /// CirrusSearch query for it. There's no "next page" for a set that may
+  /// already be a merge/dedupe/sort of several independent branches, so
+  /// this is presented as a complete, non-paginated result (`hasMore:
+  /// false`).
+  ///
+  /// `_engine.search(const SearchState())` first resets the underlying
+  /// [CommonsSearchSession] to its default — per its own documented
+  /// contract, an empty query is a synchronous, network-free no-op (see
+  /// commons_engine.dart), so this costs nothing and just ensures a
+  /// subsequent [loadMore] call (which reads `_engine`'s own internal
+  /// session, not this method's injected one) sees `hasMore: false`
+  /// rather than whatever a previous real search happened to leave behind.
+  /// `_syncFromEngine()` then clears the visible filter chips/query bar to
+  /// match that reset, since pipeline results don't correspond to a
+  /// single filterState the UI could otherwise misleadingly keep showing.
+  void loadExternalResults(List<SearchItem> items) {
+    _showingExternalResults = true;
+    _engine.search(const SearchState());
+    _syncFromEngine();
+    state = state.copyWith(
+      activeSession:
+          SearchSession(items: items, hasSearched: true, hasMore: false),
+    );
+  }
 }
 
 /// Paginated session for a single uploader's portfolio, keyed by username.
@@ -257,8 +289,8 @@ class AuthorPortfolioController extends FamilyNotifier<SearchSession, String> {
   late final AuthorPortfolioSession _engine;
 
   @override
-  SearchSession build(String username) {
-    _engine = AuthorPortfolioSession(username);
+  SearchSession build(String arg) {
+    _engine = AuthorPortfolioSession(arg);
     _loadInitial();
     return const SearchSession(hasSearched: true, loading: true);
   }

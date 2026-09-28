@@ -69,8 +69,9 @@ class MediaSearchResult {
               .toList()
           : const [],
       hasMore: json['hasMore'] as bool? ?? false,
-      continueToken:
-          continueTokenRaw is Map ? Map<String, dynamic>.from(continueTokenRaw) : null,
+      continueToken: continueTokenRaw is Map
+          ? Map<String, dynamic>.from(continueTokenRaw)
+          : null,
       queryUsed: json['queryUsed'] as String? ?? '',
       error: json['error'] as String?,
       totalHits: (json['totalHits'] as num?)?.toInt(),
@@ -109,7 +110,8 @@ class CommonsBackend {
   /// The CirrusSearch query string + UI-facing chips [filters] resolves
   /// to — exposed so callers (including [CommonsSearchSession]) never need
   /// their own [SearchService] instance just to inspect or hash a query.
-  QueryBuildResult buildQuery(SearchState filters) => _service.buildQuery(filters);
+  QueryBuildResult buildQuery(SearchState filters) =>
+      _service.buildQuery(filters);
 
   /// A stable signature for [filters] — identical filters always produce
   /// the same signature, safe to use as a cache/session key.
@@ -203,7 +205,8 @@ class CommonsBackend {
   /// history, not just the current version [fetchItem] returns. Not
   /// paginated the way [search]/[authorUploads] are: this is a single
   /// bounded list (`limit`, default 20), not an opaque-continuation feed.
-  Future<List<FileRevision>> fileHistory(String fileIdOrTitle, {int limit = 20}) =>
+  Future<List<FileRevision>> fileHistory(String fileIdOrTitle,
+          {int limit = 20}) =>
       _service.fetchFileHistory(fileIdOrTitle, limit: limit);
 
   /// A file's full Structured Data on Commons entity — multilingual
@@ -282,7 +285,8 @@ class CommonsBackend {
   /// embeds this file — a real-world usage signal (files actually used
   /// somewhere vs. unused personal uploads) distinct from anything
   /// CirrusSearch itself indexes.
-  Future<List<GlobalUsageEntry>> globalUsage(String fileIdOrTitle, {int limit = 500}) =>
+  Future<List<GlobalUsageEntry>> globalUsage(String fileIdOrTitle,
+          {int limit = 500}) =>
       _service.fetchGlobalUsage(fileIdOrTitle, limit: limit);
 
   /// Re-sorts already-fetched items for [SortMode.titleMatch] (a no-op for
@@ -364,8 +368,8 @@ class CommonsAutocomplete {
   /// Wikidata *items* (Q-codes) — the value step of a haswbstatement:
   /// filter once a property is chosen, and also what backs the standalone
   /// Depicts/P180 picker.
-  Future<List<DepictsEntity>> wikidataEntities(String text) => _cached(
-      'e:${text.trim()}', () => _service.searchDepictsEntities(text));
+  Future<List<DepictsEntity>> wikidataEntities(String text) =>
+      _cached('e:${text.trim()}', () => _service.searchDepictsEntities(text));
 
   void clearCache() => _cache.clear();
 }

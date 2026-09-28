@@ -41,7 +41,8 @@ class _BrowsePageState extends State<BrowsePage>
       backgroundColor: const Color(0xFF0B0B0B),
       appBar: AppBar(
         backgroundColor: const Color(0xFF111111),
-        title: const Text('Browse Directories', style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: const Text('Browse Directories',
+            style: TextStyle(color: Colors.white, fontSize: 16)),
         iconTheme: const IconThemeData(color: Colors.white),
         bottom: TabBar(
           controller: _tabController,
@@ -94,7 +95,8 @@ class _CategoryTabState extends ConsumerState<_CategoryTab> {
       _items.clear();
     }
     setState(() => _loading = true);
-    final result = await _service.browseCategories(prefix: _prefix, cursor: _cursor);
+    final result =
+        await _service.browseCategories(prefix: _prefix, cursor: _cursor);
     setState(() {
       _items.addAll(result.items);
       _cursor = result.nextCursor;
@@ -104,9 +106,8 @@ class _CategoryTabState extends ConsumerState<_CategoryTab> {
 
   void _select(String category) {
     AnalyticsService.browseItemSelected('category', category);
-    ref.read(searchControllerProvider.notifier).applyFilterUpdate((c) => 
-      c.copyWith(categories: {...c.categories, category})
-    );
+    ref.read(searchControllerProvider.notifier).applyFilterUpdate(
+        (c) => c.copyWith(categories: {...c.categories, category}));
     context.go('/');
   }
 
@@ -118,7 +119,8 @@ class _CategoryTabState extends ConsumerState<_CategoryTab> {
           padding: const EdgeInsets.all(16),
           child: TextField(
             style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration('Jump to category (e.g. "Architecture")'),
+            decoration:
+                _inputDecoration('Jump to category (e.g. "Architecture")'),
             onSubmitted: (val) {
               _prefix = val;
               _loadMore(refresh: true);
@@ -131,7 +133,10 @@ class _CategoryTabState extends ConsumerState<_CategoryTab> {
             itemBuilder: (context, i) {
               if (i == _items.length) {
                 if (!_loading) Future.microtask(() => _loadMore());
-                return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+                return const Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator()));
               }
               final item = _items[i];
               return _BrowseItemCard(
@@ -173,7 +178,8 @@ class _TemplateTabState extends ConsumerState<_TemplateTab> {
       _items.clear();
     }
     setState(() => _loading = true);
-    final result = await _service.browseTemplates(prefix: _prefix, cursor: _cursor);
+    final result =
+        await _service.browseTemplates(prefix: _prefix, cursor: _cursor);
     setState(() {
       _items.addAll(result.items);
       _cursor = result.nextCursor;
@@ -183,9 +189,8 @@ class _TemplateTabState extends ConsumerState<_TemplateTab> {
 
   void _select(String template) {
     AnalyticsService.browseItemSelected('template', template);
-    ref.read(searchControllerProvider.notifier).applyFilterUpdate((c) => 
-      c.copyWith(templates: {...c.templates, template})
-    );
+    ref.read(searchControllerProvider.notifier).applyFilterUpdate(
+        (c) => c.copyWith(templates: {...c.templates, template}));
     context.go('/');
   }
 
@@ -210,7 +215,10 @@ class _TemplateTabState extends ConsumerState<_TemplateTab> {
             itemBuilder: (context, i) {
               if (i == _items.length) {
                 if (!_loading) Future.microtask(() => _loadMore());
-                return const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()));
+                return const Center(
+                    child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator()));
               }
               final item = _items[i];
               return _BrowseItemCard(
@@ -249,9 +257,8 @@ class _DepictsTabState extends ConsumerState<_DepictsTab> {
 
   void _select(DepictsEntity entity) {
     AnalyticsService.browseItemSelected('depicts', entity.label);
-    ref.read(searchControllerProvider.notifier).applyFilterUpdate((c) => 
-      c.copyWith(depictsInclude: {...c.depictsInclude, entity})
-    );
+    ref.read(searchControllerProvider.notifier).applyFilterUpdate(
+        (c) => c.copyWith(depictsInclude: {...c.depictsInclude, entity}));
     context.go('/');
   }
 
@@ -263,16 +270,21 @@ class _DepictsTabState extends ConsumerState<_DepictsTab> {
           padding: const EdgeInsets.all(16),
           child: TextField(
             style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration('Search Wikidata items (e.g. "City")').copyWith(
-              suffixIcon: const Icon(Icons.search, color: Colors.white54)
-            ),
+            decoration: _inputDecoration('Search Wikidata items (e.g. "City")')
+                .copyWith(
+                    suffixIcon:
+                        const Icon(Icons.search, color: Colors.white54)),
             onSubmitted: _search,
           ),
         ),
         if (_loading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
         else if (_items.isEmpty)
-          const Expanded(child: Center(child: Text('Search for a visual subject to apply as a filter.', style: TextStyle(color: Colors.white54))))
+          const Expanded(
+              child: Center(
+                  child: Text(
+                      'Search for a visual subject to apply as a filter.',
+                      style: TextStyle(color: Colors.white54))))
         else
           Expanded(
             child: ListView.builder(
@@ -325,22 +337,23 @@ class _BrowseItemCardState extends State<_BrowseItemCard> {
             color: _hovered ? const Color(0xFF191919) : const Color(0xFF131313),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(
-              color: _hovered ? const Color(0xFF3D7EFF) : const Color(0xFF202020),
+              color:
+                  _hovered ? const Color(0xFF3D7EFF) : const Color(0xFF202020),
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.title, 
-                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)
-              ),
+              Text(widget.title,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600)),
               if (widget.subtitle != null) ...[
                 const SizedBox(height: 4),
-                Text(
-                  widget.subtitle!, 
-                  style: const TextStyle(color: Colors.white54, fontSize: 12)
-                ),
+                Text(widget.subtitle!,
+                    style:
+                        const TextStyle(color: Colors.white54, fontSize: 12)),
               ],
             ],
           ),
@@ -354,7 +367,8 @@ InputDecoration _inputDecoration(String hint) {
   return InputDecoration(
     filled: true,
     fillColor: const Color(0xFF1A1A1A),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+    border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     hintText: hint,
     hintStyle: const TextStyle(color: Colors.white30),

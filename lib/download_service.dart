@@ -1,10 +1,13 @@
+// ignore_for_file: avoid_web_libraries_in_flutter
 import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:async';
 import 'dart:js_util' as js_util;
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
 import 'search_models.dart';
+import 'wikimedia_request_gate.dart';
 
 /// Screen Wake Lock — prevents the screen from dimming/locking while a
 /// download is in progress and the tab stays open and visible.
@@ -54,7 +57,8 @@ class _WakeLock {
     if (sentinel == null) return;
     _sentinel = null;
     try {
-      await js_util.promiseToFuture(js_util.callMethod(sentinel, 'release', []));
+      await js_util
+          .promiseToFuture(js_util.callMethod(sentinel, 'release', []));
     } catch (_) {
       // Already released by the browser (e.g. tab was backgrounded) — fine.
     }
@@ -85,18 +89,26 @@ class DownloadCancelToken {
 /// quotes whenever the field contains a comma, quote, or newline — which
 /// covers titles/descriptions/author strings that can contain any of those.
 String _csvField(String value) {
-  if (value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r')) {
+  if (value.contains(',') ||
+      value.contains('"') ||
+      value.contains('\n') ||
+      value.contains('\r')) {
     return '"${value.replaceAll('"', '""')}"';
   }
   return value;
 }
 
 class DownloadService {
-  static Future<void> downloadSingleFile(String url, String title, String extension) async {
+  static final http.Client _singleDownloadClient = http.Client();
+  static Future<void> downloadSingleFile(
+      String url, String title, String extension) async {
     try {
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 30));
+      final response = await WikimediaRequestGate.get(
+        _singleDownloadClient,
+        Uri.parse(url),
+        timeout: const Duration(seconds: 30),
+        deduplicate: false,
+      );
 
       if (response.statusCode == 200) {
         final cleanTitle = title
@@ -105,7 +117,8 @@ class DownloadService {
             .trim();
         final fileName = '$cleanTitle.${extension.toLowerCase()}';
 
-        final blob = html.Blob([response.bodyBytes], response.headers['content-type'] ?? 'application/octet-stream');
+        final blob = html.Blob([response.bodyBytes],
+            response.headers['content-type'] ?? 'application/octet-stream');
         final objectUrl = html.Url.createObjectUrlFromBlob(blob);
 
         html.AnchorElement(href: objectUrl)
@@ -115,7 +128,7 @@ class DownloadService {
         html.Url.revokeObjectUrl(objectUrl);
       }
     } catch (e) {
-      print('Download failed: $e');
+      debugPrint('Download failed: $e');
       html.window.open(url, '_blank');
     }
   }
@@ -143,9 +156,11 @@ class DownloadService {
         'iiurlwidth': '$maxWidth',
       });
 
-      final response = await client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final response = await WikimediaRequestGate.get(
+        client,
+        uri,
+        timeout: const Duration(seconds: 15),
+      );
 
       if (response.statusCode != 200) return null;
 
@@ -154,7 +169,8 @@ class DownloadService {
       for (final page in pages.values) {
         final infoList = (page as Map<String, dynamic>)['imageinfo'] as List?;
         if (infoList == null || infoList.isEmpty) continue;
-        final thumb = (infoList.first as Map<String, dynamic>)['thumburl'] as String?;
+        final thumb =
+            (infoList.first as Map<String, dynamic>)['thumburl'] as String?;
         if (thumb != null && thumb.isNotEmpty) return thumb;
       }
       return null;
@@ -175,38 +191,213 @@ class DownloadService {
   /// cross-origin request, forcing a CORS preflight — if that preflight
   /// isn't explicitly allowed, the browser blocks the request before it
   /// ever reaches the network, silently and identically for every file.
+  static bool _isUsableDownloadResponse(http.Response response) {
+    if (response.statusCode != 200 || response.bodyBytes.isEmpty) return false;
+
+    final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+    if (contentType.contains('text/html') ||
+        contentType.contains('application/json')) {
+      return false;
+    }
+
+    final contentEncoding =
+        (response.headers['content-encoding'] ?? '').toLowerCase();
+    final declaredLength =
+        int.tryParse(response.headers['content-length'] ?? '');
+    if ((contentEncoding.isEmpty || contentEncoding == 'identity') &&
+        declaredLength != null &&
+        declaredLength != response.bodyBytes.length) {
+      return false;
+    }
+    return true;
+  }
+
   static Future<http.Response?> _fetchWithRetry(
     http.Client client,
     String url, {
     DownloadCancelToken? cancelToken,
-    int maxAttempts = 3,
+    int maxAttempts = 4,
     Duration timeout = const Duration(seconds: 45),
   }) async {
-    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        final response = await client.get(Uri.parse(url)).timeout(timeout);
+    try {
+      final response = await WikimediaRequestGate.get(
+        client,
+        Uri.parse(url),
+        timeout: timeout,
+        maxAttempts: maxAttempts,
+        deduplicate: false,
+        cancelled: () => cancelToken?.isCancelled == true,
+        acceptResponse: _isUsableDownloadResponse,
+      );
+      return _isUsableDownloadResponse(response) ? response : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
-        if (response.statusCode == 200) return response;
-        if (response.statusCode >= 400 && response.statusCode < 500) {
-          return null;
-        }
-      } catch (_) {
-        // Timeout, network error, or the client was closed via cancel() —
-        // fall through to retry, unless it was a cancel (see below).
-      }
+  /// A file's data-export filename — sanitized title + lowercase
+  /// extension. Single source of truth for this so the bulk-zip's
+  /// in-archive filenames, its data.csv `filename` column, and a
+  /// standalone CSV export (which has no zip entries to derive it from)
+  /// always agree with each other.
+  static String _sanitizedFileName(SearchItem item) {
+    final cleanTitle = item.title
+        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
+        .replaceAll('File:', '')
+        .trim();
+    return '$cleanTitle.${item.extension.toLowerCase()}';
+  }
 
-      // A cancel mid-fetch throws here (closed client), which would
-      // otherwise look just like a transient network blip and trigger a
-      // pointless retry-with-backoff after the person already asked to
-      // stop. Checking isCancelled here means a cancelled fetch fails
-      // immediately instead of waiting out a 2s/4s backoff first.
-      if (cancelToken?.isCancelled == true) return null;
+  static String _plainText(String html) =>
+      html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
 
-      if (attempt < maxAttempts) {
-        await Future.delayed(Duration(seconds: attempt * 2));
+  /// Builds the manifest CSV — the exact same column set embedded as
+  /// data.csv inside every bulk-zip download (see [downloadBulkZip]),
+  /// extracted here so a standalone CSV export (no zip, no file bytes
+  /// fetched — just metadata already on each [SearchItem]) uses one
+  /// schema instead of a second hand-maintained column list that could
+  /// drift out of sync with it.
+  static String buildManifestCsv(List<SearchItem> items) {
+    final csvBuffer = StringBuffer()
+      ..writeln([
+        'filename',
+        'title',
+        'source_url',
+        'thumb_url',
+        'commons_url',
+        'description_url',
+        'snippet',
+        'mime',
+        'is_svg',
+        'width',
+        'height',
+        'author',
+        'uploader',
+        'license',
+        'license_url',
+        'usage_terms',
+        'copyright_status',
+        'attribution_required',
+        'permission',
+        'restrictions',
+        'credit',
+        'date_original',
+        'upload_datetime',
+        'revision_timestamp',
+        'object_name',
+        'image_description',
+        'categories',
+        'assessments',
+        'gps_latitude',
+        'gps_longitude',
+      ].join(','));
+
+    for (final item in items) {
+      csvBuffer.writeln([
+        _csvField(_sanitizedFileName(item)),
+        _csvField(item.title),
+        _csvField(item.url),
+        _csvField(item.thumb),
+        _csvField(item.commonsUrl),
+        _csvField(item.descriptionUrl ?? ''),
+        _csvField(item.snippet),
+        _csvField(item.mime),
+        item.isSvg.toString(),
+        item.width.toString(),
+        item.height.toString(),
+        _csvField(_plainText(item.artistHtml)),
+        _csvField(item.uploader),
+        _csvField(item.licenseShortName),
+        _csvField(item.licenseUrl),
+        _csvField(item.usageTerms),
+        _csvField(item.copyrighted),
+        _csvField(item.attributionRequired),
+        _csvField(_plainText(item.permissionHtml)),
+        _csvField(item.restrictions),
+        _csvField(_plainText(item.creditHtml)),
+        _csvField(item.dateTimeOriginal),
+        _csvField(item.uploadDateTime),
+        _csvField(item.timestamp ?? ''),
+        _csvField(item.objectName),
+        _csvField(_plainText(item.imageDescriptionHtml)),
+        _csvField(item.categories),
+        _csvField(item.assessments),
+        _csvField(item.gpsLatitude),
+        _csvField(item.gpsLongitude),
+      ].join(','));
+    }
+
+    return csvBuffer.toString();
+  }
+
+  /// Standalone CSV export — no zip, no file bytes fetched, just the
+  /// manifest. Used by the pipeline's CSV Export sink, and equally usable
+  /// anywhere a plain CSV of results is wanted without a bulk download.
+  static Future<void> downloadCsv(
+      List<SearchItem> items, String fileName) async {
+    final csvBytes = utf8.encode(buildManifestCsv(items));
+    final blob = html.Blob([csvBytes], 'text/csv');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final name =
+        fileName.toLowerCase().endsWith('.csv') ? fileName : '$fileName.csv';
+
+    html.AnchorElement(href: url)
+      ..setAttribute('download', name)
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
+  }
+
+  /// Standalone JSON export — every field [SearchItem.toJson] carries,
+  /// same "complete record, not a curated subset" philosophy as
+  /// [buildManifestCsv]. Used by the pipeline's JSON Export sink.
+  static Future<void> downloadJson(
+      List<SearchItem> items, String fileName) async {
+    await downloadJsonRecords(
+        items.map((item) => item.toJson()).toList(), fileName);
+  }
+
+  static Future<void> downloadJsonRecords(
+      List<Map<String, dynamic>> records, String fileName) async {
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(records);
+    final blob = html.Blob([utf8.encode(jsonStr)], 'application/json');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final name =
+        fileName.toLowerCase().endsWith('.json') ? fileName : '$fileName.json';
+
+    html.AnchorElement(href: url)
+      ..setAttribute('download', name)
+      ..click();
+
+    html.Url.revokeObjectUrl(url);
+  }
+
+  static Future<void> downloadCsvRecords(
+      List<Map<String, dynamic>> records, String fileName) async {
+    final columns = <String>[];
+    for (final record in records) {
+      for (final key in record.keys) {
+        if (!columns.contains(key)) columns.add(key);
       }
     }
-    return null;
+    final buffer = StringBuffer()..writeln(columns.map(_csvField).join(','));
+    for (final record in records) {
+      buffer.writeln(columns.map((column) {
+        final value = record[column];
+        final text = value is Map || value is List
+            ? jsonEncode(value)
+            : value?.toString() ?? '';
+        return _csvField(text);
+      }).join(','));
+    }
+    final blob = html.Blob([utf8.encode(buffer.toString())], 'text/csv');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final name =
+        fileName.toLowerCase().endsWith('.csv') ? fileName : '$fileName.csv';
+    html.AnchorElement(href: url)
+      ..setAttribute('download', name)
+      ..click();
+    html.Url.revokeObjectUrl(url);
   }
 
   /// Downloads [items] as one or more zip archives. Safe to call again
@@ -245,10 +436,11 @@ class DownloadService {
   static Future<void> downloadBulkZip(
     List<SearchItem> items, {
     String zipName = 'commons_export.zip',
-    int concurrency = 3,
-    int chunkSize = 50,
+    int concurrency = 2,
+    int chunkSize = 25,
     int? maxWidth,
-    void Function(int completed, int total, List<String> failedTitles)? onProgress,
+    void Function(int completed, int total, List<String> failedTitles)?
+        onProgress,
     DownloadCancelToken? cancelToken,
   }) async {
     if (items.isEmpty) return;
@@ -262,8 +454,9 @@ class DownloadService {
       final failedTitles = <String>[];
       var completed = 0;
 
-      final baseName =
-          zipName.toLowerCase().endsWith('.zip') ? zipName.substring(0, zipName.length - 4) : zipName;
+      final baseName = zipName.toLowerCase().endsWith('.zip')
+          ? zipName.substring(0, zipName.length - 4)
+          : zipName;
 
       final chunks = <List<SearchItem>>[];
       for (var i = 0; i < items.length; i += chunkSize) {
@@ -303,15 +496,11 @@ class DownloadService {
             if (scaled != null) downloadUrl = scaled;
           }
 
-          final response = await _fetchWithRetry(client, downloadUrl, cancelToken: cancelToken);
+          final response = await _fetchWithRetry(client, downloadUrl,
+              cancelToken: cancelToken);
 
           if (response != null) {
-            final cleanTitle = item.title
-                .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
-                .replaceAll('File:', '')
-                .trim();
-
-            final fileName = '$cleanTitle.${item.extension.toLowerCase()}';
+            final fileName = _sanitizedFileName(item);
 
             // level: 0 makes this a plain store (memcpy + CRC32), skipping
             // Deflate entirely for this entry — there's no compression
@@ -321,8 +510,8 @@ class DownloadService {
             // in hand; Dart's single-threaded event loop means these
             // calls can never overlap each other, so no locking is
             // needed.
-            final archiveFile =
-                ArchiveFile(fileName, response.bodyBytes.length, response.bodyBytes);
+            final archiveFile = ArchiveFile(
+                fileName, response.bodyBytes.length, response.bodyBytes);
             encoder.add(archiveFile, level: 0);
             filesWritten++;
             manifestEntries.add(MapEntry(fileName, item));
@@ -368,8 +557,12 @@ class DownloadService {
           }
         }
 
+        // This setting can tune downward but cannot bypass the shared
+        // Wikimedia-wide concurrency ceiling.
+        final workerCount =
+            concurrency.clamp(1, WikimediaRequestGate.maxConcurrent).toInt();
         await Future.wait(
-          List.generate(concurrency, (_) => worker()),
+          List.generate(workerCount, (_) => worker()),
         );
 
         if (cancelToken?.isCancelled == true) {
@@ -382,88 +575,9 @@ class DownloadService {
 
         if (filesWritten == 0) continue;
 
-        // data.csv — one row per file actually in this zip, describing it.
-        // Every field SearchItem carries goes in here — everything fetched
-        // via imageinfo/extmetadata for that file, not just a curated
-        // subset — since the whole point of this manifest is a complete,
-        // self-contained record of what's in the archive. HTML-bearing
-        // fields (artistHtml, imageDescriptionHtml, creditHtml,
-        // permissionHtml) are stripped down to plain text the same way the
-        // asset viewer's metadata panel already does, rather than dumping
-        // markup into a spreadsheet cell.
-        final csvBuffer = StringBuffer()
-          ..writeln([
-            'filename',
-            'title',
-            'source_url',
-            'thumb_url',
-            'commons_url',
-            'description_url',
-            'snippet',
-            'mime',
-            'is_svg',
-            'width',
-            'height',
-            'author',
-            'uploader',
-            'license',
-            'license_url',
-            'usage_terms',
-            'copyright_status',
-            'attribution_required',
-            'permission',
-            'restrictions',
-            'credit',
-            'date_original',
-            'upload_datetime',
-            'revision_timestamp',
-            'object_name',
-            'image_description',
-            'categories',
-            'assessments',
-            'gps_latitude',
-            'gps_longitude',
-          ].join(','));
-        for (final entry in manifestEntries) {
-          final fileName = entry.key;
-          final item = entry.value;
-          String plain(String html) =>
-              html.replaceAll(RegExp(r'<[^>]*>'), '').trim();
-
-          csvBuffer.writeln([
-            _csvField(fileName),
-            _csvField(item.title),
-            _csvField(item.url),
-            _csvField(item.thumb),
-            _csvField(item.commonsUrl),
-            _csvField(item.descriptionUrl ?? ''),
-            _csvField(item.snippet),
-            _csvField(item.mime),
-            item.isSvg.toString(),
-            item.width.toString(),
-            item.height.toString(),
-            _csvField(plain(item.artistHtml)),
-            _csvField(item.uploader),
-            _csvField(item.licenseShortName),
-            _csvField(item.licenseUrl),
-            _csvField(item.usageTerms),
-            _csvField(item.copyrighted),
-            _csvField(item.attributionRequired),
-            _csvField(plain(item.permissionHtml)),
-            _csvField(item.restrictions),
-            _csvField(plain(item.creditHtml)),
-            _csvField(item.dateTimeOriginal),
-            _csvField(item.uploadDateTime),
-            _csvField(item.timestamp ?? ''),
-            _csvField(item.objectName),
-            _csvField(plain(item.imageDescriptionHtml)),
-            _csvField(item.categories),
-            _csvField(item.assessments),
-            _csvField(item.gpsLatitude),
-            _csvField(item.gpsLongitude),
-          ].join(','));
-        }
-        final csvBytes = utf8.encode(csvBuffer.toString());
+        final csvBytes = utf8.encode(
+          buildManifestCsv(manifestEntries.map((e) => e.value).toList()),
+        );
         encoder.add(
           ArchiveFile('data.csv', csvBytes.length, csvBytes),
           level: 0,

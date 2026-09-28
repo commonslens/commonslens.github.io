@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'search_models.dart';
 import 'search_url_codec.dart';
+import 'wikimedia_request_gate.dart';
 
 class SearchService {
   static const int pageSize = 50;
@@ -130,9 +131,11 @@ class SearchService {
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
 
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final response = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 15));
 
       if (response.statusCode != 200) return null;
 
@@ -184,9 +187,11 @@ class SearchService {
         'iiurlwidth': '320',
       });
 
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final response = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 15));
 
       if (response.statusCode != 200) return const [];
 
@@ -233,7 +238,7 @@ class SearchService {
   /// anything else editors have added), as opposed to *filtering* on one
   /// of those via haswbstatement: (see buildQuery / SearchState's
   /// statementsInclude). Two requests: resolve the file's pageid (SDC
-  /// entities are addressed as "M<pageid>", not by title), then fetch that
+  /// entities are addressed as `M<pageid>`, not by title), then fetch that
   /// entity from Commons' own Wikibase API. Property/value labels are
   /// resolved in a third, batched call against www.wikidata.org, since
   /// Commons SDC reuses Wikidata's own P-/Q-code space rather than
@@ -249,9 +254,11 @@ class SearchService {
         'titles': title,
         'prop': 'info',
       });
-      final infoRes = await _client.get(infoUri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 10));
+      final infoRes = await WikimediaRequestGate.get(_client, infoUri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 10));
       if (infoRes.statusCode != 200) return null;
 
       final infoData = jsonDecode(infoRes.body) as Map<String, dynamic>;
@@ -271,9 +278,11 @@ class SearchService {
         'origin': '*',
         'ids': mid,
       });
-      final entityRes = await _client.get(entityUri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 10));
+      final entityRes = await WikimediaRequestGate.get(_client, entityUri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 10));
       if (entityRes.statusCode != 200) return null;
 
       final entityData = jsonDecode(entityRes.body) as Map<String, dynamic>;
@@ -406,9 +415,11 @@ class SearchService {
           'props': 'labels',
           'languages': language,
         });
-        final res = await _client.get(uri, headers: {
-          'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-        }).timeout(const Duration(seconds: 10));
+        final res = await WikimediaRequestGate.get(_client, uri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 10));
         if (res.statusCode != 200) continue;
 
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -502,9 +513,11 @@ class SearchService {
       }
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final response = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 15));
 
       if (response.statusCode != 200) return null;
 
@@ -588,9 +601,11 @@ class SearchService {
         'gulimit': '$limit',
       });
 
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final response = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 15));
 
       if (response.statusCode != 200) return const [];
 
@@ -639,9 +654,11 @@ class SearchService {
 
       final uri = Uri.https('www.wikidata.org', '/w/api.php', params);
 
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 10));
+      final response = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 10));
 
       if (response.statusCode != 200) return [];
 
@@ -708,7 +725,8 @@ class SearchService {
         'format': 'json',
         'origin': '*',
       });
-      final res = await _client.get(uri).timeout(const Duration(seconds: 5));
+      final res = await WikimediaRequestGate.get(_client, uri,
+          timeout: const Duration(seconds: 5));
       final data = jsonDecode(res.body);
       final cats = data['query']['allcategories'] as List? ?? [];
       return cats.map((c) => c['*'] as String).toList();
@@ -736,9 +754,11 @@ class SearchService {
         'format': 'json',
         'origin': '*',
       });
-      final res = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 5));
+      final res = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 5));
       if (res.statusCode != 200) return [];
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final pages = data['query']?['allpages'] as List? ?? [];
@@ -775,9 +795,11 @@ class SearchService {
         'origin': '*',
       });
 
-      final response = await _client.get(uri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 5));
+      final response = await WikimediaRequestGate.get(_client, uri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 5));
 
       if (response.statusCode != 200) return [];
 
@@ -975,7 +997,8 @@ class SearchService {
           .toList();
       if (clauses.isNotEmpty) parts.add(clauses.join(' OR '));
       for (final l in selectedLicenses) {
-        chips.add(QueryChipData(id: 'license:${l.name}', label: licensePresetLabel(l)));
+        chips.add(QueryChipData(
+            id: 'license:${l.name}', label: licensePresetLabel(l)));
       }
     }
 
@@ -1272,9 +1295,11 @@ class SearchService {
 
       final listUri =
           Uri.https('commons.wikimedia.org', '/w/api.php', listParams);
-      final listResponse = await _client.get(listUri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final listResponse = await WikimediaRequestGate.get(_client, listUri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 15));
 
       if (listResponse.statusCode != 200) return null;
 
@@ -1313,9 +1338,11 @@ class SearchService {
 
       final infoUri =
           Uri.https('commons.wikimedia.org', '/w/api.php', infoParams);
-      final infoResponse = await _client.get(infoUri, headers: {
-        'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-      }).timeout(const Duration(seconds: 15));
+      final infoResponse = await WikimediaRequestGate.get(_client, infoUri,
+          headers: {
+            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+          },
+          timeout: const Duration(seconds: 15));
 
       if (infoResponse.statusCode != 200) return null;
 
@@ -1740,40 +1767,21 @@ class SearchService {
       print(
           '🔍 [REQUEST] tab=${state.tab.name} formats=${state.formats} overrideFormat=$overrideFormat\n🔍 [REQUEST URL] $uri');
 
-      // Transient failures (dropped connection, timeout, a momentary 5xx
-      // from the API cluster) are common enough on a public API under load
-      // that treating the first failure as final would routinely and
-      // needlessly cost real results. Retry a couple of times with a short
-      // backoff before giving up — only genuine, repeated failures fall
-      // through to null (which _fanOutFetch now preserves for a later
-      // retry rather than discarding, and a non-fan-out single search
-      // surfaces as a real error rather than a false "no results").
-      http.Response? response;
-      for (var attempt = 1; attempt <= 3; attempt++) {
-        try {
-          final candidate = await _client.get(uri, headers: {
+      // The shared gate owns retries, backoff, throttling, and maxlag so
+      // callers cannot multiply traffic with their own retry loops.
+      late final http.Response response;
+      try {
+        response = await WikimediaRequestGate.get(
+          _client,
+          uri,
+          headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-          }).timeout(const Duration(seconds: 15));
-
-          if (candidate.statusCode == 200 || candidate.statusCode < 500) {
-            response = candidate;
-            break;
-          }
-          // ignore: avoid_print
-          print(
-              '🔍 [RETRY $attempt/3] HTTP ${candidate.statusCode} — retrying');
-        } catch (e) {
-          // ignore: avoid_print
-          print('🔍 [RETRY $attempt/3] network error: $e');
-        }
-        if (attempt < 3) {
-          await Future.delayed(Duration(milliseconds: 400 * attempt));
-        }
-      }
-
-      if (response == null) {
+          },
+          timeout: const Duration(seconds: 15),
+        );
+      } catch (e) {
         // ignore: avoid_print
-        print('🔍 [GIVE UP] all 3 attempts failed');
+        print('🔍 [GIVE UP] request gate exhausted retries: $e');
         return null;
       }
 
@@ -1864,8 +1872,8 @@ class SearchService {
       // into the underlying, unfiltered result set.
       if (state.attributionRequired != null) {
         filteredItems = filteredItems
-            .where((item) =>
-                _matchesAttribution(item, state.attributionRequired!))
+            .where(
+                (item) => _matchesAttribution(item, state.attributionRequired!))
             .toList();
       }
 
@@ -2023,8 +2031,9 @@ class SearchService {
           if (ext == 'ogv' || mime.contains('ogg')) return true;
           break;
         case FileFormat.mp3:
-          if (ext == 'mp3' || mime.contains('mpeg') || mime.contains('mp3'))
+          if (ext == 'mp3' || mime.contains('mpeg') || mime.contains('mp3')) {
             return true;
+          }
           break;
         case FileFormat.wav:
           if (ext == 'wav' || mime.contains('wav')) return true;
@@ -2070,16 +2079,17 @@ extension BrowseExtensions on SearchService {
       'format': 'json',
       'origin': '*',
     };
-    if (prefix != null && prefix.trim().isNotEmpty)
+    if (prefix != null && prefix.trim().isNotEmpty) {
       params['acprefix'] = prefix.trim();
+    }
     if (cursor != null) params['accontinue'] = cursor;
 
     try {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      final res = await SearchService._client
-          .get(uri); // Assumes _client is accessible or make it public
-      if (res.statusCode != 200)
+      final res = await WikimediaRequestGate.get(SearchService._client, uri);
+      if (res.statusCode != 200) {
         return (items: <CategoryItem>[], nextCursor: null);
+      }
 
       final data = jsonDecode(res.body);
       final cats = data['query']?['allcategories'] as List? ?? [];
@@ -2109,13 +2119,14 @@ extension BrowseExtensions on SearchService {
       'format': 'json',
       'origin': '*',
     };
-    if (prefix != null && prefix.trim().isNotEmpty)
+    if (prefix != null && prefix.trim().isNotEmpty) {
       params['apprefix'] = prefix.trim();
+    }
     if (cursor != null) params['apcontinue'] = cursor;
 
     try {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      final res = await SearchService._client.get(uri);
+      final res = await WikimediaRequestGate.get(SearchService._client, uri);
       if (res.statusCode != 200) return (items: <String>[], nextCursor: null);
 
       final data = jsonDecode(res.body);

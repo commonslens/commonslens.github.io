@@ -5,6 +5,7 @@ import 'search_url_codec.dart';
 import 'commons_engine.dart';
 import 'commons_backend.dart';
 import 'analytics_service.dart';
+import 'backend_providers.dart';
 
 /// Every Wikimedia page (any language, any project) currently embedding a
 /// given file — see [CommonsBackend.globalUsage]. Keyed by file title,
@@ -18,7 +19,7 @@ import 'analytics_service.dart';
 /// provider container after that.
 final globalUsageProvider =
     FutureProvider.family<List<GlobalUsageEntry>, String>((ref, fileTitle) {
-  return CommonsBackend().globalUsage(fileTitle);
+  return ref.watch(commonsBackendProvider).globalUsage(fileTitle);
 });
 
 /// A file's full Structured Data on Commons entity — captions plus every
@@ -31,7 +32,7 @@ final globalUsageProvider =
 /// Structured Data section.
 final structuredDataProvider =
     FutureProvider.family<StructuredDataResult?, String>((ref, fileTitle) {
-  return CommonsBackend().structuredData(fileTitle);
+  return ref.watch(commonsBackendProvider).structuredData(fileTitle);
 });
 
 /// Files CirrusSearch considers similar to [fileTitle], via its own
@@ -45,8 +46,9 @@ final structuredDataProvider =
 /// file itself.
 final morelikeProvider =
     FutureProvider.family<List<SearchItem>, String>((ref, fileTitle) async {
-  final result =
-      await CommonsBackend().search(SearchState(morelikeTitles: {fileTitle}));
+  final result = await ref.watch(commonsBackendProvider).search(
+        SearchState(morelikeTitles: {fileTitle}),
+      );
   final normalized = fileTitle.replaceFirst('File:', '').trim().toLowerCase();
   return result.items
       .where((i) =>
@@ -73,7 +75,7 @@ class SearchController extends Notifier<SearchViewState> {
 
   @override
   SearchViewState build() {
-    _engine = CommonsSearchSession();
+    _engine = CommonsSearchSession(backend: ref.watch(commonsBackendProvider));
     return SearchViewState(
       filterState: _engine.filterState,
       activeSession: _engine.activeSession,
@@ -290,7 +292,10 @@ class AuthorPortfolioController extends FamilyNotifier<SearchSession, String> {
 
   @override
   SearchSession build(String arg) {
-    _engine = AuthorPortfolioSession(arg);
+    _engine = AuthorPortfolioSession(
+      arg,
+      backend: ref.watch(commonsBackendProvider),
+    );
     _loadInitial();
     return const SearchSession(hasSearched: true, loading: true);
   }

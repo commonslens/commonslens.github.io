@@ -1287,46 +1287,18 @@ class _ResultsPane extends StatelessWidget {
                         const TextStyle(color: Color(0xFF404040), fontSize: 13),
                   ),
                 )
-              : NotificationListener<ScrollNotification>(
-                  onNotification: (n) {
-                    if (n.metrics.pixels >= n.metrics.maxScrollExtent - 400) {
-                      onLoadMore();
-                    }
-                    return false;
-                  },
-                  child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 220,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                            childAspectRatio: 0.85),
-                    itemCount:
-                        session.items.length + (session.loadingMore ? 1 : 0),
-                    itemBuilder: (context, i) {
-                      if (i == session.items.length) {
-                        return const Center(
-                          child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 1.5, color: _kAccent)),
-                        );
-                      }
-                      final item = session.items[i];
-                      return RepaintBoundary(
-                        key: ValueKey(item.url),
-                        child: MediaCard(
-                          item: item,
-                          searchResultsNotifier: ValueNotifier(session.items),
-                          onLoadMore: onLoadMore,
-                          index: i,
-                          searchState: searchState,
-                          extraParams: const {'from': 'map'},
-                        ),
-                      );
-                    },
+              : MediaResultsGrid(
+                  items: session.items,
+                  loadingMore: session.loadingMore,
+                  searchState: searchState,
+                  extraParams: const {'from': 'map'},
+                  onNearEnd: onLoadMore,
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 220,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.85,
                   ),
                 ),
         ),

@@ -709,36 +709,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           child: Text(configForTab(filterState.tab).emptyMessage,
               style: const TextStyle(color: Color(0xFF404040), fontSize: 14)));
 
-    return GridView.builder(
+    return MediaResultsGrid(
       controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-      cacheExtent: 150,
+      items: session.items,
+      loadingMore: session.loadingMore,
+      searchState: filterState,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 280,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.85),
-      itemCount: session.items.length + (session.loadingMore ? 1 : 0),
-      itemBuilder: (context, i) {
-        if (i == session.items.length)
-          return const Center(
-              child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 1.5, color: Color(0xFF3D7EFF))));
-        return RepaintBoundary(
-          key: ValueKey(session.items[i].url),
-          child: MediaCard(
-            item: session.items[i],
-            searchResultsNotifier: ValueNotifier(session.items),
-            onLoadMore: () =>
-                ref.read(searchControllerProvider.notifier).loadMore(),
-            index: i,
-            searchState: filterState,
-          ),
-        );
-      },
+        maxCrossAxisExtent: 280,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.85,
+      ),
     );
   }
 

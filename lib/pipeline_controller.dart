@@ -17,6 +17,7 @@ import 'pipeline_engine.dart';
 import 'pipeline_models.dart';
 import 'search_controller.dart';
 import 'search_models.dart';
+import 'backend_providers.dart';
 
 // -----------------------------------------------------------------------------
 // View state
@@ -325,6 +326,7 @@ class PipelineController extends Notifier<PipelineViewState> {
     );
 
     final ctx = PipelineExecutionContext(
+      backend: ref.read(commonsBackendProvider),
       cache: _cache,
       preview: preview,
       onNodeStatus: (nodeId, status, {message}) {

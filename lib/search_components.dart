@@ -8,15 +8,17 @@ import 'package:flutter/foundation.dart';
 import 'search_models.dart';
 import 'search_service.dart';
 import 'search_url_codec.dart';
+import 'backend_providers.dart';
 import 'analytics_service.dart';
 import 'download_service.dart';
+import 'autocomplete_request_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // -----------------------------------------------------------------------------
 // Top Bar
 // -----------------------------------------------------------------------------
 
-class SearchTopBar extends StatefulWidget {
+class SearchTopBar extends ConsumerStatefulWidget {
   final String initialQuery;
   final ValueChanged<String> onSearch;
 
@@ -35,12 +37,10 @@ class SearchTopBar extends StatefulWidget {
   });
 
   @override
-  State<SearchTopBar> createState() => _SearchTopBarState();
+  ConsumerState<SearchTopBar> createState() => _SearchTopBarState();
 }
 
-class _SearchTopBarState extends State<SearchTopBar> {
-  final SearchService _service = SearchService();
-
+class _SearchTopBarState extends ConsumerState<SearchTopBar> {
   // The Autocomplete widget owns its internal TextEditingController; we
   // grab a reference in fieldViewBuilder so we can (a) push external
   // updates to widget.initialQuery into it — e.g. after a chip is removed
@@ -48,11 +48,11 @@ class _SearchTopBarState extends State<SearchTopBar> {
   // select, same pattern the drawer's category/depicts pickers use.
   TextEditingController? _fieldController;
   VoidCallback? _listener;
-  Timer? _debounce;
+  final _autocompleteRequests = AutocompleteRequestCoordinator<String>();
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _autocompleteRequests.dispose();
     if (_listener != null) _fieldController?.removeListener(_listener!);
     super.dispose();
   }
@@ -96,24 +96,15 @@ class _SearchTopBarState extends State<SearchTopBar> {
 
   FutureOr<Iterable<String>> _optionsBuilder(TextEditingValue value) {
     final segment = _activeSegment(value.text).trim();
-    if (segment.isEmpty) return const Iterable<String>.empty();
-
-    // Debounce network calls while the user is still typing. Autocomplete
-    // itself discards stale results by call order, but that only protects
-    // correctness — this avoids firing a request per keystroke.
-    _debounce?.cancel();
-    final completer = Completer<Iterable<String>>();
-    _debounce = Timer(const Duration(milliseconds: 220), () async {
-      final results = await _service.searchTitleSuggestions(segment);
-      if (!completer.isCompleted) completer.complete(results);
-    });
-    return completer.future.then(
-      (results) => results
+    return _autocompleteRequests.load(segment, (query) async {
+      final results =
+          await ref.read(commonsAutocompleteProvider).queries(query);
+      return results
           .map(_cleanSuggestionLabel)
           .where((title) => title.isNotEmpty)
           .toSet()
-          .toList(),
-    );
+          .toList();
+    });
   }
 
   /// Compact icon-only variant of the Map/Filters buttons, used once the
@@ -550,10 +541,92 @@ class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
   }
 }
 
+/// Shared result grid used anywhere a collection of Commons media is shown.
+///
+/// The caller owns loading and pagination state. This widget coordinates the
+/// visual grid, card navigation context, and an optional near-end callback.
+class MediaResultsGrid extends StatelessWidget {
+  final List<SearchItem> items;
+  final SearchState searchState;
+  final Map<String, String> extraParams;
+  final SliverGridDelegate gridDelegate;
+  final EdgeInsetsGeometry padding;
+  final ScrollController? controller;
+  final bool loadingMore;
+  final int? itemLimit;
+  final double cacheExtent;
+  final VoidCallback? onNearEnd;
+  final double nearEndThreshold;
+
+  const MediaResultsGrid({
+    super.key,
+    required this.items,
+    required this.searchState,
+    required this.gridDelegate,
+    this.extraParams = const {},
+    this.padding = const EdgeInsets.fromLTRB(12, 12, 12, 20),
+    this.controller,
+    this.loadingMore = false,
+    this.itemLimit,
+    this.cacheExtent = 150,
+    this.onNearEnd,
+    this.nearEndThreshold = 400,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleCount = itemLimit == null
+        ? items.length
+        : itemLimit!.clamp(0, items.length).toInt();
+    final grid = GridView.builder(
+      controller: controller,
+      padding: padding,
+      cacheExtent: cacheExtent,
+      gridDelegate: gridDelegate,
+      itemCount: visibleCount + (loadingMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == visibleCount) {
+          return const Center(
+            key: ValueKey('media-results-loading'),
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFF3D7EFF),
+              ),
+            ),
+          );
+        }
+        final item = items[index];
+        return RepaintBoundary(
+          key: ValueKey(item.url),
+          child: MediaCard(
+            item: item,
+            index: index,
+            searchState: searchState,
+            extraParams: extraParams,
+          ),
+        );
+      },
+    );
+
+    if (onNearEnd == null) return grid;
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.pixels >=
+            notification.metrics.maxScrollExtent - nearEndThreshold) {
+          onNearEnd!();
+        }
+        return false;
+      },
+      child: grid,
+    );
+  }
+}
+
 class MediaCard extends ConsumerStatefulWidget {
   final SearchItem item;
-  final ValueNotifier<List<SearchItem>> searchResultsNotifier;
-  final VoidCallback onLoadMore;
   final int index;
   final SearchState searchState;
   final Map<String, String> extraParams;
@@ -561,8 +634,6 @@ class MediaCard extends ConsumerStatefulWidget {
   const MediaCard({
     super.key,
     required this.item,
-    required this.searchResultsNotifier,
-    required this.onLoadMore,
     required this.index,
     required this.searchState,
     this.extraParams = const {},
@@ -787,6 +858,7 @@ class MediaPreview extends StatefulWidget {
 
 class _MediaPreviewState extends State<MediaPreview> {
   bool _shouldLoad = false;
+  Timer? _loadTimer;
   @override
   void initState() {
     super.initState();
@@ -796,7 +868,7 @@ class _MediaPreviewState extends State<MediaPreview> {
         if (mounted) setState(() => _shouldLoad = true);
       });
     } else {
-      Future.delayed(Duration(milliseconds: slot * 30), () {
+      _loadTimer = Timer(Duration(milliseconds: slot * 30), () {
         if (mounted) setState(() => _shouldLoad = true);
       });
     }
@@ -804,6 +876,7 @@ class _MediaPreviewState extends State<MediaPreview> {
 
   @override
   void dispose() {
+    _loadTimer?.cancel();
     super.dispose();
   }
 

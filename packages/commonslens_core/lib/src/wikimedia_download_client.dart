@@ -1,0 +1,138 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
+
+import 'wikimedia_request_gate.dart';
+import 'wikimedia_transport.dart';
+
+class DownloadPayload {
+  final Uint8List bytes;
+  final String contentType;
+
+  const DownloadPayload({
+    required this.bytes,
+    required this.contentType,
+  });
+}
+
+/// Headless media-download backend.
+///
+/// It owns thumbnail URL resolution, media fetching, response validation,
+/// retries, and cancellation. Browser/native presentation layers only decide
+/// how to save the returned bytes.
+class WikimediaDownloadClient {
+  WikimediaDownloadClient({WikimediaTransport? transport})
+      : _transport = transport ?? GatedWikimediaTransport(),
+        _ownsTransport = transport == null;
+
+  static const int maxConcurrent = WikimediaRequestGate.maxConcurrent;
+
+  final WikimediaTransport _transport;
+  final bool _ownsTransport;
+  bool _closed = false;
+
+  bool get isClosed => _closed;
+
+  Future<String?> fetchScaledUrl(
+    String title,
+    int maxWidth, {
+    bool Function()? cancelled,
+  }) async {
+    if (_closed || title.trim().isEmpty || maxWidth <= 0) return null;
+    try {
+      final normalizedTitle = title.startsWith('File:') ? title : 'File:$title';
+      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+        'origin': '*',
+        'titles': normalizedTitle,
+        'prop': 'imageinfo',
+        'iiprop': 'url',
+        'iiurlwidth': '$maxWidth',
+      });
+      final response = await _transport.get(
+        uri,
+        timeout: const Duration(seconds: 15),
+        cancelled: () => _closed || (cancelled?.call() ?? false),
+      );
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return null;
+      final query = decoded['query'];
+      if (query is! Map) return null;
+      final pages = query['pages'];
+      if (pages is! Map) return null;
+
+      for (final page in pages.values) {
+        if (page is! Map) continue;
+        final imageInfo = page['imageinfo'];
+        if (imageInfo is! List || imageInfo.isEmpty) continue;
+        final first = imageInfo.first;
+        if (first is! Map) continue;
+        final thumbnail = first['thumburl'];
+        if (thumbnail is String && thumbnail.isNotEmpty) return thumbnail;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<DownloadPayload?> fetchMedia(
+    String url, {
+    bool Function()? cancelled,
+    int maxAttempts = 4,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    if (_closed) return null;
+    try {
+      final response = await _transport.get(
+        Uri.parse(url),
+        timeout: timeout,
+        maxAttempts: maxAttempts,
+        deduplicate: false,
+        cancelled: () => _closed || (cancelled?.call() ?? false),
+        acceptResponse: _isUsableMediaResponse,
+      );
+      if (!_isUsableMediaResponse(response)) return null;
+      return DownloadPayload(
+        bytes: response.bodyBytes,
+        contentType:
+            response.headers['content-type'] ?? 'application/octet-stream',
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _isUsableMediaResponse(http.Response response) {
+    if (response.statusCode != 200 || response.bodyBytes.isEmpty) return false;
+
+    final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+    if (contentType.contains('text/html') ||
+        contentType.contains('application/json')) {
+      return false;
+    }
+
+    final contentEncoding =
+        (response.headers['content-encoding'] ?? '').toLowerCase();
+    final declaredLength =
+        int.tryParse(response.headers['content-length'] ?? '');
+    if ((contentEncoding.isEmpty || contentEncoding == 'identity') &&
+        declaredLength != null &&
+        declaredLength != response.bodyBytes.length) {
+      return false;
+    }
+    return true;
+  }
+
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    if (_ownsTransport && _transport is GatedWikimediaTransport) {
+      _transport.close();
+    }
+  }
+}

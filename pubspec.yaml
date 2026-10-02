@@ -33,6 +33,9 @@ dependencies:
   flutter_web_plugins:
     sdk: flutter
 
+  commonslens_core:
+    path: packages/commonslens_core
+
   flutter_map: ^7.0.0
   latlong2: ^0.9.1
   http: ^1.6.0

@@ -1,0 +1,15 @@
+name: commonslens_core
+description: Pure Dart Wikimedia search and pipeline backend for CommonsLens.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+dependencies:
+  http: ^1.6.0
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^5.1.1
+  test: ^1.25.15

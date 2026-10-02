@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,10 +28,12 @@ class _DownloadJob {
 
 class BulkDownloadTray extends ConsumerStatefulWidget {
   final List<SearchItem> availableItems;
+  final String zipName;
 
   const BulkDownloadTray({
     super.key,
     required this.availableItems,
+    this.zipName = 'selected_commons_media.zip',
   });
 
   @override
@@ -40,6 +44,25 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
   final List<_DownloadJob> _downloadJobs = [];
   int _nextDownloadJobId = 0;
   bool _downloadFullRes = true;
+  final Set<Timer> _cleanupTimers = {};
+
+  void _removeLater(_DownloadJob job, Duration delay) {
+    late final Timer timer;
+    timer = Timer(delay, () {
+      _cleanupTimers.remove(timer);
+      if (!mounted) return;
+      setState(() => _downloadJobs.remove(job));
+    });
+    _cleanupTimers.add(timer);
+  }
+
+  @override
+  void dispose() {
+    for (final timer in _cleanupTimers) {
+      timer.cancel();
+    }
+    super.dispose();
+  }
 
   Future<void> startDownload(
     List<SearchItem> items, {
@@ -80,10 +103,7 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
           cancelled: job.cancelled,
         );
         if (job.failed.isEmpty && job.error == null && !job.cancelled) {
-          Future.delayed(const Duration(seconds: 4), () {
-            if (!mounted) return;
-            setState(() => _downloadJobs.remove(job));
-          });
+          _removeLater(job, const Duration(seconds: 4));
         }
       }
     }
@@ -92,10 +112,7 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
   void _cancelDownload(_DownloadJob job) {
     job.cancelToken.cancel();
     setState(() => job.cancelled = true);
-    Future.delayed(const Duration(seconds: 5), () {
-      if (!mounted) return;
-      setState(() => _downloadJobs.remove(job));
-    });
+    _removeLater(job, const Duration(seconds: 5));
   }
 
   Widget _resolutionButton({
@@ -299,7 +316,10 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
                   ElevatedButton.icon(
                     onPressed: selectedItems.isEmpty
                         ? null
-                        : () => startDownload(selectedItems.toList()),
+                        : () => startDownload(
+                              selectedItems.toList(),
+                              zipName: widget.zipName,
+                            ),
                     style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF3D7EFF)),
                     icon: const Icon(Icons.download,

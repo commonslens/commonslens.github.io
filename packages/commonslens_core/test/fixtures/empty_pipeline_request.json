@@ -1,0 +1,10 @@
+{
+  "operation": "pipeline",
+  "graph": {
+    "id": "smoke",
+    "name": "Smoke",
+    "nodes": [],
+    "edges": [],
+    "updatedAt": "2026-01-01T00:00:00.000Z"
+  }
+}

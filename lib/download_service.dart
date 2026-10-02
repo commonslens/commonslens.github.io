@@ -4,10 +4,9 @@ import 'dart:html' as html;
 import 'dart:async';
 import 'dart:js_util' as js_util;
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:archive/archive.dart';
 import 'search_models.dart';
-import 'wikimedia_request_gate.dart';
+import 'wikimedia_download_client.dart';
 
 /// Screen Wake Lock — prevents the screen from dimming/locking while a
 /// download is in progress and the tab stays open and visible.
@@ -68,14 +67,11 @@ class _WakeLock {
 /// Passed into [DownloadService.downloadBulkZip] to allow stopping it
 /// mid-run. Calling [cancel] does two things: flips [isCancelled] (checked
 /// between files/chunks so nothing new gets started) AND closes the shared
-/// [http.Client] that every in-flight fetch for this download is using —
-/// which is what actually aborts requests already in progress, rather than
-/// just letting them finish and discarding the result. A closed
-/// [http.Client] makes any pending `.get()` call on it throw, which
-/// [DownloadService._fetchWithRetry] already treats as a failure.
+/// headless download client used by every in-flight fetch. Closing it aborts
+/// its owned HTTP client while the cancellation flag prevents new work.
 class DownloadCancelToken {
   bool _cancelled = false;
-  http.Client? _client;
+  WikimediaDownloadClient? _client;
 
   bool get isCancelled => _cancelled;
 
@@ -99,26 +95,24 @@ String _csvField(String value) {
 }
 
 class DownloadService {
-  static final http.Client _singleDownloadClient = http.Client();
+  static final WikimediaDownloadClient _singleDownloadClient =
+      WikimediaDownloadClient();
   static Future<void> downloadSingleFile(
       String url, String title, String extension) async {
     try {
-      final response = await WikimediaRequestGate.get(
-        _singleDownloadClient,
-        Uri.parse(url),
+      final payload = await _singleDownloadClient.fetchMedia(
+        url,
         timeout: const Duration(seconds: 30),
-        deduplicate: false,
       );
 
-      if (response.statusCode == 200) {
+      if (payload != null) {
         final cleanTitle = title
             .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
             .replaceAll('File:', '')
             .trim();
         final fileName = '$cleanTitle.${extension.toLowerCase()}';
 
-        final blob = html.Blob([response.bodyBytes],
-            response.headers['content-type'] ?? 'application/octet-stream');
+        final blob = html.Blob([payload.bytes], payload.contentType);
         final objectUrl = html.Url.createObjectUrlFromBlob(blob);
 
         html.AnchorElement(href: objectUrl)
@@ -130,108 +124,6 @@ class DownloadService {
     } catch (e) {
       debugPrint('Download failed: $e');
       html.window.open(url, '_blank');
-    }
-  }
-
-  /// Looks up a scaled thumbnail URL for [title] at [maxWidth] via
-  /// prop=imageinfo&iiurlwidth — the same proven-reliable mechanism used
-  /// elsewhere in this app (not a hand-built thumb URL). Goes to
-  /// commons.wikimedia.org/w/api.php, NOT upload.wikimedia.org, so the
-  /// Api-User-Agent header is safe here — see the note on _fetchWithRetry
-  /// for why it's deliberately omitted on the raw media server.
-  /// Falls back to null (caller uses the full-res original) on any failure.
-  static Future<String?> _fetchScaledUrl(
-    http.Client client,
-    String title,
-    int maxWidth,
-  ) async {
-    try {
-      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
-        'action': 'query',
-        'format': 'json',
-        'origin': '*',
-        'titles': title,
-        'prop': 'imageinfo',
-        'iiprop': 'url',
-        'iiurlwidth': '$maxWidth',
-      });
-
-      final response = await WikimediaRequestGate.get(
-        client,
-        uri,
-        timeout: const Duration(seconds: 15),
-      );
-
-      if (response.statusCode != 200) return null;
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
-      for (final page in pages.values) {
-        final infoList = (page as Map<String, dynamic>)['imageinfo'] as List?;
-        if (infoList == null || infoList.isEmpty) continue;
-        final thumb =
-            (infoList.first as Map<String, dynamic>)['thumburl'] as String?;
-        if (thumb != null && thumb.isNotEmpty) return thumb;
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Fetches one file with a timeout and a couple of retries on transient
-  /// failure (timeout, dropped connection, 5xx). Does NOT retry on 4xx —
-  /// that's a real rejection (e.g. gone/forbidden), not a transient blip.
-  ///
-  /// Deliberately sends NO custom headers — upload.wikimedia.org is the raw
-  /// media storage layer, not the MediaWiki API. Unlike
-  /// commons.wikimedia.org/w/api.php and www.wikidata.org/w/api.php (which
-  /// do support a custom Api-User-Agent header), a plain simple GET is what
-  /// actually works here: any custom header turns this into a "non-simple"
-  /// cross-origin request, forcing a CORS preflight — if that preflight
-  /// isn't explicitly allowed, the browser blocks the request before it
-  /// ever reaches the network, silently and identically for every file.
-  static bool _isUsableDownloadResponse(http.Response response) {
-    if (response.statusCode != 200 || response.bodyBytes.isEmpty) return false;
-
-    final contentType = (response.headers['content-type'] ?? '').toLowerCase();
-    if (contentType.contains('text/html') ||
-        contentType.contains('application/json')) {
-      return false;
-    }
-
-    final contentEncoding =
-        (response.headers['content-encoding'] ?? '').toLowerCase();
-    final declaredLength =
-        int.tryParse(response.headers['content-length'] ?? '');
-    if ((contentEncoding.isEmpty || contentEncoding == 'identity') &&
-        declaredLength != null &&
-        declaredLength != response.bodyBytes.length) {
-      return false;
-    }
-    return true;
-  }
-
-  static Future<http.Response?> _fetchWithRetry(
-    http.Client client,
-    String url, {
-    DownloadCancelToken? cancelToken,
-    int maxAttempts = 4,
-    Duration timeout = const Duration(seconds: 45),
-  }) async {
-    try {
-      final response = await WikimediaRequestGate.get(
-        client,
-        Uri.parse(url),
-        timeout: timeout,
-        maxAttempts: maxAttempts,
-        deduplicate: false,
-        cancelled: () => cancelToken?.isCancelled == true,
-        acceptResponse: _isUsableDownloadResponse,
-      );
-      return _isUsableDownloadResponse(response) ? response : null;
-    } catch (_) {
-      return null;
     }
   }
 
@@ -446,7 +338,7 @@ class DownloadService {
     if (items.isEmpty) return;
     if (cancelToken?.isCancelled == true) return;
 
-    final client = http.Client();
+    final client = WikimediaDownloadClient();
     cancelToken?._client = client;
 
     await _WakeLock.acquire();
@@ -492,12 +384,18 @@ class DownloadService {
         Future<void> fetchOne(SearchItem item) async {
           var downloadUrl = item.url;
           if (maxWidth != null) {
-            final scaled = await _fetchScaledUrl(client, item.title, maxWidth);
+            final scaled = await client.fetchScaledUrl(
+              item.title,
+              maxWidth,
+              cancelled: () => cancelToken?.isCancelled == true,
+            );
             if (scaled != null) downloadUrl = scaled;
           }
 
-          final response = await _fetchWithRetry(client, downloadUrl,
-              cancelToken: cancelToken);
+          final response = await client.fetchMedia(
+            downloadUrl,
+            cancelled: () => cancelToken?.isCancelled == true,
+          );
 
           if (response != null) {
             final fileName = _sanitizedFileName(item);
@@ -510,8 +408,8 @@ class DownloadService {
             // in hand; Dart's single-threaded event loop means these
             // calls can never overlap each other, so no locking is
             // needed.
-            final archiveFile = ArchiveFile(
-                fileName, response.bodyBytes.length, response.bodyBytes);
+            final archiveFile =
+                ArchiveFile(fileName, response.bytes.length, response.bytes);
             encoder.add(archiveFile, level: 0);
             filesWritten++;
             manifestEntries.add(MapEntry(fileName, item));
@@ -560,7 +458,7 @@ class DownloadService {
         // This setting can tune downward but cannot bypass the shared
         // Wikimedia-wide concurrency ceiling.
         final workerCount =
-            concurrency.clamp(1, WikimediaRequestGate.maxConcurrent).toInt();
+            concurrency.clamp(1, WikimediaDownloadClient.maxConcurrent).toInt();
         await Future.wait(
           List.generate(workerCount, (_) => worker()),
         );

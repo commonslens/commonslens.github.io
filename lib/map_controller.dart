@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'commons_engine.dart';
 import 'search_models.dart';
+import 'backend_providers.dart';
 
 /// The map page's three geospatial modes:
 ///
@@ -88,8 +89,9 @@ class MapSearchController extends Notifier<MapViewState> {
 
   @override
   MapViewState build() {
-    _browseEngine = GeoBrowseSession();
-    _filteredEngine = CommonsSearchSession();
+    final backend = ref.watch(commonsBackendProvider);
+    _browseEngine = GeoBrowseSession(backend: backend);
+    _filteredEngine = CommonsSearchSession(backend: backend);
     return const MapViewState();
   }
 

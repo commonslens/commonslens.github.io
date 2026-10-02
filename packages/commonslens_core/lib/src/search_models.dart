@@ -1071,6 +1071,27 @@ class SearchItem {
   bool get hasCoordinates =>
       resolvedLatitude != null && resolvedLongitude != null;
 
+  /// Returns a Wikimedia-hosted thumbnail resized to [width], when this item
+  /// has one. The API normally supplies a 320px `thumburl`; Wikimedia accepts
+  /// the same URL with a different width segment, so callers can request a
+  /// display-sized asset without downloading the full original.
+  ///
+  /// If the thumbnail URL is not in Wikimedia's standard `/Npx-name` shape,
+  /// the existing thumbnail is still preferable for an optimized preview.
+  /// Null means no distinct preview exists and the original is the only safe
+  /// choice.
+  String? thumbnailUrlAtWidth(int width) {
+    if (width <= 0 || thumb.isEmpty || thumb == url) return null;
+
+    final widthSegment = RegExp(r'/\d+px-([^/?]+)(?=\?|$)');
+    if (!widthSegment.hasMatch(thumb)) return thumb;
+
+    return thumb.replaceFirstMapped(
+      widthSegment,
+      (match) => '/${width}px-${match.group(1)}',
+    );
+  }
+
   /// Flat map of every field — every value here is already a JSON-native
   /// primitive (String/bool/int), no nested encoding needed.
   Map<String, dynamic> toJson() => {

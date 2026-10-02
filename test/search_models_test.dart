@@ -172,6 +172,38 @@ void main() {
       expect(item.resolvedLongitude, -0.1246);
       expect(item.hasCoordinates, isTrue);
     });
+
+    test(
+        'derives display-sized Wikimedia thumbnails without touching originals',
+        () {
+      const item = SearchItem(
+        title: 'Example.svg',
+        url: 'https://upload.wikimedia.org/original/Example.svg',
+        thumb:
+            'https://upload.wikimedia.org/thumb/a/ab/Example.svg/320px-Example.svg.png',
+        commonsUrl: 'https://commons.wikimedia.org/wiki/File:Example.svg',
+        snippet: '',
+        mime: 'image/svg+xml',
+        isSvg: true,
+      );
+
+      expect(
+        item.thumbnailUrlAtWidth(1920),
+        'https://upload.wikimedia.org/thumb/a/ab/Example.svg/1920px-Example.svg.png',
+      );
+      expect(item.thumbnailUrlAtWidth(0), isNull);
+
+      final originalOnly = SearchItem(
+        title: item.title,
+        url: item.url,
+        thumb: item.url,
+        commonsUrl: item.commonsUrl,
+        snippet: '',
+        mime: item.mime,
+        isSvg: true,
+      );
+      expect(originalOnly.thumbnailUrlAtWidth(1920), isNull);
+    });
   });
 
   test('SearchSession JSON preserves result and pagination state', () {

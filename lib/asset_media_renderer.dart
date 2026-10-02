@@ -2,8 +2,13 @@ part of 'asset_viewer.dart';
 
 class _NativeMediaRenderer extends StatefulWidget {
   final SearchItem item;
+  final String imageUrl;
 
-  const _NativeMediaRenderer({required this.item});
+  const _NativeMediaRenderer({
+    super.key,
+    required this.item,
+    required this.imageUrl,
+  });
 
   @override
   State<_NativeMediaRenderer> createState() => _NativeMediaRendererState();
@@ -37,7 +42,7 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
   void initState() {
     super.initState();
     _viewId =
-        'media-view-${widget.item.url.hashCode}-${DateTime.now().millisecondsSinceEpoch}';
+        'media-view-${widget.imageUrl.hashCode}-${DateTime.now().microsecondsSinceEpoch}';
 
     final isVideo = widget.item.mediaKind == MediaKind.video;
     final isAudio = widget.item.mediaKind == MediaKind.audio;
@@ -55,7 +60,7 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
       ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
         if (isImage) {
           return html.ImageElement()
-            ..src = widget.item.url
+            ..src = widget.imageUrl
             ..style.width = '100%'
             ..style.height = '100%'
             ..style.objectFit = 'contain'
@@ -186,6 +191,62 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ImageQualitySelector extends StatelessWidget {
+  final _ViewerImageQuality value;
+  final ValueChanged<_ViewerImageQuality> onChanged;
+
+  const _ImageQualitySelector({
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xE6111111),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF303030)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: SegmentedButton<_ViewerImageQuality>(
+        segments: const [
+          ButtonSegment(
+            value: _ViewerImageQuality.webOptimized,
+            icon: Icon(Icons.speed_rounded, size: 16),
+            label: Text('WEB'),
+            tooltip: '1920px web-optimized preview',
+          ),
+          ButtonSegment(
+            value: _ViewerImageQuality.fullResolution,
+            icon: Icon(Icons.hd_outlined, size: 17),
+            label: Text('FULL'),
+            tooltip: 'Full-resolution original',
+          ),
+        ],
+        selected: {value},
+        showSelectedIcon: false,
+        onSelectionChanged: (selection) => onChanged(selection.single),
+        style: const ButtonStyle(
+          visualDensity: VisualDensity.compact,
+          padding: WidgetStatePropertyAll(
+            EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          ),
+          textStyle: WidgetStatePropertyAll(
+            TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
     );
   }
 }

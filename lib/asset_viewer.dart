@@ -22,6 +22,31 @@ import 'backend_providers.dart';
 part 'asset_media_renderer.dart';
 part 'asset_metadata_panel.dart';
 
+enum _ViewerImageQuality { webOptimized, fullResolution }
+
+const _viewerImageQualityStorageKey = 'commonslens.viewer.imageQuality';
+const _viewerOptimizedImageWidth = 1920;
+
+_ViewerImageQuality _loadViewerImageQuality() {
+  try {
+    final stored = html.window.localStorage[_viewerImageQualityStorageKey];
+    return stored == _ViewerImageQuality.fullResolution.name
+        ? _ViewerImageQuality.fullResolution
+        : _ViewerImageQuality.webOptimized;
+  } catch (_) {
+    // Privacy modes can deny localStorage. Optimized remains the safe default.
+    return _ViewerImageQuality.webOptimized;
+  }
+}
+
+void _storeViewerImageQuality(_ViewerImageQuality quality) {
+  try {
+    html.window.localStorage[_viewerImageQualityStorageKey] = quality.name;
+  } catch (_) {
+    // The selection still works for this viewer session if storage is denied.
+  }
+}
+
 class AssetViewer extends ConsumerStatefulWidget {
   final String fileId;
   final String returnUrl;
@@ -39,6 +64,7 @@ class AssetViewer extends ConsumerStatefulWidget {
 class _AssetViewerState extends ConsumerState<AssetViewer> {
   late PageController _pageController;
   late int _currentIndex;
+  late _ViewerImageQuality _imageQuality;
   bool _showMobileInfo = false;
 
   bool _urlHydrated = false;
@@ -89,6 +115,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   void initState() {
     super.initState();
 
+    _imageQuality = _loadViewerImageQuality();
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
@@ -377,6 +404,20 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
     }
   }
 
+  void _setImageQuality(_ViewerImageQuality quality) {
+    if (quality == _imageQuality) return;
+    setState(() => _imageQuality = quality);
+    _storeViewerImageQuality(quality);
+  }
+
+  String? _optimizedImageUrl(SearchItem item) {
+    if (item.mediaKind != MediaKind.image &&
+        item.mediaKind != MediaKind.vector) {
+      return null;
+    }
+    return item.thumbnailUrlAtWidth(_viewerOptimizedImageWidth);
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(searchControllerProvider).activeSession;
@@ -441,6 +482,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
     }
 
     final currentItem = items[_currentIndex];
+    final currentOptimizedUrl = _optimizedImageUrl(currentItem);
     final hasPrevious = _currentIndex > 0;
     final hasNext = _currentIndex < items.length - 1;
 
@@ -519,9 +561,33 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                           onPageChanged: (index) =>
                               _onPageChanged(index, items.length),
                           itemBuilder: (context, index) {
-                            return _NativeMediaRenderer(item: items[index]);
+                            final item = items[index];
+                            final optimizedUrl = _optimizedImageUrl(item);
+                            final imageUrl = _imageQuality ==
+                                        _ViewerImageQuality.webOptimized &&
+                                    optimizedUrl != null
+                                ? optimizedUrl
+                                : item.url;
+
+                            return _NativeMediaRenderer(
+                              key: ValueKey('${item.url}|$imageUrl'),
+                              item: item,
+                              imageUrl: imageUrl,
+                            );
                           },
                         ),
+                        if (currentOptimizedUrl != null)
+                          Positioned(
+                            top: 12,
+                            left: 0,
+                            right: 0,
+                            child: Center(
+                              child: _ImageQualitySelector(
+                                value: _imageQuality,
+                                onChanged: _setImageQuality,
+                              ),
+                            ),
+                          ),
                         if (hasPrevious && isDesktop && !_isStandalone)
                           Positioned(
                             left: 24,

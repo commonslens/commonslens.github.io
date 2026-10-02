@@ -437,7 +437,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       _syncControllersFromState(next);
     });
 
-    final state = ref.watch(searchControllerProvider).filterState;
+    // Pagination and result-loading changes do not affect this panel. Using
+    // select prevents those high-frequency changes from rebuilding its large
+    // form tree independently of the parent-side rebuild isolation.
+    final state = ref.watch(
+      searchControllerProvider.select((value) => value.filterState),
+    );
 
     return SafeArea(
       child: Column(

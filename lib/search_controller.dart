@@ -138,6 +138,16 @@ class SearchController extends Notifier<SearchViewState> {
 
   Future<void> loadMore() async {
     if (_showingExternalResults) return;
+    // Scroll notifications can arrive many times per frame near the bottom
+    // of a web grid. Avoid publishing two otherwise-identical provider
+    // states for every one of those notifications while a page is already
+    // loading (or after pagination has finished). The engine has the same
+    // safety guard, but checking here matters because _syncFromEngine below
+    // creates a new SearchViewState and would still rebuild the whole search
+    // surface even when the engine correctly did no work.
+    final session = state.activeSession;
+    if (session.loading || session.loadingMore || !session.hasMore) return;
+
     final future = _engine.loadMore();
     _syncFromEngine();
     await future;

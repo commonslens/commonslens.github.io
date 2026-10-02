@@ -721,7 +721,12 @@ class _MediaCardState extends ConsumerState<MediaCard> {
     final item = widget.item;
     final kind = item.mediaKind;
 
-    final isSelected = ref.watch(selectedItemsProvider).contains(item);
+    // A selection change should rebuild this card only when this card's own
+    // membership changes. Watching the full set rebuilt every visible card
+    // for each click, which becomes expensive in Chrome on dense grids.
+    final isSelected = ref.watch(
+      selectedItemsProvider.select((items) => items.contains(item)),
+    );
     final isSelectionMode = ref.watch(selectionModeProvider);
 
     return MouseRegion(

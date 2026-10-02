@@ -76,6 +76,7 @@ class SearchPage extends ConsumerStatefulWidget {
 
 class _SearchPageState extends ConsumerState<SearchPage> {
   final ScrollController _scrollController = ScrollController();
+  late final Widget _desktopFiltersPanel;
 
   bool _showQueryPreview = false;
   bool? _isFiltersExpanded;
@@ -120,6 +121,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
+    // Keep this exact widget instance across search/pagination rebuilds.
+    // FilterPanelContent listens to filter-state changes itself, so making
+    // its large widget tree rebuild for result loading changes only adds
+    // work (and was particularly visible as scroll jank on Flutter web).
+    _desktopFiltersPanel = FilterPanelContent(
+      onCollapse: _collapseFiltersSidebar,
+    );
     _scrollController.addListener(_onScroll);
     PaintingBinding.instance.imageCache.maximumSize = 80;
     PaintingBinding.instance.imageCache.maximumSizeBytes = 30 << 20;
@@ -153,7 +161,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           .read(searchControllerProvider.notifier)
           .saveScrollOffset(_scrollController.position.pixels);
     }
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
+  }
+
+  void _collapseFiltersSidebar() {
+    setState(() => _filtersSidebarCollapsed = true);
   }
 
   void _onScroll() {
@@ -161,7 +176,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final pos = _scrollController.position;
 
     if (pos.pixels >= pos.maxScrollExtent - 500) {
-      ref.read(searchControllerProvider.notifier).loadMore();
+      final session = ref.read(searchControllerProvider).activeSession;
+      if (!session.loading && session.hasMore && !session.loadingMore) {
+        ref.read(searchControllerProvider.notifier).loadMore();
+      }
     }
   }
 
@@ -398,10 +416,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       border:
                           Border(left: BorderSide(color: Color(0xFF1E1E1E))),
                     ),
-                    child: FilterPanelContent(
-                      onCollapse: () =>
-                          setState(() => _filtersSidebarCollapsed = true),
-                    ),
+                    child: _desktopFiltersPanel,
                   ),
               ],
             )
@@ -415,14 +430,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       children: [
         // 1. The Beautiful Background Image
         Image.network(
-          'https://upload.wikimedia.org/wikipedia/commons/8/86/Lofoten%2C_Norway_%28Unsplash%29.jpg',
+          // The original is 5059x3373 / 9.45 MB and decodes to roughly
+          // 65 MB in the browser. This official Wikimedia derivative is
+          // ample for the darkened hero while avoiding that startup hit.
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Lofoten%2C_Norway_%28Unsplash%29.jpg/1280px-Lofoten%2C_Norway_%28Unsplash%29.jpg',
           fit: BoxFit.cover,
-          // Fade in the background smoothly
+          // Keep this brief: a multi-second, full-screen opacity animation is
+          // costly when CanvasKit has to use Chrome's software renderer.
+          filterQuality: FilterQuality.low,
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if (wasSynchronouslyLoaded) return child;
             return AnimatedOpacity(
               opacity: frame == null ? 0 : 1,
-              duration: const Duration(seconds: 3),
+              duration: const Duration(milliseconds: 350),
               curve: Curves.easeOut,
               child: child,
             );

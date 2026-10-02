@@ -544,10 +544,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
 
-      // ignore: avoid_print
-      print(
-          '🔍 [REQUEST] tab=${state.tab.name} formats=${state.formats} overrideFormat=$overrideFormat\n🔍 [REQUEST URL] $uri');
-
       // The shared gate owns retries, backoff, throttling, and maxlag so
       // callers cannot multiply traffic with their own retry loops.
       late final http.Response response;
@@ -564,9 +560,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         print('🔍 [GIVE UP] request gate exhausted retries: $e');
         return null;
       }
-
-      // ignore: avoid_print
-      print('🔍 [RESPONSE ${response.statusCode}] ${response.body}');
 
       if (response.statusCode != 200) return null;
 
@@ -611,10 +604,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       final totalHits = searchInfo?['totalhits'] as int?;
       final suggestion = searchInfo?['suggestion'] as String?;
 
-      // ignore: avoid_print
-      print(
-          '🔍 [PARSE] pages.length=${pages.length} totalhits=$totalHits suggestion=$suggestion');
-
       final items = <SearchItem>[];
       for (final page in pages.values) {
         final infoList = page['imageinfo'] as List?;
@@ -657,10 +646,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
                 (item) => _matchesAttribution(item, state.attributionRequired!))
             .toList();
       }
-
-      // ignore: avoid_print
-      print(
-          '🔍 [RESULT] rawItems=${items.length} filteredItems=${filteredItems.length} hasMore=${nextContinue != null}');
 
       return SearchResponse(
         items: filteredItems,

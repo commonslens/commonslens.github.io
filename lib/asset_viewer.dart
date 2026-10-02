@@ -576,18 +576,6 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                             );
                           },
                         ),
-                        if (currentOptimizedUrl != null)
-                          Positioned(
-                            top: 12,
-                            left: 0,
-                            right: 0,
-                            child: Center(
-                              child: _ImageQualitySelector(
-                                value: _imageQuality,
-                                onChanged: _setImageQuality,
-                              ),
-                            ),
-                          ),
                         if (hasPrevious && isDesktop && !_isStandalone)
                           Positioned(
                             left: 24,
@@ -627,6 +615,13 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                               ),
                               child: _MetadataInspector(
                                 item: currentItem,
+                                imageQuality: currentOptimizedUrl == null
+                                    ? null
+                                    : _imageQuality,
+                                onImageQualityChanged:
+                                    currentOptimizedUrl == null
+                                        ? null
+                                        : _setImageQuality,
                                 onLaunchCommons: () =>
                                     _launchCommonsUrl(currentItem.commonsUrl),
                               ),
@@ -645,6 +640,11 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                       ),
                       child: _MetadataInspector(
                         item: currentItem,
+                        imageQuality:
+                            currentOptimizedUrl == null ? null : _imageQuality,
+                        onImageQualityChanged: currentOptimizedUrl == null
+                            ? null
+                            : _setImageQuality,
                         onLaunchCommons: () =>
                             _launchCommonsUrl(currentItem.commonsUrl),
                       ),

@@ -206,44 +206,70 @@ class _ImageQualitySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xE6111111),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF303030)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 12,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: SegmentedButton<_ViewerImageQuality>(
-        segments: const [
-          ButtonSegment(
-            value: _ViewerImageQuality.webOptimized,
-            icon: Icon(Icons.speed_rounded, size: 16),
-            label: Text('WEB'),
+    return Row(
+      children: [
+        Expanded(
+          child: _ImageQualityButton(
+            label: 'WEB',
+            icon: Icons.speed_rounded,
             tooltip: '1920px web-optimized preview',
+            selected: value == _ViewerImageQuality.webOptimized,
+            onTap: () => onChanged(_ViewerImageQuality.webOptimized),
           ),
-          ButtonSegment(
-            value: _ViewerImageQuality.fullResolution,
-            icon: Icon(Icons.hd_outlined, size: 17),
-            label: Text('FULL'),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _ImageQualityButton(
+            label: 'FULL',
+            icon: Icons.hd_outlined,
             tooltip: 'Full-resolution original',
+            selected: value == _ViewerImageQuality.fullResolution,
+            onTap: () => onChanged(_ViewerImageQuality.fullResolution),
           ),
-        ],
-        selected: {value},
-        showSelectedIcon: false,
-        onSelectionChanged: (selection) => onChanged(selection.single),
-        style: const ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          padding: WidgetStatePropertyAll(
-            EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImageQualityButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String tooltip;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ImageQualityButton({
+    required this.label,
+    required this.icon,
+    required this.tooltip,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: ElevatedButton.icon(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              selected ? const Color(0xFF3D7EFF) : const Color(0xFF1E1E1E),
+          foregroundColor: selected ? Colors.white : const Color(0xFFCCCCCC),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6),
           ),
-          textStyle: WidgetStatePropertyAll(
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+        ),
+        icon: Icon(icon, size: 16),
+        label: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
           ),
         ),
       ),

@@ -2,10 +2,14 @@ part of 'asset_viewer.dart';
 
 class _MetadataInspector extends StatelessWidget {
   final SearchItem item;
+  final _ViewerImageQuality? imageQuality;
+  final ValueChanged<_ViewerImageQuality>? onImageQualityChanged;
   final VoidCallback onLaunchCommons;
 
   const _MetadataInspector({
     required this.item,
+    required this.imageQuality,
+    required this.onImageQualityChanged,
     required this.onLaunchCommons,
   });
 
@@ -64,6 +68,12 @@ class _MetadataInspector extends StatelessWidget {
         // this" that a person orients on.
         _buildAuthorSection(context),
 
+        // Keep the image-loading choice with the file details rather than
+        // obscuring the media itself. Non-image assets have no alternate
+        // preview URL, so the control is omitted for them.
+        if (imageQuality != null && onImageQualityChanged != null)
+          _buildImageQualityControl(),
+
         // 3. DOWNLOAD — get the file, plus the one action that starts a
         // new exploration from this file: finding everything else shot
         // near it.
@@ -112,6 +122,31 @@ class _MetadataInspector extends StatelessWidget {
         children: [
           _buildPropertyRow('AUTHOR / CREATOR', cleanArtist),
           _buildUploaderRow(context, item.uploader),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImageQualityControl() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PREVIEW QUALITY',
+            style: TextStyle(
+              color: Color(0xFF666666),
+              fontSize: 10,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _ImageQualitySelector(
+            value: imageQuality!,
+            onChanged: onImageQualityChanged!,
+          ),
         ],
       ),
     );

@@ -9,6 +9,7 @@ void main() {
     String licenseShortName = 'CC BY-SA 4.0',
     String licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/',
     String attributionRequired = 'true',
+    String copyrighted = 'False',
     String creditHtml = '',
     String restrictions = '',
   }) {
@@ -26,6 +27,7 @@ void main() {
       licenseShortName: licenseShortName,
       licenseUrl: licenseUrl,
       attributionRequired: attributionRequired,
+      copyrighted: copyrighted,
       creditHtml: creditHtml,
       objectName: 'A solar and lunar study',
       restrictions: restrictions,
@@ -38,6 +40,8 @@ void main() {
     expect(guide.fileName, 'Sun & Moon.jpg');
     expect(guide.creator, 'Ada & Bob');
     expect(guide.attributionRequired, isTrue);
+    expect(guide.copyrightProtected, isFalse);
+    expect(guide.copyrightProtectionLabel, 'No');
     expect(
       guide.attributionText,
       contains('“Sun & Moon.jpg” by Ada & Bob — CC BY-SA 4.0'),

@@ -805,7 +805,7 @@ class _ReuseSectionState extends State<_ReuseSection> {
     final statusLabel = attributionStatus == true
         ? 'Attribution required'
         : attributionStatus == false
-            ? 'Not flagged as required'
+            ? 'Attribution not flagged as required'
             : 'Verify attribution terms';
     final statusIcon = attributionStatus == true
         ? Icons.person_outline
@@ -896,7 +896,7 @@ class _ReuseSectionState extends State<_ReuseSection> {
               _fact('CREATOR', guide.creator),
               _fact('PREFERRED CREDIT', guide.creditLine),
               _fact('USAGE TERMS', guide.usageTerms),
-              _fact('COPYRIGHT STATUS', guide.copyrightStatus),
+              _fact('COPYRIGHT PROTECTED', guide.copyrightProtectionLabel),
               _fact('SPECIAL PERMISSION', guide.permission),
               _fact('RESTRICTIONS', guide.restrictions, warning: true),
             ],

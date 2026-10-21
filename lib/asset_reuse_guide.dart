@@ -29,11 +29,22 @@ class AssetReuseGuide {
   String get usageTerms => plainText(item.usageTerms);
   String get copyrightStatus => plainText(item.copyrighted);
 
+  bool? get copyrightProtected => _parseBooleanFlag(copyrightStatus);
+
+  String get copyrightProtectionLabel => switch (copyrightProtected) {
+        true => 'Yes',
+        false => 'No',
+        null => copyrightStatus,
+      };
+
   bool get hasCompleteReuseMetadata =>
       creator.isNotEmpty && licenseName.isNotEmpty;
 
-  bool? get attributionRequired {
-    switch (item.attributionRequired.trim().toLowerCase()) {
+  bool? get attributionRequired =>
+      _parseBooleanFlag(item.attributionRequired.trim());
+
+  static bool? _parseBooleanFlag(String value) {
+    switch (value.toLowerCase()) {
       case '1':
       case 'true':
       case 'yes':

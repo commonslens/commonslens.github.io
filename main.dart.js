@@ -11657,7 +11657,7 @@ Ue(a,b){var s=0,r=A.K(t.ut),q,p,o,n,m,l,k,j,i,h,g,f,e,d,c
 var $async$Ue=A.L(function(a0,a1){if(a0===1)return A.H(a1,r)
 for(;;)switch(s){case 0:h=b.a
 g=B.W.iA(h.a.a.LL(a.b5()),null)
-f=b.d?20:500
+f=b.d?20:1000
 e=g+"|pipelineCap="+f
 d=b.b
 s=3
@@ -12510,7 +12510,7 @@ if(!A.aKm(a))return b
 s=t.N
 s=A.q(s,s)
 if(b!=null)s.L(0,b)
-s.m(0,"Api-User-Agent","CommonsLens/1.0 (https://github.com/prathamshah607/commons_lens; Flutter Web)")
+s.m(0,"Api-User-Agent","CommonsLens/1.0 (https://github.com/commonslens/commonslens.github.io; Flutter Web)")
 return s},
 bkB(a,b,c,d,e,f,g,h){var s,r,q=A.bzU(b),p=A.aKm(q),o=q.k(0)
 if(e&&p){s=$.NB.i(0,o)
@@ -37753,7 +37753,7 @@ $S:3}
 A.b6D.prototype={
 $1(a){var s=A.eF().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/692136cb6582dbfc5af3fb33c2515a069f2f66d0/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/deb287481e3ce9468f3434937ced4240a70539ca/":s)+a},
 $S:11}
 A.ZJ.prototype={
 gD(a){var s=this.a
@@ -66694,7 +66694,7 @@ break}q=new A.bU(A.oo(null,B.M,!1,null,null,null,!1,B.bd,B.bd,!1,null,B.M,B.M,B.
 s=1
 break}s=n!=null?3:5
 break
-case 3:o=b.d?20:500
+case 3:o=b.d?20:1000
 s=6
 return A.B(b.a.aeY(n,o),$async$yp)
 case 6:m=d
@@ -66702,7 +66702,7 @@ s=4
 break
 case 5:s=i!=null&&h!=null?7:9
 break
-case 7:o=b.d?20:500
+case 7:o=b.d?20:1000
 s=10
 return A.B(b.a.af_(i,o,h,g*1000),$async$yp)
 case 10:o=d
@@ -66716,7 +66716,7 @@ break}o=m.c
 if(o!=null){q=new A.bU(null,null,o,null,null,null)
 s=1
 break}o=m.a
-l=b.d?20:500
+l=b.d?20:1000
 q=new A.bU(null,A.fq(o,0,A.kh(l,"count",t.S),A.Q(o).c).dc(0),null,null,m.f,null)
 s=1
 break
@@ -66725,7 +66725,7 @@ return A.J($async$yp,r)},
 uR(a,b){return this.aAy(a,b)},
 aAy(a,b){var s=0,r=A.K(t.ut),q,p,o,n,m,l,k,j,i,h,g,f
 var $async$uR=A.L(function(c,d){if(c===1)return A.H(d,r)
-for(;;)switch(s){case 0:i=b.d?20:500
+for(;;)switch(s){case 0:i=b.d?20:1000
 h="author:"+a+"|pipelineCap="+i
 g=b.b
 s=3

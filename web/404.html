@@ -9,7 +9,7 @@
       //
       // Counterpart to the decode script already in web/index.html's
       // <head>. GH Pages serves THIS file for any path it doesn't
-      // recognize (e.g. /commons_lens/view?id=...). It repackages that
+      // recognize (e.g. /view?id=...). It repackages that
       // path+query into a single ?/... query string on the app's real
       // root (which does exist as a file), then redirects there. The
       // existing index.html script unpacks it and restores the original
@@ -18,7 +18,7 @@
       // Encoding must be ?/path&query — NOT ?p=/path&q=query — to match
       // the l.search[1] === '/' check already in index.html.
 
-      var pathSegmentsToKeep = 1; // "commons_lens" — the GH Pages project prefix
+      var pathSegmentsToKeep = 0; // Organization site lives at the domain root.
 
       var l = window.location;
       l.replace(

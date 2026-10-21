@@ -24,6 +24,14 @@ class _RecordingBackend extends CommonsBackend {
 }
 
 void main() {
+  test('full pipeline runs default to 1000 items per source', () {
+    final fullRun = PipelineExecutionContext();
+    final preview = PipelineExecutionContext(preview: true);
+
+    expect(fullRun.effectiveMaxItems, 1000);
+    expect(preview.effectiveMaxItems, 20);
+  });
+
   test('Combine Constraints sends text and depicts as one backend query',
       () async {
     final backend = _RecordingBackend();

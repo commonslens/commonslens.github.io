@@ -20,7 +20,7 @@ class WikimediaRequestGate {
   static const int maxConcurrent = 2;
   static const Duration minimumStartSpacing = Duration(milliseconds: 400);
   static const String apiUserAgent =
-      'CommonsLens/1.0 (https://github.com/prathamshah607/commons_lens; Flutter Web)';
+      'CommonsLens/1.0 (https://github.com/commonslens/commonslens.github.io; Flutter Web)';
 
   static final Queue<Completer<void>> _queue = Queue<Completer<void>>();
   static final Map<String, Future<http.Response>> _inFlightApiGets = {};

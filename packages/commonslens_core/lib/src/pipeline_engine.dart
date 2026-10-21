@@ -147,7 +147,7 @@ class PipelineExecutionContext {
   PipelineExecutionContext({
     CommonsBackend? backend,
     this.cache,
-    this.maxItemsPerSource = 500,
+    this.maxItemsPerSource = 1000,
     this.preview = false,
     this.previewCap = 20,
     this.onNodeStatus,

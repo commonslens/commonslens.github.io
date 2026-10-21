@@ -19,7 +19,7 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build web --release --base-href /commons_lens/
+      - run: flutter build web --release --base-href /
 
       - uses: peaceiris/actions-gh-pages@v4
         with:

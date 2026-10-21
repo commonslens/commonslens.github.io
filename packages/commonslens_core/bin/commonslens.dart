@@ -88,7 +88,7 @@ Future<Object?> _dispatch(Map<String, dynamic> request) async {
           backend: backend,
           preview: request['preview'] as bool? ?? false,
           maxItemsPerSource:
-              (request['maxItemsPerSource'] as num?)?.toInt() ?? 500,
+              (request['maxItemsPerSource'] as num?)?.toInt() ?? 1000,
           previewCap: (request['previewCap'] as num?)?.toInt() ?? 20,
         ),
       );

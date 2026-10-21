@@ -85,16 +85,20 @@ class _MetadataInspector extends StatelessWidget {
         // "Additional Details" entry.
         _buildDescriptionSection(),
 
-        // 5. DATES — created vs. uploaded, side by side.
+        // 5. REUSE — turn Commons' rights metadata into practical credit and
+        // embed snippets instead of making people interpret raw fields.
+        _sectionHeader('HOW TO USE THIS FILE'),
+        _ReuseSection(item: item, onLaunchCommons: onLaunchCommons),
+
+        // 6. DATES — created vs. uploaded, side by side.
         _buildDatesSection(),
 
-        // 6. METADATA — structural/technical facts (type, dimensions,
-        // categories, license/rights, GPS) plus, lazily, Structured Data
-        // on Commons statements (creator/institution/depicts and anything
-        // else editors have added as SDC claims).
+        // 7. FILE DETAILS — structural/technical facts plus, lazily,
+        // Structured Data on Commons statements (creator/institution/depicts
+        // and anything else editors have added as SDC claims).
         _buildMetadataSection(context),
 
-        // 7. RELATED MEDIA — CirrusSearch's own similarity engine
+        // 8. RELATED MEDIA — CirrusSearch's own similarity engine
         // (morelike:), for "find me more like this" discovery.
         if (item.hasCoordinates) ...[
           const SizedBox(height: 10),
@@ -102,7 +106,7 @@ class _MetadataInspector extends StatelessWidget {
         ],
         _RelatedMediaSection(fileTitle: item.title),
 
-        // 8. GLOBAL USAGE — a real-world "is this used anywhere" signal,
+        // 9. GLOBAL USAGE — a real-world "is this used anywhere" signal,
         // the natural last stop after everything the file itself says
         // about itself.
         _GlobalUsageSection(fileTitle: item.title),
@@ -218,11 +222,9 @@ class _MetadataInspector extends StatelessWidget {
     );
   }
 
-  /// Structural/technical facts, license/rights, and location — everything
-  /// that isn't "who made it", "what does it show", or "when" — plus,
-  /// lazily, the file's Structured Data on Commons statements (creator,
-  /// institution, depicts, and anything else editors have added), fetched
-  /// the same on-expand-only way as Global Usage below.
+  /// Structural/technical facts and location. Rights and reuse instructions
+  /// intentionally live in the dedicated section above instead of being
+  /// buried among dimensions and categories.
   Widget _buildMetadataSection(BuildContext context) {
     final dimensions = (item.width > 0 && item.height > 0)
         ? '${item.width} × ${item.height} px'
@@ -237,86 +239,14 @@ class _MetadataInspector extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionHeader('METADATA'),
+          _sectionHeader('FILE DETAILS'),
           _buildPropertyRow('FILE TYPE', item.mime.toUpperCase()),
           _buildPropertyRow('EXTENSION', item.extension.toUpperCase()),
           _buildPropertyRow('DIMENSIONS', dimensions),
           _buildPropertyRow('CATEGORIES', item.categories.trim()),
           _buildPropertyRow('ASSESSMENTS', item.assessments.trim()),
-          _buildLicenseRow(
-            context,
-            'LICENSE',
-            _cleanHtml(item.licenseShortName),
-            item.licenseUrl,
-          ),
-          _buildPropertyRow('USAGE TERMS', item.usageTerms.trim()),
-          _buildPropertyRow('COPYRIGHT STATUS', item.copyrighted.trim()),
-          _buildPropertyRow('RESTRICTIONS', item.restrictions.trim()),
-          _buildPropertyRow('CREDIT', _cleanHtml(item.creditHtml)),
-          _buildPropertyRow('PERMISSION', _cleanHtml(item.permissionHtml)),
-          _buildPropertyRow(
-              'ATTRIBUTION REQUIRED', item.attributionRequired.trim()),
           _buildPropertyRow('GPS COORDINATES', coordinates),
           _StructuredDataSection(fileTitle: item.title),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLicenseRow(
-    BuildContext context,
-    String label,
-    String value,
-    String? url,
-  ) {
-    if (value.isEmpty) return const SizedBox.shrink();
-
-    final cleanUrl = (url ?? '').trim();
-    final isClickable = cleanUrl.isNotEmpty;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFF666666),
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          if (isClickable)
-            InkWell(
-              onTap: () async {
-                final uri = Uri.tryParse(cleanUrl);
-                if (uri != null && await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-              child: Text(
-                value,
-                style: const TextStyle(
-                  color: Color(0xFF7AABFF),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
-                  decorationColor: Color(0xFF7AABFF),
-                ),
-              ),
-            )
-          else
-            SelectableText(
-              value,
-              style: const TextStyle(
-                color: Color(0xFFE0E0E0),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
         ],
       ),
     );
@@ -607,7 +537,7 @@ class _StructuredDataSection extends StatelessWidget {
   }
 }
 
-/// Collapsed-by-default "find more like this" strip, backed by
+/// Collapsed-by-default "find more like this" grid, backed by
 /// [morelikeProvider] — CirrusSearch's own `morelike:` similarity engine,
 /// the same mechanism the advanced filters drawer exposes as a manual
 /// search input, run here as a one-off query against just this file.
@@ -635,56 +565,57 @@ class _RelatedMediaSection extends StatelessWidget {
               if (items.isEmpty) {
                 return _metadataMessage('No related media found.', muted: true);
               }
-              return SizedBox(
-                height: 96,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (context, index) {
-                    final related = items[index];
-                    return Tooltip(
-                      message: related.title,
-                      child: GestureDetector(
-                        onTap: () {
-                          AnalyticsService.relatedMediaClicked(
-                            fromTitle: fileTitle,
-                            toTitle: related.title,
-                          );
-                          context.push(
-                            Uri(
-                              path: '/view',
-                              queryParameters: {'id': related.title},
-                            ).toString(),
-                          );
-                        },
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            width: 96,
-                            height: 96,
-                            color: const Color(0xFF1A1A1A),
-                            child: related.thumb.isNotEmpty
-                                ? Image.network(
-                                    related.thumb,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.image,
-                                      size: 24,
-                                      color: Colors.white24,
-                                    ),
-                                  )
-                                : const Icon(
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 110,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 1,
+                ),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final related = items[index];
+                  return Tooltip(
+                    message: related.title,
+                    child: GestureDetector(
+                      onTap: () {
+                        AnalyticsService.relatedMediaClicked(
+                          fromTitle: fileTitle,
+                          toTitle: related.title,
+                        );
+                        context.push(
+                          Uri(
+                            path: '/view',
+                            queryParameters: {'id': related.title},
+                          ).toString(),
+                        );
+                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: ColoredBox(
+                          color: const Color(0xFF1A1A1A),
+                          child: related.thumb.isNotEmpty
+                              ? Image.network(
+                                  related.thumb,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
                                     Icons.image,
                                     size: 24,
                                     color: Colors.white24,
                                   ),
-                          ),
+                                )
+                              : const Icon(
+                                  Icons.image,
+                                  size: 24,
+                                  color: Colors.white24,
+                                ),
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -777,6 +708,391 @@ class _GlobalUsageSection extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _ReuseSection extends StatefulWidget {
+  final SearchItem item;
+  final VoidCallback onLaunchCommons;
+
+  const _ReuseSection({
+    required this.item,
+    required this.onLaunchCommons,
+  });
+
+  @override
+  State<_ReuseSection> createState() => _ReuseSectionState();
+}
+
+class _ReuseSectionState extends State<_ReuseSection> {
+  static const _reuseGuidanceUrl =
+      'https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia';
+
+  AssetReuseFormat _format = AssetReuseFormat.attribution;
+
+  AssetReuseGuide get _guide => AssetReuseGuide(widget.item);
+
+  String get _formatLabel => switch (_format) {
+        AssetReuseFormat.attribution => 'attribution',
+        AssetReuseFormat.html => 'HTML embed',
+        AssetReuseFormat.wikiText => 'WikiText',
+      };
+
+  Future<void> _copy(BuildContext context, String value, String format) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    AnalyticsService.reuseSnippetCopied(
+      title: widget.item.title,
+      format: format,
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('${format[0].toUpperCase()}${format.substring(1)} copied.'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _launch(String url, String target) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !await canLaunchUrl(uri)) return;
+    AnalyticsService.reuseReferenceOpened(
+      title: widget.item.title,
+      target: target,
+    );
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Widget _fact(String label, String value, {bool warning = false}) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color:
+                  warning ? const Color(0xFFE7B75C) : const Color(0xFF777777),
+              fontSize: 9.5,
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          SelectableText(
+            value,
+            style: TextStyle(
+              color:
+                  warning ? const Color(0xFFFFD994) : const Color(0xFFD6D6D6),
+              fontSize: 13,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final guide = _guide;
+    final attributionStatus = guide.attributionRequired;
+    final snippet = guide.snippetFor(_format);
+    final statusLabel = attributionStatus == true
+        ? 'Attribution required'
+        : attributionStatus == false
+            ? 'Not flagged as required'
+            : 'Verify attribution terms';
+    final statusIcon = attributionStatus == true
+        ? Icons.person_outline
+        : attributionStatus == false
+            ? Icons.check_circle_outline
+            : Icons.help_outline;
+    final statusColor = attributionStatus == true
+        ? const Color(0xFF7AABFF)
+        : attributionStatus == false
+            ? const Color(0xFF6ED6A0)
+            : const Color(0xFFE7B75C);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF171717),
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(color: const Color(0xFF2A2A2A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF3D7EFF).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.verified_user_outlined,
+                        size: 19, color: Color(0xFF7AABFF)),
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          guide.licenseName.isEmpty
+                              ? 'License information incomplete'
+                              : guide.licenseName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Row(
+                          children: [
+                            Icon(statusIcon, size: 14, color: statusColor),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                statusLabel,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (!guide.hasCompleteReuseMetadata) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Commons did not provide complete machine-readable rights metadata for this file. Check the source page before reuse.',
+                  style: TextStyle(
+                    color: Color(0xFFFFD994),
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+              _fact('CREATOR', guide.creator),
+              _fact('PREFERRED CREDIT', guide.creditLine),
+              _fact('USAGE TERMS', guide.usageTerms),
+              _fact('COPYRIGHT STATUS', guide.copyrightStatus),
+              _fact('SPECIAL PERMISSION', guide.permission),
+              _fact('RESTRICTIONS', guide.restrictions, warning: true),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'COPY-READY FORMAT',
+          style: TextStyle(
+            color: Color(0xFF777777),
+            fontSize: 9.5,
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _ReuseFormatButton(
+                label: 'ATTRIBUTION',
+                selected: _format == AssetReuseFormat.attribution,
+                onTap: () =>
+                    setState(() => _format = AssetReuseFormat.attribution),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _ReuseFormatButton(
+                label: 'HTML',
+                selected: _format == AssetReuseFormat.html,
+                onTap: () => setState(() => _format = AssetReuseFormat.html),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: _ReuseFormatButton(
+                label: 'WIKITEXT',
+                selected: _format == AssetReuseFormat.wikiText,
+                onTap: () =>
+                    setState(() => _format = AssetReuseFormat.wikiText),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          constraints: const BoxConstraints(minHeight: 96),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0D0D0D),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: const Color(0xFF292929)),
+          ),
+          child: SelectableText(
+            snippet,
+            style: TextStyle(
+              color: const Color(0xFFD8D8D8),
+              fontSize: 12,
+              height: 1.5,
+              fontFamily:
+                  _format == AssetReuseFormat.attribution ? null : 'monospace',
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton.icon(
+          onPressed: () => _copy(context, snippet, _formatLabel),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF3D7EFF),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+          ),
+          icon: const Icon(Icons.content_copy, size: 16),
+          label: Text('Copy $_formatLabel',
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (guide.sourceUrl.isNotEmpty)
+              _ReuseReferenceButton(
+                icon: Icons.open_in_new,
+                label: 'Source file',
+                onTap: () {
+                  AnalyticsService.reuseReferenceOpened(
+                    title: widget.item.title,
+                    target: 'source',
+                  );
+                  widget.onLaunchCommons();
+                },
+              ),
+            if (guide.licenseUrl.isNotEmpty)
+              _ReuseReferenceButton(
+                icon: Icons.gavel_outlined,
+                label: 'Full license',
+                onTap: () => _launch(guide.licenseUrl, 'license'),
+              ),
+            _ReuseReferenceButton(
+              icon: Icons.menu_book_outlined,
+              label: 'Reuse guidance',
+              onTap: () => _launch(_reuseGuidanceUrl, 'guidance'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        const Text(
+          'Attribution helpers are generated from the file’s Wikimedia metadata. Verify the source page and full license before publishing; this is not legal advice.',
+          style: TextStyle(
+            color: Color(0xFF777777),
+            fontSize: 10.5,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReuseFormatButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ReuseFormatButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? const Color(0xFF3D7EFF).withValues(alpha: 0.16)
+          : const Color(0xFF1A1A1A),
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          height: 36,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color:
+                  selected ? const Color(0xFF3D7EFF) : const Color(0xFF292929),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : const Color(0xFF999999),
+              fontSize: 9.5,
+              letterSpacing: 0.7,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ReuseReferenceButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _ReuseReferenceButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFFB8CFFF),
+        side: const BorderSide(color: Color(0xFF303030)),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      ),
+      icon: Icon(icon, size: 14),
+      label: Text(label,
+          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600)),
     );
   }
 }

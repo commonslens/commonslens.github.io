@@ -1,5 +1,5 @@
 name: commonslens
-description: "A new Flutter project."
+description: "Explore, search, map, and download reusable media from Wikimedia Commons."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -37,6 +37,7 @@ dependencies:
     path: packages/commonslens_core
 
   flutter_map: ^7.0.0
+  flutter_map_cancellable_tile_provider: ^3.0.2
   latlong2: ^0.9.1
   http: ^1.6.0
   meta: ^1.15.0

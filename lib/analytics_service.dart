@@ -120,6 +120,24 @@ class AnalyticsService {
   static void sourcePageOpened(String title) =>
       event('source_page_opened', {'file_title': title});
 
+  static void reuseSnippetCopied({
+    required String title,
+    required String format,
+  }) =>
+      event('reuse_snippet_copied', {
+        'file_title': title,
+        'format': format,
+      });
+
+  static void reuseReferenceOpened({
+    required String title,
+    required String target,
+  }) =>
+      event('reuse_reference_opened', {
+        'file_title': title,
+        'target': target,
+      });
+
   static void bulkDownloadStarted(int count) =>
       event('bulk_download_started', {'file_count': count});
 

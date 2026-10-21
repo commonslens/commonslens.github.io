@@ -1,11 +1,11 @@
 {
-    "name": "CommonsLens",
+    "name": "CommonsLens: Explore Wikimedia",
     "short_name": "CommonsLens",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0B0B0B",
     "theme_color": "#3D7EFF",
-    "description": "Search millions of free-to-use images, videos, and documents from the world's largest public library with deep metadata filtering.",
+    "description": "Explore, search, map, and download reusable images, audio, video, and documents from Wikimedia Commons with advanced metadata filters.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

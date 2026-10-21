@@ -3,6 +3,7 @@ import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'dart:ui';
 import 'download_service.dart';
+import 'asset_reuse_guide.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
@@ -215,6 +216,31 @@ class _MapPageState extends ConsumerState<MapPage> {
     }
   }
 
+  void _applyMapTextQuery(String rawQuery) {
+    final query = rawQuery.trim();
+    final current = ref.read(mapSearchControllerProvider);
+    final notifier = ref.read(mapSearchControllerProvider.notifier);
+
+    AnalyticsService.filterApplied(
+        'map_text_query', query.isEmpty ? 'cleared' : 'set');
+    notifier.updateFilters((filters) => filters.copyWith(queryText: query));
+
+    // A deep-linked nearby search starts in the unfiltered browse engine.
+    // Adding text is filter intent, so promote it to the filtered engine and
+    // immediately re-run around the existing point.
+    if (current.mode == GeoMode.browse && current.hasPoint) {
+      notifier.searchRadius(
+          current.centerLat!, current.centerLng!, current.radiusMeters);
+      return;
+    }
+
+    if (!current.hasPoint && mounted && query.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Query ready — tap a location on the map to search.'),
+      ));
+    }
+  }
+
   void _openItem(SearchItem item) {
     context.push(Uri(
       path: '/view',
@@ -322,8 +348,6 @@ class _MapPageState extends ConsumerState<MapPage> {
         final licenses = Set<LicensePreset>.from(current.licensePresets);
         QualityFilter quality = current.qualityFilter;
         bool? attributionRequired = current.attributionRequired;
-        final queryCtrl = TextEditingController(text: current.queryText);
-
         return StatefulBuilder(builder: (context, setSheetState) {
           return Padding(
             padding: EdgeInsets.only(
@@ -342,12 +366,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                         letterSpacing: 1.5,
                         fontWeight: FontWeight.w700)),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: queryCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _fieldDecoration(hint: 'Optional text query…'),
-                ),
-                const SizedBox(height: 14),
                 const Text('LICENSE (MATCHES ANY SELECTED)',
                     style: TextStyle(
                         color: Color(0xFF666666),
@@ -437,7 +455,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                       AnalyticsService.filterApplied(
                           'map_search_filters', 'set');
                       notifier.updateFilters((s) => s.copyWith(
-                          queryText: queryCtrl.text.trim(),
                           licensePresets: licenses,
                           qualityFilter: quality,
                           attributionRequired: attributionRequired,
@@ -464,6 +481,7 @@ class _MapPageState extends ConsumerState<MapPage> {
     final mainSearchSession = ref.watch(searchControllerProvider).activeSession;
     final mainSearchItems = mainSearchSession.items;
     final isImportMode = state.mode == GeoMode.imported;
+    final showAppBarTitle = MediaQuery.sizeOf(context).width >= 760;
 
     // Live-derived, not a stored snapshot — recomputes on every rebuild
     // this widget gets from watching searchControllerProvider, so a
@@ -493,20 +511,47 @@ class _MapPageState extends ConsumerState<MapPage> {
           icon: const Icon(Icons.close),
           onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
-        title: const Text('GEOSPATIAL BROWSE',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                letterSpacing: 1.5,
-                fontWeight: FontWeight.w700)),
-        centerTitle: true,
-        actions: [
-          IconButton(
-              icon: const Icon(Icons.tune),
-              tooltip: 'Filters',
-              onPressed: () => _showFilterSheet(context)),
-          const SizedBox(width: 4),
-        ],
+        titleSpacing: isImportMode ? null : 0,
+        title: isImportMode
+            ? const Text('GEOSPATIAL BROWSE',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    letterSpacing: 1.5,
+                    fontWeight: FontWeight.w700))
+            : Row(
+                children: [
+                  if (showAppBarTitle) ...[
+                    const Text('GEOSPATIAL BROWSE',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            letterSpacing: 1.5,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 20),
+                  ],
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 620),
+                        child: _MapTextQueryBar(
+                          initialValue: state.filterState.queryText,
+                          onSubmit: _applyMapTextQuery,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(Icons.tune),
+                    tooltip: 'Map search filters',
+                    onPressed: () => _showFilterSheet(context),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+        centerTitle: isImportMode,
       ),
       body: Column(
         children: [
@@ -565,30 +610,20 @@ class _MapPageState extends ConsumerState<MapPage> {
                       },
                     ),
                     children: [
-                      if (_baseMapStyle == _BaseMapStyle.street)
-                        TileLayer(
-                          urlTemplate:
-                              'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                          userAgentPackageName: 'com.commonslens.app',
-                          maxZoom: 19,
-                        )
-                      else ...[
-                        TileLayer(
-                          urlTemplate:
-                              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                          userAgentPackageName: 'com.commonslens.app',
-                          maxZoom: 19,
-                        ),
+                      _OptimizedTileLayer(
+                        urlTemplate: _baseMapStyle == _BaseMapStyle.street
+                            ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+                            : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                      ),
+                      if (_baseMapStyle != _BaseMapStyle.street) ...[
                         // Hybrid = satellite imagery + this transparent
                         // roads/labels overlay on top. Satellite alone
                         // (the branch above without this layer) stays
                         // available as its own mode for a clean image.
                         if (_baseMapStyle == _BaseMapStyle.hybrid)
-                          TileLayer(
+                          const _OptimizedTileLayer(
                             urlTemplate:
                                 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-                            userAgentPackageName: 'com.commonslens.app',
-                            maxZoom: 19,
                           ),
                       ],
                       if (state.boundingBox != null)
@@ -889,6 +924,156 @@ List<_MarkerCluster> _clusterItems(List<SearchItem> items, double zoom) {
 // -----------------------------------------------------------------------------
 // Small presentational widgets
 // -----------------------------------------------------------------------------
+
+/// Keeps one cancellable provider alive across parent rebuilds. On web this
+/// lets flutter_map abort tile requests that have scrolled out of view instead
+/// of making the browser finish downloads that can no longer be displayed.
+class _OptimizedTileLayer extends StatefulWidget {
+  final String urlTemplate;
+
+  const _OptimizedTileLayer({required this.urlTemplate});
+
+  @override
+  State<_OptimizedTileLayer> createState() => _OptimizedTileLayerState();
+}
+
+class _OptimizedTileLayerState extends State<_OptimizedTileLayer> {
+  late final CancellableNetworkTileProvider _tileProvider =
+      CancellableNetworkTileProvider();
+
+  @override
+  Widget build(BuildContext context) {
+    return TileLayer(
+      urlTemplate: widget.urlTemplate,
+      userAgentPackageName: 'com.commonslens.app',
+      maxZoom: 19,
+      tileProvider: _tileProvider,
+    );
+  }
+}
+
+class _MapTextQueryBar extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onSubmit;
+
+  const _MapTextQueryBar({
+    required this.initialValue,
+    required this.onSubmit,
+  });
+
+  @override
+  State<_MapTextQueryBar> createState() => _MapTextQueryBarState();
+}
+
+class _MapTextQueryBarState extends State<_MapTextQueryBar> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue)
+      ..addListener(_handleTextChanged);
+    _focusNode = FocusNode()..addListener(_handleTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _MapTextQueryBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_focusNode.hasFocus && _controller.text != widget.initialValue) {
+      _controller.value = TextEditingValue(
+        text: widget.initialValue,
+        selection: TextSelection.collapsed(offset: widget.initialValue.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller
+      ..removeListener(_handleTextChanged)
+      ..dispose();
+    _focusNode
+      ..removeListener(_handleTextChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _handleTextChanged() => setState(() {});
+
+  void _submit() {
+    widget.onSubmit(_controller.text);
+    _focusNode.unfocus();
+  }
+
+  void _clear() {
+    _controller.clear();
+    widget.onSubmit('');
+    _focusNode.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasText = _controller.text.trim().isNotEmpty;
+
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: const Color(0xFF171717),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: _focusNode.hasFocus || hasText ? _kAccent : _kBorder,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 11, right: 8),
+            child: Icon(Icons.travel_explore, color: _kAccent, size: 19),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              onSubmitted: (_) => _submit(),
+              onTapOutside: (_) => _focusNode.unfocus(),
+              textInputAction: TextInputAction.search,
+              style: const TextStyle(color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isDense: true,
+                hintText: 'Search this map by text…',
+                hintStyle: TextStyle(color: Colors.white38, fontSize: 12.5),
+              ),
+            ),
+          ),
+          if (hasText)
+            IconButton(
+              onPressed: _clear,
+              tooltip: 'Clear map query',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.close, color: Colors.white54, size: 17),
+            ),
+          Tooltip(
+            message: 'Search map',
+            child: Material(
+              color: _kAccent,
+              child: InkWell(
+                onTap: _submit,
+                child: const SizedBox(
+                  width: 44,
+                  height: 40,
+                  child: Icon(Icons.search, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class _ModeButton extends StatelessWidget {
   final String label;

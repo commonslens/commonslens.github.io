@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script type="text/javascript">
+    // Single Page Apps for GitHub Pages — MIT License
+    // https://github.com/rafgraph/spa-github-pages
+    // Decodes the path that 404.html encoded, and hands it to go_router
+    // before the app boots, so deep links and reloads survive GitHub Pages'
+    // static hosting.
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
+          return s.replace(/~and~/g, '&');
+        }).join('?');
+        window.history.replaceState(null, null,
+          l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location));
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LBBV97ZD24"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    // send_page_view: false — this is a single-page app (go_router swaps
+    // views client-side, no full page load per route), so GA's automatic
+    // page_view would only ever fire once, on initial load. Manual
+    // page_view events are fired instead on every route change, from
+    // router.dart's _AnalyticsNavObserver.
+    //
+    // allow_google_signals / allow_ad_personalization_signals: false —
+    // opts out of Google Signals (cross-device tracking, ads-audience
+    // building, demographics/interest reports tied to a visitor's Google
+    // account). Limits this to pseudonymous usage measurement without ads
+    // personalization; GA still uses a first-party client identifier.
+    gtag('config', 'G-LBBV97ZD24', {
+      send_page_view: false,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    });
+  </script>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0B0B">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="application-name" content="CommonsLens">
+  <meta name="apple-mobile-web-app-title" content="CommonsLens">
+  <link rel="canonical" href="https://commonslens.github.io/terms/">
+
+  <title>Terms of Use | CommonsLens</title>
+  <meta name="description" content="Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.">
+  <meta name="author" content="Pratham Shah">
+
+  <meta property="og:site_name" content="CommonsLens">
+  <meta property="og:title" content="Terms of Use | CommonsLens">
+  <meta property="og:description" content="Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://commonslens.github.io/terms/">
+  <meta property="og:image" content="https://commonslens.github.io/favicon.png">
+  <meta property="og:image:alt" content="CommonsLens logo">
+
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Terms of Use | CommonsLens">
+  <meta name="twitter:description" content="Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.">
+  <meta name="twitter:image" content="https://commonslens.github.io/favicon.png">
+
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="shortcut icon" href="favicon.png">
+
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Keep the semantic HTML out of the visual loading path. */
+    #seo-fallback {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    #app-loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: grid;
+      place-items: center;
+      background: #0b0b0b;
+      color: #fff;
+      font: 600 12px/1.2 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 2.5px;
+    }
+
+    #app-loading .loading-content {
+      display: grid;
+      justify-items: center;
+      gap: 18px;
+    }
+
+    #app-loading img {
+      width: 58px;
+      height: 58px;
+      border-radius: 12px;
+    }
+
+    #app-loading .spinner {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #252525;
+      border-top-color: #3d7eff;
+      border-radius: 50%;
+      animation: commonslens-spin 800ms linear infinite;
+    }
+
+    @keyframes commonslens-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+
+  <script id="structured-data" type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://commonslens.github.io/terms/#webpage",
+      "url": "https://commonslens.github.io/terms/",
+      "name": "Terms of Use | CommonsLens",
+      "description": "Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://commonslens.github.io/#website"
+      },
+      "about": {
+        "@id": "https://commonslens.github.io/#app"
+      },
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "CommonsLens Terms of Use features",
+        "numberOfItems": 17,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "By using CommonsLens, you agree to these Terms; if you do not agree, do not use the service."
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "CommonsLens does not own displayed files and does not grant a new licence when a file is viewed or downloaded."
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Open the original Commons file page before publishing or distributing a file."
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "Credit the creator rather than merely the uploader unless the source says otherwise."
+          },
+          {
+            "@type": "ListItem",
+            "position": 5,
+            "name": "Name or link the licence, indicate modifications, and apply share-alike terms whenever required."
+          },
+          {
+            "@type": "ListItem",
+            "position": 6,
+            "name": "Do not remove credit, rights statements, watermarks, or notices in a way the licence forbids."
+          },
+          {
+            "@type": "ListItem",
+            "position": 7,
+            "name": "Commercial, advertising, political, medical, and defamatory contexts can require extra care or permission."
+          },
+          {
+            "@type": "ListItem",
+            "position": 8,
+            "name": "Rights filters, warnings, and generated attribution snippets are conveniences, not legal advice or a guarantee."
+          },
+          {
+            "@type": "ListItem",
+            "position": 9,
+            "name": "Avoid rapid refreshes, several query-heavy tabs, repetitive searches, and repeated large pipeline runs."
+          },
+          {
+            "@type": "ListItem",
+            "position": 10,
+            "name": "Do not bypass rate limits, retry signals, technical safeguards, or provider usage policies."
+          },
+          {
+            "@type": "ListItem",
+            "position": 11,
+            "name": "Do not use the interactive site as a bot, scraper, crawler, or high-volume automation endpoint."
+          },
+          {
+            "@type": "ListItem",
+            "position": 12,
+            "name": "Do not bulk-fetch or prefetch map tiles; use official APIs for sustained automated research and obey their rules."
+          },
+          {
+            "@type": "ListItem",
+            "position": 13,
+            "name": "Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies."
+          },
+          {
+            "@type": "ListItem",
+            "position": 14,
+            "name": "Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code."
+          },
+          {
+            "@type": "ListItem",
+            "position": 15,
+            "name": "No warranty is made about accuracy, fitness, non-infringement, uninterrupted availability, or preservation of local data, to the extent law permits."
+          },
+          {
+            "@type": "ListItem",
+            "position": 16,
+            "name": "To the extent permitted by law, CommonsLens and its maintainers are not liable for loss from metadata, third-party services, unavailable data, or media reuse."
+          },
+          {
+            "@type": "ListItem",
+            "position": 17,
+            "name": "CommonsLens source code is licensed under Apache License 2.0, except for third-party material under its own notices. That software licence does not apply to Wikimedia media or data displayed through the app."
+          }
+        ]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "CommonsLens",
+          "item": "https://commonslens.github.io/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "CommonsLens Terms of Use",
+          "item": "https://commonslens.github.io/terms/"
+        }
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://commonslens.github.io/#website",
+      "url": "https://commonslens.github.io/",
+      "name": "CommonsLens",
+      "alternateName": "Commons Lens",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://commonslens.github.io/#app",
+      "name": "CommonsLens",
+      "url": "https://commonslens.github.io/",
+      "description": "Advanced search, map discovery, reuse guidance, bulk export, and visual data pipelines for Wikimedia Commons.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript and a modern web browser.",
+      "isAccessibleForFree": true,
+      "featureList": [
+        "By using CommonsLens, you agree to these Terms; if you do not agree, do not use the service.",
+        "CommonsLens does not own displayed files and does not grant a new licence when a file is viewed or downloaded.",
+        "Open the original Commons file page before publishing or distributing a file.",
+        "Credit the creator rather than merely the uploader unless the source says otherwise.",
+        "Name or link the licence, indicate modifications, and apply share-alike terms whenever required.",
+        "Do not remove credit, rights statements, watermarks, or notices in a way the licence forbids.",
+        "Commercial, advertising, political, medical, and defamatory contexts can require extra care or permission.",
+        "Rights filters, warnings, and generated attribution snippets are conveniences, not legal advice or a guarantee.",
+        "Avoid rapid refreshes, several query-heavy tabs, repetitive searches, and repeated large pipeline runs.",
+        "Do not bypass rate limits, retry signals, technical safeguards, or provider usage policies.",
+        "Do not use the interactive site as a bot, scraper, crawler, or high-volume automation endpoint.",
+        "Do not bulk-fetch or prefetch map tiles; use official APIs for sustained automated research and obey their rules.",
+        "Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies.",
+        "Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.",
+        "No warranty is made about accuracy, fitness, non-infringement, uninterrupted availability, or preservation of local data, to the extent law permits.",
+        "To the extent permitted by law, CommonsLens and its maintainers are not liable for loss from metadata, third-party services, unavailable data, or media reuse.",
+        "CommonsLens source code is licensed under Apache License 2.0, except for third-party material under its own notices. That software licence does not apply to Wikimedia media or data displayed through the app."
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": 0,
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+  </script>
+</head>
+
+<body>
+  <div id="app-loading" role="status" aria-label="Loading CommonsLens">
+    <div class="loading-content">
+      <img src="favicon.png" alt="">
+      <span>COMMONSLENS</span>
+      <span class="spinner" aria-hidden="true"></span>
+    </div>
+  </div>
+
+  <!-- Semantic fallback for crawlers and no-JavaScript clients. -->
+  <main id="seo-fallback">
+    <h1>CommonsLens Terms of Use</h1>
+    <p>Effective and last reviewed 22 October 2026. CommonsLens helps people find and understand reusable media, but every file keeps its own licence and attribution requirements. Users are responsible for checking and following them.</p>
+
+    <nav aria-label="CommonsLens tools">
+      <a href="/">Advanced media search</a>
+      <a href="/browse/">Browse Wikimedia categories, templates, and subjects</a>
+      <a href="/map/">Search Wikimedia Commons by location</a>
+      <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
+      <a href="/features/">Explore all CommonsLens features</a>
+      <a href="/terms/">Terms of Use</a>
+      <a href="/privacy/">Privacy Policy</a>
+      <a href="https://github.com/commonslens/commonslens.github.io">Source code on GitHub</a>
+      <a href="https://github.com/commonslens/commonslens.github.io/blob/master/LICENSE">Apache License 2.0</a>
+    </nav>
+
+    <section>
+      <h2>Agreement, scope, and independence</h2>
+      <p>These terms apply to the website, search tools, map, viewer, downloads, exports, and visual pipelines. CommonsLens is independent and is not operated, sponsored, endorsed, or warranted by Wikimedia or any connected provider.</p>
+      <ul>
+        <li>By using CommonsLens, you agree to these Terms; if you do not agree, do not use the service.</li>
+        <li>CommonsLens does not own displayed files and does not grant a new licence when a file is viewed or downloaded.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Media licences and attribution are mandatory</h2>
+      <p>You MUST follow every attribution, credit, source-link, licence notice, share-alike, modification disclosure, author-requested credit line, and other reuse requirement set by the file licence, Commons description page, and author or rightsholder. The original page and applicable licence control if a CommonsLens summary is incomplete or conflicts.</p>
+      <ul>
+        <li>Open the original Commons file page before publishing or distributing a file.</li>
+        <li>Credit the creator rather than merely the uploader unless the source says otherwise.</li>
+        <li>Name or link the licence, indicate modifications, and apply share-alike terms whenever required.</li>
+        <li>Do not remove credit, rights statements, watermarks, or notices in a way the licence forbids.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Rights beyond copyright</h2>
+      <p>A free copyright licence does not clear every proposed use. Privacy, publicity or personality rights, moral rights, trademarks, patents, cultural restrictions, sensitive subjects, and local law may still apply.</p>
+      <ul>
+        <li>Commercial, advertising, political, medical, and defamatory contexts can require extra care or permission.</li>
+        <li>Rights filters, warnings, and generated attribution snippets are conveniences, not legal advice or a guarantee.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Responsible Wikimedia and map use</h2>
+      <p>CommonsLens limits concurrency, spaces requests, caches some pipeline results, and backs off when Wikimedia asks it to slow down. Users should still avoid many continuous queries and pause between large batches.</p>
+      <ul>
+        <li>Avoid rapid refreshes, several query-heavy tabs, repetitive searches, and repeated large pipeline runs.</li>
+        <li>Do not bypass rate limits, retry signals, technical safeguards, or provider usage policies.</li>
+        <li>Do not use the interactive site as a bot, scraper, crawler, or high-volume automation endpoint.</li>
+        <li>Do not bulk-fetch or prefetch map tiles; use official APIs for sustained automated research and obey their rules.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Acceptable use and third-party services</h2>
+      <p>Use CommonsLens lawfully without disrupting or attempting unauthorized access to CommonsLens or connected services. Users are responsible for their searches, exports, publications, and downstream media use.</p>
+      <ul>
+        <li>Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies.</li>
+        <li>Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Availability and limits of responsibility</h2>
+      <p>CommonsLens is free and provided as is and as available. Search results, rights fields, snippets, maps, exports, and external APIs may be incomplete, inaccurate, changed, delayed, or unavailable.</p>
+      <ul>
+        <li>No warranty is made about accuracy, fitness, non-infringement, uninterrupted availability, or preservation of local data, to the extent law permits.</li>
+        <li>To the extent permitted by law, CommonsLens and its maintainers are not liable for loss from metadata, third-party services, unavailable data, or media reuse.</li>
+        <li>CommonsLens source code is licensed under Apache License 2.0, except for third-party material under its own notices. That software licence does not apply to Wikimedia media or data displayed through the app.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Free, open-source Wikimedia research tools</h2>
+      <p>CommonsLens runs in the browser, requires no Commons account, and uses official Wikimedia and Wikidata APIs. Media remains hosted by Wikimedia Commons and retains its original source and rights information.</p>
+      <p><a href="https://github.com/commonslens/commonslens.github.io">View the CommonsLens source code on GitHub</a>.</p>
+    </section>
+
+    <footer>
+      <a href="/terms/">Terms of Use</a>
+      <a href="/privacy/">Privacy Policy</a>
+      <a href="https://github.com/commonslens/commonslens.github.io">CommonsLens source code</a>
+      <a href="https://github.com/commonslens/commonslens.github.io/blob/master/LICENSE">Apache License 2.0</a>
+    </footer>
+  </main>
+
+  <noscript>
+    <style>
+      #app-loading { display: none; }
+      #seo-fallback {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        padding: 32px;
+        overflow: visible;
+        clip: auto;
+        clip-path: none;
+        white-space: normal;
+        background: #0b0b0b;
+        color: #d5d5d5;
+        font: 16px/1.6 system-ui, sans-serif;
+      }
+      #seo-fallback a { color: #7aabff; }
+    </style>
+    CommonsLens requires JavaScript to run its interactive search tools.
+  </noscript>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var loading = document.getElementById('app-loading');
+      if (loading) loading.remove();
+    });
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

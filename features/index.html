@@ -35,8 +35,8 @@
     // allow_google_signals / allow_ad_personalization_signals: false —
     // opts out of Google Signals (cross-device tracking, ads-audience
     // building, demographics/interest reports tied to a visitor's Google
-    // account). Keeps this to anonymous, aggregate interaction trends only
-    // — no per-visitor identity, no ads use of the data.
+    // account). Limits this to pseudonymous usage measurement without ads
+    // personalization; GA still uses a first-party client identifier.
     gtag('config', 'G-LBBV97ZD24', {
       send_page_view: false,
       allow_google_signals: false,
@@ -442,6 +442,10 @@
       <a href="/map/">Search Wikimedia Commons by location</a>
       <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
       <a href="/features/">Explore all CommonsLens features</a>
+      <a href="/terms/">Terms of Use</a>
+      <a href="/privacy/">Privacy Policy</a>
+      <a href="https://github.com/commonslens/commonslens.github.io">Source code on GitHub</a>
+      <a href="https://github.com/commonslens/commonslens.github.io/blob/master/LICENSE">Apache License 2.0</a>
     </nav>
 
     <section>
@@ -548,6 +552,13 @@
       <p>CommonsLens runs in the browser, requires no Commons account, and uses official Wikimedia and Wikidata APIs. Media remains hosted by Wikimedia Commons and retains its original source and rights information.</p>
       <p><a href="https://github.com/commonslens/commonslens.github.io">View the CommonsLens source code on GitHub</a>.</p>
     </section>
+
+    <footer>
+      <a href="/terms/">Terms of Use</a>
+      <a href="/privacy/">Privacy Policy</a>
+      <a href="https://github.com/commonslens/commonslens.github.io">CommonsLens source code</a>
+      <a href="https://github.com/commonslens/commonslens.github.io/blob/master/LICENSE">Apache License 2.0</a>
+    </footer>
   </main>
 
   <noscript>

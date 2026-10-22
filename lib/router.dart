@@ -12,13 +12,9 @@ import 'map_page.dart';
 import 'pipeline_page.dart';
 import 'features_page.dart';
 import 'legal_pages.dart';
-import 'analytics_service.dart';
 import 'seo_service.dart';
 
-/// Keeps SEO metadata in sync and fires a GA4 page_view on every route
-/// push/pop/replace. GA's automatic page_view only fires once, on the initial
-/// script load, since this is a single-page app and go_router never triggers
-/// another full page load.
+/// Keeps SEO metadata in sync on every route push, pop, or replacement.
 /// Reads the live browser URL (accurate thanks to usePathUrlStrategy() in
 /// main.dart) rather than trying to reconstruct a path from GoRouter's own
 /// route objects, which is simpler and can't drift out of sync with what's
@@ -27,7 +23,6 @@ class _NavigationObserver extends NavigatorObserver {
   void _track() {
     final loc = html.window.location;
     SeoService.sync(Uri.parse('${loc.pathname}${loc.search}'));
-    AnalyticsService.pageView('${loc.pathname}${loc.search}');
   }
 
   @override

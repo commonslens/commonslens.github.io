@@ -93,7 +93,7 @@ abstract final class SeoService {
       return const _SeoMetadata(
         title: 'Privacy Policy | CommonsLens',
         description:
-            'Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.',
+            'Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.',
         canonical: '$_origin/privacy/',
       );
     }

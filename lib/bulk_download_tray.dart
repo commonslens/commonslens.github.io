@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'analytics_service.dart';
 import 'download_service.dart';
 import 'search_models.dart';
 
@@ -70,7 +69,6 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
   }) async {
     if (items.isEmpty) return;
 
-    AnalyticsService.bulkDownloadStarted(items.length);
     final job = _DownloadJob(id: _nextDownloadJobId++, total: items.length);
     setState(() => _downloadJobs.add(job));
     ref.read(selectedItemsProvider.notifier).state = {};
@@ -97,11 +95,6 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
     } finally {
       if (mounted) {
         setState(() => job.done = true);
-        AnalyticsService.bulkDownloadCompleted(
-          total: job.total,
-          failed: job.failed.length,
-          cancelled: job.cancelled,
-        );
         if (job.failed.isEmpty && job.error == null && !job.cancelled) {
           _removeLater(job, const Duration(seconds: 4));
         }

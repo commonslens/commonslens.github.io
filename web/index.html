@@ -20,29 +20,6 @@
     }(window.location));
   </script>
 
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LBBV97ZD24"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    // send_page_view: false — this is a single-page app (go_router swaps
-    // views client-side, no full page load per route), so GA's automatic
-    // page_view would only ever fire once, on initial load. Manual
-    // page_view events are fired instead on every route change, from
-    // router.dart's _AnalyticsNavObserver.
-    //
-    // allow_google_signals / allow_ad_personalization_signals: false —
-    // opts out of Google Signals (cross-device tracking, ads-audience
-    // building, demographics/interest reports tied to a visitor's Google
-    // account). Limits this to pseudonymous usage measurement without ads
-    // personalization; GA still uses a first-party client identifier.
-    gtag('config', 'G-LBBV97ZD24', {
-      send_page_view: false,
-      allow_google_signals: false,
-      allow_ad_personalization_signals: false
-    });
-  </script>
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">

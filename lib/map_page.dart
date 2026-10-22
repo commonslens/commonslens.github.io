@@ -12,7 +12,6 @@ import 'search_components.dart';
 import 'search_controller.dart';
 import 'search_models.dart';
 import 'search_url_codec.dart';
-import 'analytics_service.dart';
 
 const _kMinRadiusMeters = 500.0;
 const _kBg = Color(0xFF0B0B0B);
@@ -124,7 +123,6 @@ class _MapPageState extends ConsumerState<MapPage> {
     _radiusCtrl.text = r.toStringAsFixed(0);
     _latCtrl.text = lat.toStringAsFixed(6);
     _lngCtrl.text = lng.toStringAsFixed(6);
-    AnalyticsService.mapRadiusSearch(radiusMeters: r, filtered: true);
     ref.read(mapSearchControllerProvider.notifier).searchRadius(lat, lng, r);
   }
 
@@ -165,7 +163,6 @@ class _MapPageState extends ConsumerState<MapPage> {
         _drawingBbox = false;
         _bboxFirstPoint = null;
       });
-      AnalyticsService.mapBoundingBoxSearch();
       ref
           .read(mapSearchControllerProvider.notifier)
           .searchBoundingBox([north, west, south, east]);
@@ -199,7 +196,6 @@ class _MapPageState extends ConsumerState<MapPage> {
   /// from searchControllerProvider every time, so this is just a mode
   /// flip plus a one-time camera fit to whatever's plottable right now.
   void _handleSelectImport() {
-    AnalyticsService.mapModeChanged('imported');
     setState(() {
       _drawingBbox = false;
       _bboxFirstPoint = null;
@@ -211,7 +207,6 @@ class _MapPageState extends ConsumerState<MapPage> {
   void _handleSelectExplore() {
     final current = ref.read(mapSearchControllerProvider);
     if (current.mode == GeoMode.imported) {
-      AnalyticsService.mapModeChanged('explore');
       ref.read(mapSearchControllerProvider.notifier).setMode(GeoMode.browse);
     }
   }
@@ -221,8 +216,6 @@ class _MapPageState extends ConsumerState<MapPage> {
     final current = ref.read(mapSearchControllerProvider);
     final notifier = ref.read(mapSearchControllerProvider.notifier);
 
-    AnalyticsService.filterApplied(
-        'map_text_query', query.isEmpty ? 'cleared' : 'set');
     notifier.updateFilters((filters) => filters.copyWith(queryText: query));
 
     // A deep-linked nearby search starts in the unfiltered browse engine.
@@ -249,7 +242,6 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   void _openInMainSearch(MapViewState state) {
-    AnalyticsService.mapOpenedInMainSearch();
     SearchState target;
     if (state.mode == GeoMode.filtered) {
       if (!state.session.hasSearched) return;
@@ -279,7 +271,6 @@ class _MapPageState extends ConsumerState<MapPage> {
   }
 
   void _showClusterSheet(BuildContext context, _MarkerCluster cluster) {
-    AnalyticsService.mapClusterOpened(cluster.items.length);
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF111111),
@@ -452,8 +443,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8))),
                     onPressed: () {
-                      AnalyticsService.filterApplied(
-                          'map_search_filters', 'set');
                       notifier.updateFilters((s) => s.copyWith(
                           licensePresets: licenses,
                           qualityFilter: quality,
@@ -782,7 +771,6 @@ class _MapPageState extends ConsumerState<MapPage> {
                               '${_baseMapStyle.label} map — tap for ${_baseMapStyle.next.label}',
                           onTap: () {
                             final next = _baseMapStyle.next;
-                            AnalyticsService.mapStyleChanged(next.label);
                             setState(() => _baseMapStyle = next);
                           },
                         ),

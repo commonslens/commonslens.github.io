@@ -17,7 +17,6 @@ import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'map_controller.dart';
 import 'pipeline_controller.dart';
-import 'analytics_service.dart';
 import 'backend_providers.dart';
 
 part 'asset_media_renderer.dart';

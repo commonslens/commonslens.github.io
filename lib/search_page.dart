@@ -7,7 +7,6 @@ import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
-import 'analytics_service.dart';
 import 'bulk_download_tray.dart';
 import 'legal_pages.dart';
 
@@ -215,11 +214,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   void _removeChip(QueryChipData chip) {
-    // Bypasses applyFilterUpdate's diff tracking below (this calls
-    // .search() directly with overrideState), so it needs its own event —
-    // the chip id itself (e.g. "category:Paris", "license") is already a
-    // decent coarse filter-type label once the value suffix is stripped.
-    AnalyticsService.filterRemoved(chip.id.split(':').first);
     final current = ref.read(searchControllerProvider).filterState;
     SearchState next = current;
 

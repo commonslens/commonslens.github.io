@@ -9,7 +9,6 @@ import 'search_models.dart';
 import 'search_service.dart';
 import 'search_url_codec.dart';
 import 'backend_providers.dart';
-import 'analytics_service.dart';
 import 'download_service.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -503,8 +502,6 @@ class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
   Future<void> _download() async {
     if (_busy) return;
     setState(() => _busy = true);
-    AnalyticsService.mediaDownloaded(
-        title: widget.item.title, size: 'original');
     try {
       await DownloadService.downloadSingleFile(
           widget.item.url, widget.item.title, widget.item.extension);
@@ -664,16 +661,6 @@ class _MediaCardState extends ConsumerState<MediaCard> {
     }
 
     // 2. Otherwise, normal navigation
-    AnalyticsService.mediaOpened(
-      title: widget.item.title,
-      mediaKind: widget.item.mediaKind.name,
-      // extraParams['from'] is set to 'map' by the map results pane;
-      // extraParams also carries 'author' on the portfolio page's cards.
-      // Anything else came from the main search grid.
-      source: widget.extraParams['from'] ??
-          (widget.extraParams.containsKey('author') ? 'author' : 'search'),
-    );
-
     final params = <String, String>{
       'id': widget.item.title,
       ...SearchUrlCodec.toQueryParams(widget.searchState),

@@ -4,7 +4,6 @@ import 'search_view_state.dart';
 import 'search_url_codec.dart';
 import 'commons_engine.dart';
 import 'commons_backend.dart';
-import 'analytics_service.dart';
 import 'backend_providers.dart';
 
 /// Every Wikimedia page (any language, any project) currently embedding a
@@ -122,18 +121,6 @@ class SearchController extends Notifier<SearchViewState> {
     _syncFromEngine();
     await future;
     _syncFromEngine();
-
-    // Only a real text query counts as a "search" — filter-only runs (no
-    // query text, just categories/depicts/license/etc.) are tracked
-    // per-filter instead, via applyFilterUpdate below, so an empty query
-    // here isn't logged as a blank search.
-    if (nextFilter.queryText.isNotEmpty) {
-      AnalyticsService.search(
-        query: nextFilter.queryText,
-        tab: nextFilter.tab.name,
-        resultCount: state.activeSession.items.length,
-      );
-    }
   }
 
   Future<void> loadMore() async {
@@ -157,99 +144,14 @@ class SearchController extends Notifier<SearchViewState> {
   /// Applies a functional update to the current filters (e.g. toggling a
   /// tab or format) and searches if anything actually changed.
   ///
-  /// This is the single choke point every filter mutation already flows
-  /// through — the drawer's category/depicts/template/statement pickers,
-  /// license/quality dropdowns, and the search page's tab/format
-  /// toggles all call this rather than mutating state directly. Diffing
-  /// old vs. new state here means every one of those gets tracked without
-  /// needing its own call-site instrumentation, at the cost of a slightly
-  /// less specific event name than a bespoke call per picker would give —
-  /// a reasonable trade for not having to touch a dozen call sites and
-  /// keep them all in sync.
+  /// The drawer's category/depicts/template/statement pickers,
+  /// license/quality dropdowns, and the search page's tab/format toggles all
+  /// call this rather than mutating state directly.
   void applyFilterUpdate(SearchState Function(SearchState current) updater) {
     final current = state.filterState;
     final nextFilter = updater(current);
     if (nextFilter == current) return;
-    _trackFilterDiff(current, nextFilter);
     search(nextFilter.queryText, overrideState: nextFilter);
-  }
-
-  /// Best-effort diff of the two most common single-field changes (tab,
-  /// sort) plus a generic fallback for everything else (category/depicts/
-  /// template/statement/license/quality/format toggles) — good enough for
-  /// "which filter types get used" trend data without hand-writing a
-  /// dedicated comparison for every one of SearchState's ~25 fields.
-  void _trackFilterDiff(SearchState prev, SearchState next) {
-    if (prev.tab != next.tab) {
-      AnalyticsService.tabChanged(next.tab.name);
-      return;
-    }
-    if (prev.sortMode != next.sortMode) {
-      AnalyticsService.sortChanged(next.sortMode.name);
-      return;
-    }
-    if (prev.formats != next.formats) {
-      AnalyticsService.filterApplied('format', '${next.formats.length}');
-      return;
-    }
-    if (prev.categories != next.categories ||
-        prev.excludeCategories != next.excludeCategories) {
-      AnalyticsService.filterApplied('category', '${next.categories.length}');
-      return;
-    }
-    if (prev.templates != next.templates ||
-        prev.excludeTemplates != next.excludeTemplates) {
-      AnalyticsService.filterApplied('template', '${next.templates.length}');
-      return;
-    }
-    if (prev.depictsInclude != next.depictsInclude ||
-        prev.depictsExclude != next.depictsExclude) {
-      AnalyticsService.filterApplied(
-          'depicts', '${next.depictsInclude.length}');
-      return;
-    }
-    if (prev.statementsInclude != next.statementsInclude ||
-        prev.statementsExclude != next.statementsExclude) {
-      AnalyticsService.filterApplied(
-          'wikidata_statement', '${next.statementsInclude.length}');
-      return;
-    }
-    if (prev.licensePresets != next.licensePresets) {
-      AnalyticsService.filterApplied(
-          'license', '${next.licensePresets.length}');
-      return;
-    }
-    if (prev.attributionRequired != next.attributionRequired) {
-      AnalyticsService.filterApplied(
-          'attribution_required', '${next.attributionRequired}');
-      return;
-    }
-    if (prev.qualityFilter != next.qualityFilter) {
-      AnalyticsService.filterApplied('quality', next.qualityFilter.name);
-      return;
-    }
-    if (prev.nearCoord != next.nearCoord || prev.nearTitle != next.nearTitle) {
-      AnalyticsService.filterApplied('geolocation', 'set');
-      return;
-    }
-    if (prev.minWidth != next.minWidth ||
-        prev.minHeight != next.minHeight ||
-        prev.maxWidth != next.maxWidth ||
-        prev.maxHeight != next.maxHeight ||
-        prev.minFileSizeBytes != next.minFileSizeBytes ||
-        prev.maxFileSizeBytes != next.maxFileSizeBytes ||
-        prev.colorDepthBits != next.colorDepthBits) {
-      AnalyticsService.filterApplied('resolution_or_size', 'set');
-      return;
-    }
-    if (prev.createdDate != next.createdDate ||
-        prev.editedDate != next.editedDate) {
-      AnalyticsService.filterApplied('date_range', 'set');
-      return;
-    }
-    // Fallback for anything not explicitly covered above (language,
-    // content model, exclude terms, etc.) — still worth a generic ping.
-    AnalyticsService.filterApplied('other', 'changed');
   }
 
   void saveScrollOffset(double offset) {

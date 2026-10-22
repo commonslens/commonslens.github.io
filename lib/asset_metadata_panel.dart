@@ -5,7 +5,7 @@ class _MetadataInspector extends StatelessWidget {
   final _ViewerImageQuality? imageQuality;
   final ValueChanged<_ViewerImageQuality>? onImageQualityChanged;
   final VoidCallback onLaunchCommons;
-  
+
   const _MetadataInspector({
     required this.item,
     required this.imageQuality,
@@ -354,7 +354,6 @@ class _NearbyMediaButton extends StatelessWidget {
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () {
-          AnalyticsService.nearbyMediaFromAssetOpened(item.title);
           context.push(
             Uri(path: '/map', queryParameters: {
               'lat': item.resolvedLatitude!.toStringAsFixed(6),
@@ -386,7 +385,6 @@ class _NearbyMediaButton extends StatelessWidget {
 /// statement, not an extmetadata field.
 class _LazyMetadataSection extends StatefulWidget {
   final String title;
-  final String analyticsName;
   final WidgetBuilder contentBuilder;
   final bool showDivider;
   final double contentGap;
@@ -394,7 +392,6 @@ class _LazyMetadataSection extends StatefulWidget {
 
   const _LazyMetadataSection({
     required this.title,
-    required this.analyticsName,
     required this.contentBuilder,
     this.showDivider = false,
     this.contentGap = 12,
@@ -409,7 +406,6 @@ class _LazyMetadataSectionState extends State<_LazyMetadataSection> {
   bool _expanded = false;
 
   void _toggle() {
-    if (!_expanded) AnalyticsService.sectionExpanded(widget.analyticsName);
     setState(() => _expanded = !_expanded);
   }
 
@@ -484,7 +480,6 @@ class _StructuredDataSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _LazyMetadataSection(
       title: 'STRUCTURED DATA (WIKIDATA)',
-      analyticsName: 'structured_data',
       contentBuilder: (_) => Consumer(
         builder: (context, ref, _) {
           final sdcAsync = ref.watch(structuredDataProvider(fileTitle));
@@ -551,7 +546,6 @@ class _RelatedMediaSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _LazyMetadataSection(
       title: 'RELATED MEDIA',
-      analyticsName: 'related_media',
       showDivider: true,
       padding: const EdgeInsets.only(top: 24),
       contentBuilder: (_) => Consumer(
@@ -581,10 +575,6 @@ class _RelatedMediaSection extends StatelessWidget {
                     message: related.title,
                     child: GestureDetector(
                       onTap: () {
-                        AnalyticsService.relatedMediaClicked(
-                          fromTitle: fileTitle,
-                          toTitle: related.title,
-                        );
                         context.push(
                           Uri(
                             path: '/view',
@@ -648,7 +638,6 @@ class _GlobalUsageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _LazyMetadataSection(
       title: 'GLOBAL USAGE',
-      analyticsName: 'global_usage',
       showDivider: true,
       contentGap: 14,
       padding: const EdgeInsets.only(top: 24),
@@ -741,10 +730,6 @@ class _ReuseSectionState extends State<_ReuseSection> {
 
   Future<void> _copy(BuildContext context, String value, String format) async {
     await Clipboard.setData(ClipboardData(text: value));
-    AnalyticsService.reuseSnippetCopied(
-      title: widget.item.title,
-      format: format,
-    );
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -755,13 +740,9 @@ class _ReuseSectionState extends State<_ReuseSection> {
     );
   }
 
-  Future<void> _launch(String url, String target) async {
+  Future<void> _launch(String url) async {
     final uri = Uri.tryParse(url);
     if (uri == null || !await canLaunchUrl(uri)) return;
-    AnalyticsService.reuseReferenceOpened(
-      title: widget.item.title,
-      target: target,
-    );
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
@@ -987,24 +968,18 @@ class _ReuseSectionState extends State<_ReuseSection> {
               _ReuseReferenceButton(
                 icon: Icons.open_in_new,
                 label: 'Source file',
-                onTap: () {
-                  AnalyticsService.reuseReferenceOpened(
-                    title: widget.item.title,
-                    target: 'source',
-                  );
-                  widget.onLaunchCommons();
-                },
+                onTap: widget.onLaunchCommons,
               ),
             if (guide.licenseUrl.isNotEmpty)
               _ReuseReferenceButton(
                 icon: Icons.gavel_outlined,
                 label: 'Full license',
-                onTap: () => _launch(guide.licenseUrl, 'license'),
+                onTap: () => _launch(guide.licenseUrl),
               ),
             _ReuseReferenceButton(
               icon: Icons.menu_book_outlined,
               label: 'Reuse guidance',
-              onTap: () => _launch(_reuseGuidanceUrl, 'guidance'),
+              onTap: () => _launch(_reuseGuidanceUrl),
             ),
           ],
         ),
@@ -1107,19 +1082,6 @@ class _DownloadSection extends StatelessWidget {
   });
 
   Future<void> _handleDownload(BuildContext context, String url) async {
-    AnalyticsService.mediaDownloaded(
-      title: item.title,
-      size: url == item.url
-          ? 'original'
-          : url.contains('/640px-')
-              ? 'small'
-              : url.contains('/1280px-')
-                  ? 'medium'
-                  : url.contains('/1920px-')
-                      ? 'large'
-                      : 'original',
-    );
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Downloading media...'),
@@ -1200,10 +1162,7 @@ class _DownloadSection extends StatelessWidget {
         ],
         const SizedBox(height: 10),
         OutlinedButton.icon(
-          onPressed: () {
-            AnalyticsService.sourcePageOpened(item.title);
-            onLaunchCommons();
-          },
+          onPressed: onLaunchCommons,
           style: OutlinedButton.styleFrom(
             foregroundColor: const Color(0xFFAAAAAA),
             side: const BorderSide(color: Color(0xFF2A2A2A)),

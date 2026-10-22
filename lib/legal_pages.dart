@@ -14,10 +14,6 @@ const _wikimediaPrivacyUrl =
     'https://foundation.wikimedia.org/wiki/Policy:Privacy_policy';
 const _wikimediaApiUrl =
     'https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_API_Usage_Guidelines';
-const _googlePrivacyUrl = 'https://policies.google.com/privacy';
-const _googleAnalyticsDataUrl =
-    'https://support.google.com/analytics/answer/11593727';
-const _googleOptOutUrl = 'https://support.google.com/analytics/answer/181881';
 const _githubPrivacyUrl =
     'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement';
 const _osmPrivacyUrl = 'https://osmfoundation.org/wiki/Privacy_Policy';
@@ -126,7 +122,7 @@ class TermsOfUsePage extends StatelessWidget {
         ),
         _LegalSection(
           title: '2. Media licences and attribution—your responsibility',
-          paragraphs: const [
+          paragraphs: [
             'CommonsLens does not own the files it displays and does not grant you a new licence. Downloading a file does not mean that it is unrestricted or free of obligations.',
             'You MUST follow every attribution, credit, source-link, licence notice, share-alike, modification disclosure, author-requested credit line, and other reuse requirement set by the file’s licence, its Wikimedia Commons description page, and its author or other rightsholder. If CommonsLens shows incomplete or conflicting information, the original file page and the applicable licence control.',
           ],
@@ -176,7 +172,7 @@ class TermsOfUsePage extends StatelessWidget {
         const _LegalSection(
           title: '6. Third-party services and links',
           paragraphs: [
-            'CommonsLens connects to Wikimedia Commons, Wikidata, Wikimedia-hosted media, OpenStreetMap and Esri map tiles, Google Analytics, GitHub Pages, and external source or licence pages. Their own terms, privacy policies, licences, availability rules, and usage policies apply when your browser contacts them. CommonsLens cannot control their content or practices.',
+            'CommonsLens connects to Wikimedia Commons, Wikidata, Wikimedia-hosted media, OpenStreetMap and Esri map tiles, GitHub Pages, and external source or licence pages. Their own terms, privacy policies, licences, availability rules, and usage policies apply when your browser contacts them. CommonsLens cannot control their content or practices.',
           ],
         ),
         const _LegalSection(
@@ -217,49 +213,28 @@ class PrivacyPolicyPage extends StatelessWidget {
       eyebrow: 'PRIVACY POLICY',
       title: 'What CommonsLens collects—and what it does not',
       summary:
-          'CommonsLens has no accounts and no private application database. Most work happens in your browser. Google Analytics receives usage data, and the outside services that deliver media, maps, APIs, and hosting receive ordinary web requests.',
+          'CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in your browser. Only the outside services needed to deliver hosting, Wikimedia content, and map tiles receive ordinary web requests.',
       sections: [
         const _LegalSection(
           title: 'The short version',
           bullets: [
             'You do not give CommonsLens a name, email address, password, payment method, or profile.',
+            'CommonsLens does not use Google Analytics or any replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service.',
             'Searches go from your browser to Wikimedia services; map views request tiles from OpenStreetMap or Esri.',
             'Saved pipelines, notes, query caches, and your image-preview preference stay in storage in your browser.',
-            'Google Analytics receives page, search, filter, file, download, browse, and map interaction events.',
-            'CommonsLens does not sell personal information, run ads, or enable Google Signals or advertising-personalization signals.',
-          ],
-        ),
-        _LegalSection(
-          title: '1. Information sent to Google Analytics',
-          paragraphs: const [
-            'CommonsLens uses Google Analytics 4 (measurement ID G-LBBV97ZD24) to understand whether features work and which parts of the application are useful. Analytics is not the same as collecting nothing, and the data should not be described as guaranteed anonymous.',
-            'The site sends the current page URL and path for page views. CommonsLens URLs can contain search text, filter selections, a Wikimedia file title, an author username, or map/search state. Those URLs can also remain in browser history, bookmarks, shared links, or browser-sync services you use. Do not put confidential or sensitive personal information in searches, URLs, pipeline names, or notes.',
-          ],
-          bullets: const [
-            'Search activity: literal search term, active media tab, result count, filter types and values, formats, sort mode, and tab changes.',
-            'Media activity: Wikimedia file titles, media kind, where a file was opened from, requested download size, source-page opens, reuse-snippet actions, related-file titles, and nearby-media actions.',
-            'Bulk activity: number of selected files and whether a bulk job completed, failed in part, or was cancelled.',
-            'Browse and map activity: category, template, depicted-subject or author values; map mode, radius, layer style, bounding-box searches, cluster sizes, and transitions between Map and Search.',
-            'Interface activity: sections expanded and feature routes visited.',
-            'Google’s default collection: a first-party _ga cookie/client identifier, sessions, approximate location, browser and device details, language, screen information, page title, referrer, and other automatically collected or enhanced-measurement data enabled for the Analytics property.',
-          ],
-          links: const [
-            _PolicyLink(
-                'Google Analytics data collection', _googleAnalyticsDataUrl),
-            _PolicyLink('Google Privacy Policy', _googlePrivacyUrl),
-            _PolicyLink('Google Analytics opt-out options', _googleOptOutUrl),
+            'CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.',
           ],
         ),
         const _LegalSection(
-          title: '2. How analytics is limited and used',
+          title: '1. No analytics or behavioural tracking',
           paragraphs: [
-            'CommonsLens configures Google Signals and advertising-personalization signals off, does not send a CommonsLens account ID or User-ID, and does not use Analytics to serve ads. Analytics failures or blocking do not stop the application from working.',
-            'Google receives the device IP address when the analytics request is made. Google says GA4 uses it to derive approximate location and discards it before logging or storing it. Google controls its own processing. User- and event-level retention follows the Analytics property settings, while Google says standard aggregated reports are not governed by that setting.',
-            'You can block Analytics with browser privacy controls, an extension, DNS filtering, or Google’s opt-out browser add-on. Clearing cookies resets the browser identifier. CommonsLens does not currently provide its own analytics account or personalised privacy dashboard because it has no user accounts.',
+            'CommonsLens does not load Google Analytics, Google Tag Manager, advertising pixels, telemetry SDKs, session replay tools, or another visitor analytics service. The application does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
+            'A static Google Search Console ownership-verification file is published with the site. It contains no script, cookie, pixel, or executable code, and it is not loaded by ordinary pages. Google may request that file periodically to confirm site ownership; it does not track visitors.',
+            'CommonsLens does not intentionally set tracking cookies. Browser storage used for application preferences, saved pipelines, and caches is described below and is not used to follow you across sites.',
           ],
         ),
         const _LegalSection(
-          title: '3. Information kept only on your device',
+          title: '2. Information kept only on your device',
           bullets: [
             'Local storage: whether the asset viewer should preview web-optimised or full-resolution images.',
             'IndexedDB: saved visual pipeline graphs, node settings, positions, names and notes, plus cached Wikimedia query results and their public file metadata.',
@@ -271,7 +246,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           ],
         ),
         _LegalSection(
-          title: '4. Requests made to other services',
+          title: '3. Requests made to other services',
           paragraphs: const [
             'CommonsLens is a browser client, so your browser contacts providers directly. Those providers normally receive the IP address, user agent, requested URL/resource, time, referrer where supplied, and other standard request information. They handle that information under their own policies.',
           ],
@@ -291,7 +266,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           ],
         ),
         const _LegalSection(
-          title: '5. What CommonsLens does not collect',
+          title: '4. What CommonsLens does not collect',
           paragraphs: [
             'CommonsLens itself does not ask for or maintain the following:',
           ],
@@ -300,38 +275,37 @@ class PrivacyPolicyPage extends StatelessWidget {
             'Payment or financial information.',
             'Your contacts, messages, camera, microphone, uploaded private files, or clipboard contents. The attribution tool only writes text you request to your clipboard.',
             'Your device’s precise live location. Map searches use coordinates or places you choose; displayed file coordinates are public media metadata.',
-            'A CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
+            'Page-view or interaction analytics, a CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
           ],
         ),
         const _LegalSection(
-          title: '6. Why this design is more private',
+          title: '5. Why this design is more private',
           paragraphs: [
             'No account means there is no CommonsLens identity profile to leak, sell, or connect to your searches. Local pipelines and exports avoid sending your research workflow to an application backend. Direct, visible provider requests make the service boundaries inspectable, and the full source code lets anyone verify the implementation.',
-            'This does not make web use invisible: Analytics, hosting, Wikimedia, and map providers still receive the requests described above. The privacy advantage is data minimisation and local processing, not a claim of total anonymity.',
+            'This does not make web use invisible: hosting, Wikimedia, map providers, and external sites still receive the requests described above. The privacy advantage is the absence of behavioural analytics plus data minimisation and local processing—not a claim of total anonymity.',
           ],
         ),
         const _LegalSection(
-          title: '7. Your choices and data deletion',
+          title: '6. Your choices and data deletion',
           bullets: [
-            'Block or opt out of Google Analytics without losing core CommonsLens functionality.',
-            'Clear CommonsLens cookies and site data in your browser to remove the analytics identifier, local preferences, caches, and saved pipelines.',
+            'Clear CommonsLens site data in your browser to remove local preferences, caches, and saved pipelines.',
             'Use the pipeline Clear Cache control to remove cached results while keeping saved graphs.',
             'Avoid the map or a particular layer if you do not want requests sent to its tile provider.',
             'Avoid entering personal, confidential, or sensitive material into searches, URLs, pipeline labels, or notes.',
           ],
         ),
         const _LegalSection(
-          title: '8. Children, security, and international processing',
+          title: '7. Children, security, and international processing',
           paragraphs: [
             'CommonsLens is a general research tool and is not designed to collect information from children. Because there are no accounts or direct submissions, CommonsLens does not knowingly maintain a child’s profile. If a minor uses the site, a parent or guardian should help them avoid entering personal information in searches.',
             'The site uses HTTPS, but no internet transmission or browser storage is perfectly secure. Providers may process requests in countries other than your own under their policies and applicable law.',
           ],
         ),
         const _LegalSection(
-          title: '9. Changes and contact',
+          title: '8. Changes and contact',
           paragraphs: [
             'This policy will be updated when collection or providers materially change. The effective date below identifies the current version.',
-            'For a privacy question, correction, or deletion request concerning information controlled by CommonsLens, open an issue in the public source repository. Do not include sensitive information in a public issue. Requests about data controlled by Google, GitHub, Wikimedia, OpenStreetMap, or Esri should be made directly to that provider.',
+            'For a privacy question or correction concerning CommonsLens, open an issue in the public source repository. Do not include sensitive information in a public issue. Requests about data controlled by GitHub, Wikimedia, OpenStreetMap, or Esri should be made directly to that provider.',
           ],
           links: [
             _PolicyLink('CommonsLens source code and issue tracker', _sourceUrl)

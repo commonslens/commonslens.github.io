@@ -6,7 +6,6 @@ import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
 import 'bulk_download_tray.dart';
-import 'analytics_service.dart';
 
 class AuthorPortfolioPage extends ConsumerStatefulWidget {
   final String username;
@@ -27,14 +26,12 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    AnalyticsService.authorPortfolioViewed(widget.username);
   }
 
   @override
   void didUpdateWidget(covariant AuthorPortfolioPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.username != widget.username) {
-      AnalyticsService.authorPortfolioViewed(widget.username);
       _authorCtrl.text = widget.username;
       // Switching authors — a bulk selection from the previous grid
       // shouldn't silently carry over into the new one.

@@ -617,7 +617,7 @@ commonslens/
 │   ├── features_page.dart            # Public feature catalogue
 │   ├── download_service.dart         # Individual, ZIP, CSV, and JSON export
 │   ├── seo_service.dart              # Route-aware document metadata
-│   └── router.dart                   # Application routes and navigation tracking
+│   └── router.dart                   # Application routes and SEO metadata sync
 ├── packages/commonslens_core/
 │   └── lib/src/                      # Search, query, pipeline, transport, and models
 ├── test/                             # Flutter application tests

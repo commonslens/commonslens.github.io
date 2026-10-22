@@ -374,7 +374,7 @@ const _pages = <_SeoPage>[
         intro:
             'Use CommonsLens lawfully without disrupting or attempting unauthorized access to CommonsLens or connected services. Users are responsible for their searches, exports, publications, and downstream media use.',
         items: [
-          'Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies.',
+          'Wikimedia, Wikidata, OpenStreetMap, Esri, GitHub Pages, and linked sites apply their own terms and policies.',
           'Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.',
         ],
       ),
@@ -394,10 +394,10 @@ const _pages = <_SeoPage>[
     path: 'privacy',
     title: 'Privacy Policy | CommonsLens',
     description:
-        'Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.',
+        'Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.',
     heading: 'CommonsLens Privacy Policy',
     intro:
-        'Effective and last reviewed 22 October 2026. CommonsLens has no accounts and no private application database. Most work happens in the browser, while analytics and the services delivering media, maps, APIs, and hosting receive the requests described below.',
+        'Effective and last reviewed 22 October 2026. CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in the browser. Only the outside services needed for hosting, Wikimedia content, and map tiles receive ordinary web requests.',
     sections: [
       _SeoSection(
         heading: 'The short version',
@@ -405,32 +405,20 @@ const _pages = <_SeoPage>[
             'CommonsLens minimises data through local processing, no accounts, and no application backend, but does not claim that web use is invisible or fully anonymous.',
         items: [
           'No name, email address, password, payment method, or profile is requested.',
+          'No Google Analytics or replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.',
           'Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.',
           'Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.',
-          'Google Analytics receives page, search, filter, file, download, browse, and map interactions.',
-          'CommonsLens does not sell personal information, run ads, or enable Google Signals or advertising-personalization signals.',
+          'CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.',
         ],
       ),
       _SeoSection(
-        heading: 'Information sent to Google Analytics',
+        heading: 'No analytics or behavioural tracking',
         intro:
-            'CommonsLens uses Google Analytics 4 measurement ID G-LBBV97ZD24. It sends the page URL and path, which can contain search text, filters, a file title, an author username, or search state. URLs can also remain in browser history, bookmarks, shared links, or browser-sync services. Do not put sensitive information in searches, URLs, pipeline names, or notes.',
+            'CommonsLens does not load Google Analytics, Google Tag Manager, ad pixels, telemetry SDKs, session replay tools, or another visitor analytics service. It does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
         items: [
-          'Search terms, tabs, result counts, filter types and values, formats, sorting, and tab changes.',
-          'Wikimedia file titles, media kinds, open sources, download sizes, source-page and reuse actions, related files, and nearby-media actions.',
-          'Bulk selection counts and completion, partial-failure, or cancellation status.',
-          'Browse category, template, subject, and author values; map modes, radii, layers, bounding boxes, cluster sizes, and route transitions.',
-          'Google default data such as the _ga cookie/client identifier, sessions, approximate location, device and browser details, language, screen information, title, and referrer.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Analytics limits and choices',
-        intro:
-            'Google Signals and advertising-personalization signals are configured off. CommonsLens sends no account ID or User-ID and uses no analytics data to serve ads. Blocking analytics does not stop core features.',
-        items: [
-          'Google says GA4 derives approximate location from the request IP and discards the IP before logging or storage.',
-          'Analytics retention follows property configuration; standard aggregated reports are not governed by user/event retention settings.',
-          'Users can block Analytics with browser controls, extensions, DNS filtering, or Google’s opt-out add-on and clear cookies to reset the identifier.',
+          'The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.',
+          'CommonsLens does not intentionally set tracking cookies.',
+          'Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites.',
         ],
       ),
       _SeoSection(
@@ -464,13 +452,13 @@ const _pages = <_SeoPage>[
           'No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.',
           'No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.',
           'No device precise-location permission; map searches use user-chosen locations and public file coordinates.',
-          'No CommonsLens-owned cloud database, advertising profile, data-broker feed, or cross-device identity.',
+          'No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
         ],
       ),
       _SeoSection(
         heading: 'Privacy choices, security, and contact',
         intro:
-            'Users can clear browser site data to remove the Analytics identifier, preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.',
+            'Users can clear browser site data to remove preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.',
         items: [
           'No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.',
           'This policy is updated when collection or providers materially change.',

@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'search_service.dart';
 import 'search_controller.dart';
 import 'search_models.dart';
-import 'analytics_service.dart';
 import 'backend_providers.dart';
 
 class BrowsePage extends StatefulWidget {
@@ -17,17 +16,10 @@ class BrowsePage extends StatefulWidget {
 class _BrowsePageState extends State<BrowsePage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  static const _tabNames = ['categories', 'templates', 'depicts'];
-
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
-    AnalyticsService.browseTabOpened(_tabNames[0]);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) return;
-      AnalyticsService.browseTabOpened(_tabNames[_tabController.index]);
-    });
   }
 
   @override
@@ -88,7 +80,6 @@ class _CategoryTab extends ConsumerWidget {
       titleFor: (item) => item.name,
       subtitleFor: (item) => '${item.size} files in this category',
       onSelect: (item) {
-        AnalyticsService.browseItemSelected('category', item.name);
         ref.read(searchControllerProvider.notifier).applyFilterUpdate((state) =>
             state.copyWith(categories: {...state.categories, item.name}));
         context.go('/');
@@ -110,7 +101,6 @@ class _TemplateTab extends ConsumerWidget {
       titleFor: (item) => item,
       subtitleFor: (_) => 'MediaWiki Template',
       onSelect: (item) {
-        AnalyticsService.browseItemSelected('template', item);
         ref.read(searchControllerProvider.notifier).applyFilterUpdate(
             (state) => state.copyWith(templates: {...state.templates, item}));
         context.go('/');
@@ -268,7 +258,6 @@ class _DepictsTabState extends ConsumerState<_DepictsTab> {
   }
 
   void _select(DepictsEntity entity) {
-    AnalyticsService.browseItemSelected('depicts', entity.label);
     ref.read(searchControllerProvider.notifier).applyFilterUpdate(
         (c) => c.copyWith(depictsInclude: {...c.depictsInclude, entity}));
     context.go('/');

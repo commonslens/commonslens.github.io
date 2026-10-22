@@ -24,7 +24,7 @@ class WikiSearchApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       routerConfig: appRouter,
-      onGenerateTitle: (_) => SeoService.currentTitle,
+      title: 'CommonsLens: Explore Wikimedia',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

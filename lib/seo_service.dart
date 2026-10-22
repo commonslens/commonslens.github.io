@@ -10,8 +10,6 @@ import 'dart:html' as html;
 abstract final class SeoService {
   static const _origin = 'https://commonslens.github.io';
 
-  static String get currentTitle => _metadataFor(_currentUri).title;
-
   static void syncCurrentRoute() {
     sync(_currentUri);
   }
@@ -23,8 +21,6 @@ abstract final class SeoService {
 
   static void sync(Uri uri) {
     final page = _metadataFor(uri);
-    html.document.title = page.title;
-
     _setMeta('name', 'description', page.description);
     _setMeta('name', 'robots', page.robots);
     _setMeta('property', 'og:title', page.title);
@@ -41,7 +37,7 @@ abstract final class SeoService {
 
     if (path == '/' && !hasSearchState) {
       return const _SeoMetadata(
-        title: 'CommonsLens — Advanced Wikimedia Commons Search',
+        title: 'CommonsLens: Explore Wikimedia',
         description:
             'Search and download reusable Wikimedia Commons images, SVGs, audio, video, and documents with advanced license, Wikidata, category, date, and map filters.',
         canonical: '$_origin/',
@@ -88,7 +84,7 @@ abstract final class SeoService {
     // effectively unbounded and do not have server-rendered unique content.
     // Keep links followable without turning them into an indexing crawl trap.
     return const _SeoMetadata(
-      title: 'CommonsLens — Wikimedia Commons Research Tools',
+      title: 'CommonsLens: Explore Wikimedia',
       description:
           'Explore and download reusable media from Wikimedia Commons with advanced search, map, and visual pipeline tools.',
       canonical: '$_origin/',

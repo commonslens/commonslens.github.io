@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script type="text/javascript">
+    // Single Page Apps for GitHub Pages — MIT License
+    // https://github.com/rafgraph/spa-github-pages
+    // Decodes the path that 404.html encoded, and hands it to go_router
+    // before the app boots, so deep links and reloads survive GitHub Pages'
+    // static hosting.
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
+          return s.replace(/~and~/g, '&');
+        }).join('?');
+        window.history.replaceState(null, null,
+          l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location));
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LBBV97ZD24"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    // send_page_view: false — this is a single-page app (go_router swaps
+    // views client-side, no full page load per route), so GA's automatic
+    // page_view would only ever fire once, on initial load. Manual
+    // page_view events are fired instead on every route change, from
+    // router.dart's _AnalyticsNavObserver.
+    //
+    // allow_google_signals / allow_ad_personalization_signals: false —
+    // opts out of Google Signals (cross-device tracking, ads-audience
+    // building, demographics/interest reports tied to a visitor's Google
+    // account). Keeps this to anonymous, aggregate interaction trends only
+    // — no per-visitor identity, no ads use of the data.
+    gtag('config', 'G-LBBV97ZD24', {
+      send_page_view: false,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    });
+  </script>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0B0B">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="application-name" content="CommonsLens">
+  <meta name="apple-mobile-web-app-title" content="CommonsLens">
+  <link rel="canonical" href="https://commonslens.github.io/features/">
+
+  <title>CommonsLens Features — Wikimedia Search, Map &amp; Export</title>
+  <meta name="description" content="Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, bulk downloads, and visual data pipelines.">
+  <meta name="author" content="Pratham Shah">
+
+  <meta property="og:site_name" content="CommonsLens">
+  <meta property="og:title" content="CommonsLens Features — Wikimedia Search, Map &amp; Export">
+  <meta property="og:description" content="Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, bulk downloads, and visual data pipelines.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://commonslens.github.io/features/">
+  <meta property="og:image" content="https://commonslens.github.io/favicon.png">
+  <meta property="og:image:alt" content="CommonsLens logo">
+
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CommonsLens Features — Wikimedia Search, Map &amp; Export">
+  <meta name="twitter:description" content="Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, bulk downloads, and visual data pipelines.">
+  <meta name="twitter:image" content="https://commonslens.github.io/favicon.png">
+
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="shortcut icon" href="favicon.png">
+
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /*
+      A real static first render for people, crawlers, and no-JS readers.
+      Flutter paints the equivalent application above it, while the semantic
+      HTML remains in the rendered DOM instead of disappearing after startup.
+    */
+    #seo-fallback {
+      box-sizing: border-box;
+      position: fixed;
+      inset: 0;
+      min-height: 100vh;
+      overflow: auto;
+      padding: 48px max(24px, calc((100vw - 1080px) / 2));
+      background: #0b0b0b;
+      color: #d5d5d5;
+      font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #seo-fallback h1,
+    #seo-fallback h2 {
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    #seo-fallback h1 {
+      max-width: 820px;
+      margin: 0 0 16px;
+      font-size: clamp(32px, 6vw, 54px);
+    }
+
+    #seo-fallback h2 {
+      margin-top: 42px;
+      font-size: 23px;
+    }
+
+    #seo-fallback p,
+    #seo-fallback ul {
+      max-width: 900px;
+    }
+
+    #seo-fallback nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin: 28px 0 36px;
+      padding: 18px 0;
+      border-block: 1px solid #262626;
+    }
+
+    #seo-fallback a {
+      color: #7aabff;
+    }
+
+    #seo-fallback li {
+      margin-bottom: 8px;
+    }
+  </style>
+
+  <script id="structured-data" type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://commonslens.github.io/features/#webpage",
+      "url": "https://commonslens.github.io/features/",
+      "name": "CommonsLens Features — Wikimedia Search, Map & Export",
+      "description": "Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, bulk downloads, and visual data pipelines.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://commonslens.github.io/#website"
+      },
+      "about": {
+        "@id": "https://commonslens.github.io/#app"
+      },
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "Everything you can do with CommonsLens features",
+        "numberOfItems": 36,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Search all media, images, SVG and vector graphics, audio, video, PDFs, DjVu files, and documents."
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Use direct file autocomplete, multi-term OR queries with +, or run a search entirely from filters."
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Filter 17 exact formats and sort by relevance, title, creation date, or edit date."
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "Use infinite pagination, removable filter chips, query preview, responsive result grids, and shareable search URLs."
+          },
+          {
+            "@type": "ListItem",
+            "position": 5,
+            "name": "Include or exclude Wikidata depicts entities and property-value statements with AND or OR logic."
+          },
+          {
+            "@type": "ListItem",
+            "position": 6,
+            "name": "Include or exclude categories and templates, with category union, intersection, and recursive subcategories."
+          },
+          {
+            "@type": "ListItem",
+            "position": 7,
+            "name": "Filter CC0, CC BY 4.0, CC BY-SA 4.0, Public Domain, attribution requirement, and quality assessment."
+          },
+          {
+            "@type": "ListItem",
+            "position": 8,
+            "name": "Filter language, content model, creation and edit dates, resolution, file size, color depth, and geographic proximity."
+          },
+          {
+            "@type": "ListItem",
+            "position": 9,
+            "name": "Browse paginated category and template directories or search Wikidata subject Q-codes."
+          },
+          {
+            "@type": "ListItem",
+            "position": 10,
+            "name": "Open every upload from a contributor and search another author from the portfolio view."
+          },
+          {
+            "@type": "ListItem",
+            "position": 11,
+            "name": "Find related files through Commons similarity search and discover media near a geotagged asset."
+          },
+          {
+            "@type": "ListItem",
+            "position": 12,
+            "name": "Check where a file is used across Wikimedia languages and projects."
+          },
+          {
+            "@type": "ListItem",
+            "position": 13,
+            "name": "Search by map tap, coordinates and radius, named place, or a two-point bounding box."
+          },
+          {
+            "@type": "ListItem",
+            "position": 14,
+            "name": "Plot the current search, cluster thumbnail markers, browse cluster grids, and fit the camera to results."
+          },
+          {
+            "@type": "ListItem",
+            "position": 15,
+            "name": "Use street, satellite, or hybrid layers with zoom, rotation, and north-reset controls."
+          },
+          {
+            "@type": "ListItem",
+            "position": 16,
+            "name": "Refine map results by license, quality, and attribution or continue the query in main Search."
+          },
+          {
+            "@type": "ListItem",
+            "position": 17,
+            "name": "View images, vectors, audio, video, and supported PDFs with fallbacks for DjVu and unsupported documents."
+          },
+          {
+            "@type": "ListItem",
+            "position": 18,
+            "name": "Navigate by swipe, buttons, or keyboard and choose a 1920px or full-resolution image preview."
+          },
+          {
+            "@type": "ListItem",
+            "position": 19,
+            "name": "Read title, creator, uploader, descriptions, dates, MIME type, dimensions, categories, assessments, and GPS coordinates."
+          },
+          {
+            "@type": "ListItem",
+            "position": 20,
+            "name": "Lazily inspect complete Structured Data on Commons, related media, and global Wikimedia usage."
+          },
+          {
+            "@type": "ListItem",
+            "position": 21,
+            "name": "Review the license, attribution status, creator, preferred credit, usage terms, copyright status, permission, and restrictions."
+          },
+          {
+            "@type": "ListItem",
+            "position": 22,
+            "name": "See warnings when machine-readable rights information is incomplete."
+          },
+          {
+            "@type": "ListItem",
+            "position": 23,
+            "name": "Copy plain-text attribution, an HTML figure, or a WikiText file embed."
+          },
+          {
+            "@type": "ListItem",
+            "position": 24,
+            "name": "Open the original Commons page, complete license, and official Wikimedia reuse guidance."
+          },
+          {
+            "@type": "ListItem",
+            "position": 25,
+            "name": "Download an original file or available 640px, 1280px, and 1920px derivatives."
+          },
+          {
+            "@type": "ListItem",
+            "position": 26,
+            "name": "Select any subset or all loaded results and export originals or 1280px files as ZIP archives."
+          },
+          {
+            "@type": "ListItem",
+            "position": 27,
+            "name": "Track, cancel, and run multiple jobs while large collections are split into manageable archive parts."
+          },
+          {
+            "@type": "ListItem",
+            "position": 28,
+            "name": "Receive a data.csv manifest containing source links, descriptions, technical metadata, rights, attribution, dates, classifications, and coordinates."
+          },
+          {
+            "@type": "ListItem",
+            "position": 29,
+            "name": "Source media from text, categories, subjects, statements, templates, locations, authors, or related files."
+          },
+          {
+            "@type": "ListItem",
+            "position": 30,
+            "name": "Combine branches with constraints, union, intersection, or difference and transform them with dedupe, sort, sample, field selection, and enrichment."
+          },
+          {
+            "@type": "ListItem",
+            "position": 31,
+            "name": "Preview intermediate results or export CSV, JSON, original media ZIPs, and web-optimized ZIPs."
+          },
+          {
+            "@type": "ListItem",
+            "position": 32,
+            "name": "Autosave graphs, reopen saved pipelines, import or export JSON, cache queries, and send results to Search."
+          },
+          {
+            "@type": "ListItem",
+            "position": 33,
+            "name": "Use desktop and mobile layouts, clean deep links, and installable web-app metadata."
+          },
+          {
+            "@type": "ListItem",
+            "position": 34,
+            "name": "No Commons account is required, and CommonsLens does not host or claim ownership of displayed media."
+          },
+          {
+            "@type": "ListItem",
+            "position": 35,
+            "name": "Lazy loading, request deduplication, global concurrency limits, throttling cooldowns, retries, and cancellation protect the user experience and Wikimedia infrastructure."
+          },
+          {
+            "@type": "ListItem",
+            "position": 36,
+            "name": "Route-specific static pages, canonical URLs, structured data, and a sitemap make the public tools understandable to search engines."
+          }
+        ]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "CommonsLens",
+          "item": "https://commonslens.github.io/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Everything you can do with CommonsLens",
+          "item": "https://commonslens.github.io/features/"
+        }
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://commonslens.github.io/#website",
+      "url": "https://commonslens.github.io/",
+      "name": "CommonsLens",
+      "alternateName": "Commons Lens",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://commonslens.github.io/#app",
+      "name": "CommonsLens",
+      "url": "https://commonslens.github.io/",
+      "description": "Advanced search, map discovery, reuse guidance, bulk export, and visual data pipelines for Wikimedia Commons.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript and a modern web browser.",
+      "isAccessibleForFree": true,
+      "featureList": [
+        "Search all media, images, SVG and vector graphics, audio, video, PDFs, DjVu files, and documents.",
+        "Use direct file autocomplete, multi-term OR queries with +, or run a search entirely from filters.",
+        "Filter 17 exact formats and sort by relevance, title, creation date, or edit date.",
+        "Use infinite pagination, removable filter chips, query preview, responsive result grids, and shareable search URLs.",
+        "Include or exclude Wikidata depicts entities and property-value statements with AND or OR logic.",
+        "Include or exclude categories and templates, with category union, intersection, and recursive subcategories.",
+        "Filter CC0, CC BY 4.0, CC BY-SA 4.0, Public Domain, attribution requirement, and quality assessment.",
+        "Filter language, content model, creation and edit dates, resolution, file size, color depth, and geographic proximity.",
+        "Browse paginated category and template directories or search Wikidata subject Q-codes.",
+        "Open every upload from a contributor and search another author from the portfolio view.",
+        "Find related files through Commons similarity search and discover media near a geotagged asset.",
+        "Check where a file is used across Wikimedia languages and projects.",
+        "Search by map tap, coordinates and radius, named place, or a two-point bounding box.",
+        "Plot the current search, cluster thumbnail markers, browse cluster grids, and fit the camera to results.",
+        "Use street, satellite, or hybrid layers with zoom, rotation, and north-reset controls.",
+        "Refine map results by license, quality, and attribution or continue the query in main Search.",
+        "View images, vectors, audio, video, and supported PDFs with fallbacks for DjVu and unsupported documents.",
+        "Navigate by swipe, buttons, or keyboard and choose a 1920px or full-resolution image preview.",
+        "Read title, creator, uploader, descriptions, dates, MIME type, dimensions, categories, assessments, and GPS coordinates.",
+        "Lazily inspect complete Structured Data on Commons, related media, and global Wikimedia usage.",
+        "Review the license, attribution status, creator, preferred credit, usage terms, copyright status, permission, and restrictions.",
+        "See warnings when machine-readable rights information is incomplete.",
+        "Copy plain-text attribution, an HTML figure, or a WikiText file embed.",
+        "Open the original Commons page, complete license, and official Wikimedia reuse guidance.",
+        "Download an original file or available 640px, 1280px, and 1920px derivatives.",
+        "Select any subset or all loaded results and export originals or 1280px files as ZIP archives.",
+        "Track, cancel, and run multiple jobs while large collections are split into manageable archive parts.",
+        "Receive a data.csv manifest containing source links, descriptions, technical metadata, rights, attribution, dates, classifications, and coordinates.",
+        "Source media from text, categories, subjects, statements, templates, locations, authors, or related files.",
+        "Combine branches with constraints, union, intersection, or difference and transform them with dedupe, sort, sample, field selection, and enrichment.",
+        "Preview intermediate results or export CSV, JSON, original media ZIPs, and web-optimized ZIPs.",
+        "Autosave graphs, reopen saved pipelines, import or export JSON, cache queries, and send results to Search.",
+        "Use desktop and mobile layouts, clean deep links, and installable web-app metadata.",
+        "No Commons account is required, and CommonsLens does not host or claim ownership of displayed media.",
+        "Lazy loading, request deduplication, global concurrency limits, throttling cooldowns, retries, and cancellation protect the user experience and Wikimedia infrastructure.",
+        "Route-specific static pages, canonical URLs, structured data, and a sitemap make the public tools understandable to search engines."
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": 0,
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+  </script>
+</head>
+
+<body>
+  <!-- Static, readable first render; Flutter paints the equivalent UI above it. -->
+  <main id="seo-fallback">
+    <h1>Everything you can do with CommonsLens</h1>
+    <p>CommonsLens combines advanced Commons search, semantic metadata, geographic discovery, responsible reuse, bulk export, and visual data pipelines in one free browser application.</p>
+
+    <nav aria-label="CommonsLens tools">
+      <a href="/">Advanced media search</a>
+      <a href="/browse/">Browse Wikimedia categories, templates, and subjects</a>
+      <a href="/map/">Search Wikimedia Commons by location</a>
+      <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
+      <a href="/features/">Explore all CommonsLens features</a>
+    </nav>
+
+    <section>
+      <h2>Advanced Wikimedia Commons search</h2>
+      <p>Search large Commons collections visually without writing CirrusSearch syntax.</p>
+      <ul>
+        <li>Search all media, images, SVG and vector graphics, audio, video, PDFs, DjVu files, and documents.</li>
+        <li>Use direct file autocomplete, multi-term OR queries with +, or run a search entirely from filters.</li>
+        <li>Filter 17 exact formats and sort by relevance, title, creation date, or edit date.</li>
+        <li>Use infinite pagination, removable filter chips, query preview, responsive result grids, and shareable search URLs.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Semantic, rights, and technical filters</h2>
+      <p>Search the descriptive structure and rights metadata attached to Commons files.</p>
+      <ul>
+        <li>Include or exclude Wikidata depicts entities and property-value statements with AND or OR logic.</li>
+        <li>Include or exclude categories and templates, with category union, intersection, and recursive subcategories.</li>
+        <li>Filter CC0, CC BY 4.0, CC BY-SA 4.0, Public Domain, attribution requirement, and quality assessment.</li>
+        <li>Filter language, content model, creation and edit dates, resolution, file size, color depth, and geographic proximity.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Directories, authors, and related discovery</h2>
+      <p>Move between structured directories, contributors, and connected media.</p>
+      <ul>
+        <li>Browse paginated category and template directories or search Wikidata subject Q-codes.</li>
+        <li>Open every upload from a contributor and search another author from the portfolio view.</li>
+        <li>Find related files through Commons similarity search and discover media near a geotagged asset.</li>
+        <li>Check where a file is used across Wikimedia languages and projects.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Interactive geographic search</h2>
+      <p>Search and inspect geotagged Commons media on a responsive world map.</p>
+      <ul>
+        <li>Search by map tap, coordinates and radius, named place, or a two-point bounding box.</li>
+        <li>Plot the current search, cluster thumbnail markers, browse cluster grids, and fit the camera to results.</li>
+        <li>Use street, satellite, or hybrid layers with zoom, rotation, and north-reset controls.</li>
+        <li>Refine map results by license, quality, and attribution or continue the query in main Search.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Native media viewer and detailed metadata</h2>
+      <p>Inspect a file in its search, map, author, or pipeline gallery context.</p>
+      <ul>
+        <li>View images, vectors, audio, video, and supported PDFs with fallbacks for DjVu and unsupported documents.</li>
+        <li>Navigate by swipe, buttons, or keyboard and choose a 1920px or full-resolution image preview.</li>
+        <li>Read title, creator, uploader, descriptions, dates, MIME type, dimensions, categories, assessments, and GPS coordinates.</li>
+        <li>Lazily inspect complete Structured Data on Commons, related media, and global Wikimedia usage.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>License understanding and reusable attribution</h2>
+      <p>Turn machine-readable Commons rights fields into practical reuse information without pretending missing metadata is permission.</p>
+      <ul>
+        <li>Review the license, attribution status, creator, preferred credit, usage terms, copyright status, permission, and restrictions.</li>
+        <li>See warnings when machine-readable rights information is incomplete.</li>
+        <li>Copy plain-text attribution, an HTML figure, or a WikiText file embed.</li>
+        <li>Open the original Commons page, complete license, and official Wikimedia reuse guidance.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Individual, bulk, and dataset downloads</h2>
+      <p>Export files and research metadata entirely in the browser.</p>
+      <ul>
+        <li>Download an original file or available 640px, 1280px, and 1920px derivatives.</li>
+        <li>Select any subset or all loaded results and export originals or 1280px files as ZIP archives.</li>
+        <li>Track, cancel, and run multiple jobs while large collections are split into manageable archive parts.</li>
+        <li>Receive a data.csv manifest containing source links, descriptions, technical metadata, rights, attribution, dates, classifications, and coordinates.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>No-code visual Wikimedia pipelines</h2>
+      <p>Connect 31 source, filter, set-operation, transform, and output nodes into a repeatable workflow.</p>
+      <ul>
+        <li>Source media from text, categories, subjects, statements, templates, locations, authors, or related files.</li>
+        <li>Combine branches with constraints, union, intersection, or difference and transform them with dedupe, sort, sample, field selection, and enrichment.</li>
+        <li>Preview intermediate results or export CSV, JSON, original media ZIPs, and web-optimized ZIPs.</li>
+        <li>Autosave graphs, reopen saved pipelines, import or export JSON, cache queries, and send results to Search.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Responsive, shareable, and Wikimedia-friendly</h2>
+      <p>CommonsLens is an open-source client that works directly with official Wikimedia services.</p>
+      <ul>
+        <li>Use desktop and mobile layouts, clean deep links, and installable web-app metadata.</li>
+        <li>No Commons account is required, and CommonsLens does not host or claim ownership of displayed media.</li>
+        <li>Lazy loading, request deduplication, global concurrency limits, throttling cooldowns, retries, and cancellation protect the user experience and Wikimedia infrastructure.</li>
+        <li>Route-specific static pages, canonical URLs, structured data, and a sitemap make the public tools understandable to search engines.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Free, open-source Wikimedia research tools</h2>
+      <p>CommonsLens runs in the browser, requires no Commons account, and uses official Wikimedia and Wikidata APIs. Media remains hosted by Wikimedia Commons and retains its original source and rights information.</p>
+      <p><a href="https://github.com/commonslens/commonslens.github.io">View the CommonsLens source code on GitHub</a>.</p>
+    </section>
+  </main>
+
+  <noscript>CommonsLens requires JavaScript to run. Its search tools use the official Wikimedia APIs.</noscript>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

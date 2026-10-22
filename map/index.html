@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <script type="text/javascript">
+    // Single Page Apps for GitHub Pages — MIT License
+    // https://github.com/rafgraph/spa-github-pages
+    // Decodes the path that 404.html encoded, and hands it to go_router
+    // before the app boots, so deep links and reloads survive GitHub Pages'
+    // static hosting.
+    (function (l) {
+      if (l.search[1] === '/') {
+        var decoded = l.search.slice(1).split('&').map(function (s) {
+          return s.replace(/~and~/g, '&');
+        }).join('?');
+        window.history.replaceState(null, null,
+          l.pathname.slice(0, -1) + decoded + l.hash
+        );
+      }
+    }(window.location));
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LBBV97ZD24"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    // send_page_view: false — this is a single-page app (go_router swaps
+    // views client-side, no full page load per route), so GA's automatic
+    // page_view would only ever fire once, on initial load. Manual
+    // page_view events are fired instead on every route change, from
+    // router.dart's _AnalyticsNavObserver.
+    //
+    // allow_google_signals / allow_ad_personalization_signals: false —
+    // opts out of Google Signals (cross-device tracking, ads-audience
+    // building, demographics/interest reports tied to a visitor's Google
+    // account). Keeps this to anonymous, aggregate interaction trends only
+    // — no per-visitor identity, no ads use of the data.
+    gtag('config', 'G-LBBV97ZD24', {
+      send_page_view: false,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    });
+  </script>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0B0B">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="application-name" content="CommonsLens">
+  <meta name="apple-mobile-web-app-title" content="CommonsLens">
+  <link rel="canonical" href="https://commonslens.github.io/map/">
+
+  <title>Wikimedia Commons Map Search | CommonsLens</title>
+  <meta name="description" content="Discover geotagged Wikimedia Commons media with point, radius, place, and bounding-box searches, clustered previews, metadata filters, and downloadable results.">
+  <meta name="author" content="Pratham Shah">
+
+  <meta property="og:site_name" content="CommonsLens">
+  <meta property="og:title" content="Wikimedia Commons Map Search | CommonsLens">
+  <meta property="og:description" content="Discover geotagged Wikimedia Commons media with point, radius, place, and bounding-box searches, clustered previews, metadata filters, and downloadable results.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://commonslens.github.io/map/">
+  <meta property="og:image" content="https://commonslens.github.io/favicon.png">
+  <meta property="og:image:alt" content="CommonsLens logo">
+
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Wikimedia Commons Map Search | CommonsLens">
+  <meta name="twitter:description" content="Discover geotagged Wikimedia Commons media with point, radius, place, and bounding-box searches, clustered previews, metadata filters, and downloadable results.">
+  <meta name="twitter:image" content="https://commonslens.github.io/favicon.png">
+
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <link rel="shortcut icon" href="favicon.png">
+
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /*
+      A real static first render for people, crawlers, and no-JS readers.
+      Flutter paints the equivalent application above it, while the semantic
+      HTML remains in the rendered DOM instead of disappearing after startup.
+    */
+    #seo-fallback {
+      box-sizing: border-box;
+      position: fixed;
+      inset: 0;
+      min-height: 100vh;
+      overflow: auto;
+      padding: 48px max(24px, calc((100vw - 1080px) / 2));
+      background: #0b0b0b;
+      color: #d5d5d5;
+      font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #seo-fallback h1,
+    #seo-fallback h2 {
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    #seo-fallback h1 {
+      max-width: 820px;
+      margin: 0 0 16px;
+      font-size: clamp(32px, 6vw, 54px);
+    }
+
+    #seo-fallback h2 {
+      margin-top: 42px;
+      font-size: 23px;
+    }
+
+    #seo-fallback p,
+    #seo-fallback ul {
+      max-width: 900px;
+    }
+
+    #seo-fallback nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin: 28px 0 36px;
+      padding: 18px 0;
+      border-block: 1px solid #262626;
+    }
+
+    #seo-fallback a {
+      color: #7aabff;
+    }
+
+    #seo-fallback li {
+      margin-bottom: 8px;
+    }
+  </style>
+
+  <script id="structured-data" type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://commonslens.github.io/map/#webpage",
+      "url": "https://commonslens.github.io/map/",
+      "name": "Wikimedia Commons Map Search | CommonsLens",
+      "description": "Discover geotagged Wikimedia Commons media with point, radius, place, and bounding-box searches, clustered previews, metadata filters, and downloadable results.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://commonslens.github.io/#website"
+      },
+      "about": {
+        "@id": "https://commonslens.github.io/#app"
+      },
+      "mainEntity": {
+        "@type": "ItemList",
+        "name": "Search Wikimedia Commons by location features",
+        "numberOfItems": 19,
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Run an open geographic browse or combine the location with a text query."
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "name": "Search near a named Commons page or place with an adjustable radius."
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Open a nearby-media search directly from the coordinates of an asset."
+          },
+          {
+            "@type": "ListItem",
+            "position": 4,
+            "name": "See the search centre and radius drawn on the map."
+          },
+          {
+            "@type": "ListItem",
+            "position": 5,
+            "name": "Preview the selected polygon before searching."
+          },
+          {
+            "@type": "ListItem",
+            "position": 6,
+            "name": "Cancel and redraw the area without leaving the map."
+          },
+          {
+            "@type": "ListItem",
+            "position": 7,
+            "name": "Open the geographic query in the main search interface."
+          },
+          {
+            "@type": "ListItem",
+            "position": 8,
+            "name": "Plot an existing CommonsLens search and report how many results contain usable coordinates."
+          },
+          {
+            "@type": "ListItem",
+            "position": 9,
+            "name": "Cluster nearby thumbnail markers according to zoom level."
+          },
+          {
+            "@type": "ListItem",
+            "position": 10,
+            "name": "Open a cluster as a media grid or inspect a single file in the full asset viewer."
+          },
+          {
+            "@type": "ListItem",
+            "position": 11,
+            "name": "Use a desktop split-screen result pane or a responsive mobile layout."
+          },
+          {
+            "@type": "ListItem",
+            "position": 12,
+            "name": "Switch between street, satellite, and hybrid layers."
+          },
+          {
+            "@type": "ListItem",
+            "position": 13,
+            "name": "Zoom, rotate in 15-degree steps, reset north, and fit the camera to imported results."
+          },
+          {
+            "@type": "ListItem",
+            "position": 14,
+            "name": "Filter by license, Commons quality assessment, and attribution requirement."
+          },
+          {
+            "@type": "ListItem",
+            "position": 15,
+            "name": "Preserve relevant main-search context when moving between Search and Map."
+          },
+          {
+            "@type": "ListItem",
+            "position": 16,
+            "name": "View creator, uploader, dates, dimensions, categories, assessments, coordinates, and structured data."
+          },
+          {
+            "@type": "ListItem",
+            "position": 17,
+            "name": "Check global Wikimedia usage and related media."
+          },
+          {
+            "@type": "ListItem",
+            "position": 18,
+            "name": "Copy attribution, HTML, or WikiText reuse snippets."
+          },
+          {
+            "@type": "ListItem",
+            "position": 19,
+            "name": "Download individual files or build a bulk ZIP collection with a CSV metadata manifest."
+          }
+        ]
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "CommonsLens",
+          "item": "https://commonslens.github.io/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Search Wikimedia Commons by location",
+          "item": "https://commonslens.github.io/map/"
+        }
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://commonslens.github.io/#website",
+      "url": "https://commonslens.github.io/",
+      "name": "CommonsLens",
+      "alternateName": "Commons Lens",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://commonslens.github.io/#app",
+      "name": "CommonsLens",
+      "url": "https://commonslens.github.io/",
+      "description": "Advanced search, map discovery, reuse guidance, bulk export, and visual data pipelines for Wikimedia Commons.",
+      "applicationCategory": "MultimediaApplication",
+      "operatingSystem": "Any",
+      "browserRequirements": "Requires JavaScript and a modern web browser.",
+      "isAccessibleForFree": true,
+      "featureList": [
+        "Run an open geographic browse or combine the location with a text query.",
+        "Search near a named Commons page or place with an adjustable radius.",
+        "Open a nearby-media search directly from the coordinates of an asset.",
+        "See the search centre and radius drawn on the map.",
+        "Preview the selected polygon before searching.",
+        "Cancel and redraw the area without leaving the map.",
+        "Open the geographic query in the main search interface.",
+        "Plot an existing CommonsLens search and report how many results contain usable coordinates.",
+        "Cluster nearby thumbnail markers according to zoom level.",
+        "Open a cluster as a media grid or inspect a single file in the full asset viewer.",
+        "Use a desktop split-screen result pane or a responsive mobile layout.",
+        "Switch between street, satellite, and hybrid layers.",
+        "Zoom, rotate in 15-degree steps, reset north, and fit the camera to imported results.",
+        "Filter by license, Commons quality assessment, and attribution requirement.",
+        "Preserve relevant main-search context when moving between Search and Map.",
+        "View creator, uploader, dates, dimensions, categories, assessments, coordinates, and structured data.",
+        "Check global Wikimedia usage and related media.",
+        "Copy attribution, HTML, or WikiText reuse snippets.",
+        "Download individual files or build a bulk ZIP collection with a CSV metadata manifest."
+      ],
+      "offers": {
+        "@type": "Offer",
+        "price": 0,
+        "priceCurrency": "USD"
+      }
+    }
+  ]
+}
+  </script>
+</head>
+
+<body>
+  <!-- Static, readable first render; Flutter paints the equivalent UI above it. -->
+  <main id="seo-fallback">
+    <h1>Search Wikimedia Commons by location</h1>
+    <p>Use an interactive map to discover geotagged Wikimedia Commons photos and media around any place in the world.</p>
+
+    <nav aria-label="CommonsLens tools">
+      <a href="/">Advanced media search</a>
+      <a href="/browse/">Browse Wikimedia categories, templates, and subjects</a>
+      <a href="/map/">Search Wikimedia Commons by location</a>
+      <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
+      <a href="/features/">Explore all CommonsLens features</a>
+    </nav>
+
+    <section>
+      <h2>Point, radius, and place search</h2>
+      <p>Tap the map or enter latitude, longitude, and a radius to find nearby Commons media.</p>
+      <ul>
+        <li>Run an open geographic browse or combine the location with a text query.</li>
+        <li>Search near a named Commons page or place with an adjustable radius.</li>
+        <li>Open a nearby-media search directly from the coordinates of an asset.</li>
+        <li>See the search centre and radius drawn on the map.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Bounding-box discovery</h2>
+      <p>Choose two corners to search a custom rectangular geographic area.</p>
+      <ul>
+        <li>Preview the selected polygon before searching.</li>
+        <li>Cancel and redraw the area without leaving the map.</li>
+        <li>Open the geographic query in the main search interface.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Search results on the map</h2>
+      <p>Browse spatial and visual results together instead of switching between unrelated tools.</p>
+      <ul>
+        <li>Plot an existing CommonsLens search and report how many results contain usable coordinates.</li>
+        <li>Cluster nearby thumbnail markers according to zoom level.</li>
+        <li>Open a cluster as a media grid or inspect a single file in the full asset viewer.</li>
+        <li>Use a desktop split-screen result pane or a responsive mobile layout.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Map controls and filters</h2>
+      <p>Refine and navigate the map without losing the active geographic search.</p>
+      <ul>
+        <li>Switch between street, satellite, and hybrid layers.</li>
+        <li>Zoom, rotate in 15-degree steps, reset north, and fit the camera to imported results.</li>
+        <li>Filter by license, Commons quality assessment, and attribution requirement.</li>
+        <li>Preserve relevant main-search context when moving between Search and Map.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Inspect, reuse, and download mapped media</h2>
+      <p>Every map result connects to the same CommonsLens metadata and export workflow.</p>
+      <ul>
+        <li>View creator, uploader, dates, dimensions, categories, assessments, coordinates, and structured data.</li>
+        <li>Check global Wikimedia usage and related media.</li>
+        <li>Copy attribution, HTML, or WikiText reuse snippets.</li>
+        <li>Download individual files or build a bulk ZIP collection with a CSV metadata manifest.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Free, open-source Wikimedia research tools</h2>
+      <p>CommonsLens runs in the browser, requires no Commons account, and uses official Wikimedia and Wikidata APIs. Media remains hosted by Wikimedia Commons and retains its original source and rights information.</p>
+      <p><a href="https://github.com/commonslens/commonslens.github.io">View the CommonsLens source code on GitHub</a>.</p>
+    </section>
+  </main>
+
+  <noscript>CommonsLens requires JavaScript to run. Its search tools use the official Wikimedia APIs.</noscript>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

@@ -20,29 +20,6 @@
     }(window.location));
   </script>
 
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LBBV97ZD24"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    // send_page_view: false — this is a single-page app (go_router swaps
-    // views client-side, no full page load per route), so GA's automatic
-    // page_view would only ever fire once, on initial load. Manual
-    // page_view events are fired instead on every route change, from
-    // router.dart's _AnalyticsNavObserver.
-    //
-    // allow_google_signals / allow_ad_personalization_signals: false —
-    // opts out of Google Signals (cross-device tracking, ads-audience
-    // building, demographics/interest reports tied to a visitor's Google
-    // account). Limits this to pseudonymous usage measurement without ads
-    // personalization; GA still uses a first-party client identifier.
-    gtag('config', 'G-LBBV97ZD24', {
-      send_page_view: false,
-      allow_google_signals: false,
-      allow_ad_personalization_signals: false
-    });
-  </script>
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -218,7 +195,7 @@
           {
             "@type": "ListItem",
             "position": 13,
-            "name": "Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies."
+            "name": "Wikimedia, Wikidata, OpenStreetMap, Esri, GitHub Pages, and linked sites apply their own terms and policies."
           },
           {
             "@type": "ListItem",
@@ -291,7 +268,7 @@
         "Do not bypass rate limits, retry signals, technical safeguards, or provider usage policies.",
         "Do not use the interactive site as a bot, scraper, crawler, or high-volume automation endpoint.",
         "Do not bulk-fetch or prefetch map tiles; use official APIs for sustained automated research and obey their rules.",
-        "Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies.",
+        "Wikimedia, Wikidata, OpenStreetMap, Esri, GitHub Pages, and linked sites apply their own terms and policies.",
         "Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.",
         "No warranty is made about accuracy, fitness, non-infringement, uninterrupted availability, or preservation of local data, to the extent law permits.",
         "To the extent permitted by law, CommonsLens and its maintainers are not liable for loss from metadata, third-party services, unavailable data, or media reuse.",
@@ -378,7 +355,7 @@
       <h2>Acceptable use and third-party services</h2>
       <p>Use CommonsLens lawfully without disrupting or attempting unauthorized access to CommonsLens or connected services. Users are responsible for their searches, exports, publications, and downstream media use.</p>
       <ul>
-        <li>Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies.</li>
+        <li>Wikimedia, Wikidata, OpenStreetMap, Esri, GitHub Pages, and linked sites apply their own terms and policies.</li>
         <li>Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.</li>
       </ul>
     </section>

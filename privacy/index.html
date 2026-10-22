@@ -20,29 +20,6 @@
     }(window.location));
   </script>
 
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-LBBV97ZD24"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag() { dataLayer.push(arguments); }
-    gtag('js', new Date());
-
-    // send_page_view: false — this is a single-page app (go_router swaps
-    // views client-side, no full page load per route), so GA's automatic
-    // page_view would only ever fire once, on initial load. Manual
-    // page_view events are fired instead on every route change, from
-    // router.dart's _AnalyticsNavObserver.
-    //
-    // allow_google_signals / allow_ad_personalization_signals: false —
-    // opts out of Google Signals (cross-device tracking, ads-audience
-    // building, demographics/interest reports tied to a visitor's Google
-    // account). Limits this to pseudonymous usage measurement without ads
-    // personalization; GA still uses a first-party client identifier.
-    gtag('config', 'G-LBBV97ZD24', {
-      send_page_view: false,
-      allow_google_signals: false,
-      allow_ad_personalization_signals: false
-    });
-  </script>
   <base href="/">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -54,12 +31,12 @@
   <link rel="canonical" href="https://commonslens.github.io/privacy/">
 
   <title>Privacy Policy | CommonsLens</title>
-  <meta name="description" content="Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.">
+  <meta name="description" content="Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.">
   <meta name="author" content="Pratham Shah">
 
   <meta property="og:site_name" content="CommonsLens">
   <meta property="og:title" content="Privacy Policy | CommonsLens">
-  <meta property="og:description" content="Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.">
+  <meta property="og:description" content="Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:url" content="https://commonslens.github.io/privacy/">
@@ -71,7 +48,7 @@
 
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Privacy Policy | CommonsLens">
-  <meta name="twitter:description" content="Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.">
+  <meta name="twitter:description" content="Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.">
   <meta name="twitter:image" content="https://commonslens.github.io/favicon.png">
 
   <link rel="apple-touch-icon" href="favicon.png">
@@ -142,7 +119,7 @@
       "@id": "https://commonslens.github.io/privacy/#webpage",
       "url": "https://commonslens.github.io/privacy/",
       "name": "Privacy Policy | CommonsLens",
-      "description": "Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.",
+      "description": "Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.",
       "inLanguage": "en",
       "isPartOf": {
         "@id": "https://commonslens.github.io/#website"
@@ -153,7 +130,7 @@
       "mainEntity": {
         "@type": "ItemList",
         "name": "CommonsLens Privacy Policy features",
-        "numberOfItems": 29,
+        "numberOfItems": 24,
         "itemListElement": [
           {
             "@type": "ListItem",
@@ -163,141 +140,116 @@
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri."
+            "name": "No Google Analytics or replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used."
           },
           {
             "@type": "ListItem",
             "position": 3,
-            "name": "Saved pipelines, notes, caches, and image-preview preferences stay in browser storage."
+            "name": "Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri."
           },
           {
             "@type": "ListItem",
             "position": 4,
-            "name": "Google Analytics receives page, search, filter, file, download, browse, and map interactions."
+            "name": "Saved pipelines, notes, caches, and image-preview preferences stay in browser storage."
           },
           {
             "@type": "ListItem",
             "position": 5,
-            "name": "CommonsLens does not sell personal information, run ads, or enable Google Signals or advertising-personalization signals."
+            "name": "CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider."
           },
           {
             "@type": "ListItem",
             "position": 6,
-            "name": "Search terms, tabs, result counts, filter types and values, formats, sorting, and tab changes."
+            "name": "The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership."
           },
           {
             "@type": "ListItem",
             "position": 7,
-            "name": "Wikimedia file titles, media kinds, open sources, download sizes, source-page and reuse actions, related files, and nearby-media actions."
+            "name": "CommonsLens does not intentionally set tracking cookies."
           },
           {
             "@type": "ListItem",
             "position": 8,
-            "name": "Bulk selection counts and completion, partial-failure, or cancellation status."
+            "name": "Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites."
           },
           {
             "@type": "ListItem",
             "position": 9,
-            "name": "Browse category, template, subject, and author values; map modes, radii, layers, bounding boxes, cluster sizes, and route transitions."
-          },
-          {
-            "@type": "ListItem",
-            "position": 10,
-            "name": "Google default data such as the _ga cookie/client identifier, sessions, approximate location, device and browser details, language, screen information, title, and referrer."
-          },
-          {
-            "@type": "ListItem",
-            "position": 11,
-            "name": "Google says GA4 derives approximate location from the request IP and discards the IP before logging or storage."
-          },
-          {
-            "@type": "ListItem",
-            "position": 12,
-            "name": "Analytics retention follows property configuration; standard aggregated reports are not governed by user/event retention settings."
-          },
-          {
-            "@type": "ListItem",
-            "position": 13,
-            "name": "Users can block Analytics with browser controls, extensions, DNS filtering, or Google’s opt-out add-on and clear cookies to reset the identifier."
-          },
-          {
-            "@type": "ListItem",
-            "position": 14,
             "name": "Local storage remembers web-optimised or full-resolution image preview preference."
           },
           {
             "@type": "ListItem",
-            "position": 15,
+            "position": 10,
             "name": "IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results."
           },
           {
             "@type": "ListItem",
-            "position": 16,
+            "position": 11,
             "name": "Browser and service-worker caches may retain application files, images, media, tiles, and responses."
           },
           {
             "@type": "ListItem",
-            "position": 17,
+            "position": 12,
             "name": "Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses."
           },
           {
             "@type": "ListItem",
-            "position": 18,
+            "position": 13,
             "name": "Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted."
           },
           {
             "@type": "ListItem",
-            "position": 19,
+            "position": 14,
             "name": "GitHub Pages hosts the app and may log page requests and technical usage data."
           },
           {
             "@type": "ListItem",
-            "position": 20,
+            "position": 15,
             "name": "Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests."
           },
           {
             "@type": "ListItem",
-            "position": 21,
+            "position": 16,
             "name": "OpenStreetMap receives street-tile requests and Esri receives satellite and reference-tile requests when those layers are used."
           },
           {
             "@type": "ListItem",
-            "position": 22,
+            "position": 17,
             "name": "External source, licence, usage, and repository pages apply their own privacy policies."
           },
           {
             "@type": "ListItem",
-            "position": 23,
+            "position": 18,
             "name": "No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads."
           },
           {
             "@type": "ListItem",
-            "position": 24,
+            "position": 19,
             "name": "No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard."
           },
           {
             "@type": "ListItem",
-            "position": 25,
+            "position": 20,
             "name": "No device precise-location permission; map searches use user-chosen locations and public file coordinates."
           },
           {
             "@type": "ListItem",
-            "position": 26,
-            "name": "No CommonsLens-owned cloud database, advertising profile, data-broker feed, or cross-device identity."
+            "position": 21,
+            "name": "No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity."
           },
           {
             "@type": "ListItem",
-            "position": 27,
+            "position": 22,
             "name": "No internet transmission or browser storage is perfectly secure, and providers may process data in other countries."
           },
           {
             "@type": "ListItem",
-            "position": 28,
+            "position": 23,
             "name": "This policy is updated when collection or providers materially change."
           },
           {
             "@type": "ListItem",
-            "position": 29,
+            "position": 24,
             "name": "Questions and corrections can be raised in the public source repository without posting sensitive information."
           }
         ]
@@ -340,18 +292,13 @@
       "isAccessibleForFree": true,
       "featureList": [
         "No name, email address, password, payment method, or profile is requested.",
+        "No Google Analytics or replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.",
         "Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.",
         "Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.",
-        "Google Analytics receives page, search, filter, file, download, browse, and map interactions.",
-        "CommonsLens does not sell personal information, run ads, or enable Google Signals or advertising-personalization signals.",
-        "Search terms, tabs, result counts, filter types and values, formats, sorting, and tab changes.",
-        "Wikimedia file titles, media kinds, open sources, download sizes, source-page and reuse actions, related files, and nearby-media actions.",
-        "Bulk selection counts and completion, partial-failure, or cancellation status.",
-        "Browse category, template, subject, and author values; map modes, radii, layers, bounding boxes, cluster sizes, and route transitions.",
-        "Google default data such as the _ga cookie/client identifier, sessions, approximate location, device and browser details, language, screen information, title, and referrer.",
-        "Google says GA4 derives approximate location from the request IP and discards the IP before logging or storage.",
-        "Analytics retention follows property configuration; standard aggregated reports are not governed by user/event retention settings.",
-        "Users can block Analytics with browser controls, extensions, DNS filtering, or Google’s opt-out add-on and clear cookies to reset the identifier.",
+        "CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.",
+        "The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.",
+        "CommonsLens does not intentionally set tracking cookies.",
+        "Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites.",
         "Local storage remembers web-optimised or full-resolution image preview preference.",
         "IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results.",
         "Browser and service-worker caches may retain application files, images, media, tiles, and responses.",
@@ -364,7 +311,7 @@
         "No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.",
         "No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.",
         "No device precise-location permission; map searches use user-chosen locations and public file coordinates.",
-        "No CommonsLens-owned cloud database, advertising profile, data-broker feed, or cross-device identity.",
+        "No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.",
         "No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.",
         "This policy is updated when collection or providers materially change.",
         "Questions and corrections can be raised in the public source repository without posting sensitive information."
@@ -392,7 +339,7 @@
   <!-- Semantic fallback for crawlers and no-JavaScript clients. -->
   <main id="seo-fallback">
     <h1>CommonsLens Privacy Policy</h1>
-    <p>Effective and last reviewed 22 October 2026. CommonsLens has no accounts and no private application database. Most work happens in the browser, while analytics and the services delivering media, maps, APIs, and hosting receive the requests described below.</p>
+    <p>Effective and last reviewed 22 October 2026. CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in the browser. Only the outside services needed for hosting, Wikimedia content, and map tiles receive ordinary web requests.</p>
 
     <nav aria-label="CommonsLens tools">
       <a href="/">Advanced media search</a>
@@ -411,32 +358,20 @@
       <p>CommonsLens minimises data through local processing, no accounts, and no application backend, but does not claim that web use is invisible or fully anonymous.</p>
       <ul>
         <li>No name, email address, password, payment method, or profile is requested.</li>
+        <li>No Google Analytics or replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.</li>
         <li>Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.</li>
         <li>Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.</li>
-        <li>Google Analytics receives page, search, filter, file, download, browse, and map interactions.</li>
-        <li>CommonsLens does not sell personal information, run ads, or enable Google Signals or advertising-personalization signals.</li>
+        <li>CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.</li>
       </ul>
     </section>
 
     <section>
-      <h2>Information sent to Google Analytics</h2>
-      <p>CommonsLens uses Google Analytics 4 measurement ID G-LBBV97ZD24. It sends the page URL and path, which can contain search text, filters, a file title, an author username, or search state. URLs can also remain in browser history, bookmarks, shared links, or browser-sync services. Do not put sensitive information in searches, URLs, pipeline names, or notes.</p>
+      <h2>No analytics or behavioural tracking</h2>
+      <p>CommonsLens does not load Google Analytics, Google Tag Manager, ad pixels, telemetry SDKs, session replay tools, or another visitor analytics service. It does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.</p>
       <ul>
-        <li>Search terms, tabs, result counts, filter types and values, formats, sorting, and tab changes.</li>
-        <li>Wikimedia file titles, media kinds, open sources, download sizes, source-page and reuse actions, related files, and nearby-media actions.</li>
-        <li>Bulk selection counts and completion, partial-failure, or cancellation status.</li>
-        <li>Browse category, template, subject, and author values; map modes, radii, layers, bounding boxes, cluster sizes, and route transitions.</li>
-        <li>Google default data such as the _ga cookie/client identifier, sessions, approximate location, device and browser details, language, screen information, title, and referrer.</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Analytics limits and choices</h2>
-      <p>Google Signals and advertising-personalization signals are configured off. CommonsLens sends no account ID or User-ID and uses no analytics data to serve ads. Blocking analytics does not stop core features.</p>
-      <ul>
-        <li>Google says GA4 derives approximate location from the request IP and discards the IP before logging or storage.</li>
-        <li>Analytics retention follows property configuration; standard aggregated reports are not governed by user/event retention settings.</li>
-        <li>Users can block Analytics with browser controls, extensions, DNS filtering, or Google’s opt-out add-on and clear cookies to reset the identifier.</li>
+        <li>The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.</li>
+        <li>CommonsLens does not intentionally set tracking cookies.</li>
+        <li>Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites.</li>
       </ul>
     </section>
 
@@ -470,13 +405,13 @@
         <li>No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.</li>
         <li>No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.</li>
         <li>No device precise-location permission; map searches use user-chosen locations and public file coordinates.</li>
-        <li>No CommonsLens-owned cloud database, advertising profile, data-broker feed, or cross-device identity.</li>
+        <li>No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.</li>
       </ul>
     </section>
 
     <section>
       <h2>Privacy choices, security, and contact</h2>
-      <p>Users can clear browser site data to remove the Analytics identifier, preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.</p>
+      <p>Users can clear browser site data to remove preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.</p>
       <ul>
         <li>No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.</li>
         <li>This policy is updated when collection or providers materially change.</li>

@@ -9,6 +9,7 @@ import 'search_controller.dart';
 import 'search_components.dart';
 import 'analytics_service.dart';
 import 'bulk_download_tray.dart';
+import 'legal_pages.dart';
 
 class _FeatureCard extends StatefulWidget {
   final IconData icon;
@@ -486,7 +487,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         height: 1.1)),
                 const SizedBox(height: 16),
                 const Text(
-                    'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen-source and free forever.',
+                    'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen source and free to use.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: Color(0xFFCCCCCC),
@@ -707,7 +708,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 const SizedBox(height: 8),
 
                 const Text(
-                  'CommonsLens is a non-commercial, fair-use research tool. All media and data are sourced directly from Wikimedia Commons. CommonsLens does not make, host, own, or claim copyright over any of the displayed content.',
+                  'CommonsLens is an independent, non-commercial research interface. Media and data are sourced directly from Wikimedia Commons. CommonsLens does not make, host, own, license, or claim copyright over displayed content.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Color(0xFF555555),
@@ -715,7 +716,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     height: 1.6,
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 28),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: const SiteFooter(),
+                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),

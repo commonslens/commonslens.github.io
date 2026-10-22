@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'legal_pages.dart';
+
 class FeaturesPage extends StatelessWidget {
   const FeaturesPage({super.key});
 
@@ -182,6 +184,8 @@ class FeaturesPage extends StatelessWidget {
                       );
                     },
                   ),
+                  const SizedBox(height: 44),
+                  const SiteFooter(),
                 ],
               ),
             ),

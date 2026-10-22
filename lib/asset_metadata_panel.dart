@@ -5,7 +5,7 @@ class _MetadataInspector extends StatelessWidget {
   final _ViewerImageQuality? imageQuality;
   final ValueChanged<_ViewerImageQuality>? onImageQualityChanged;
   final VoidCallback onLaunchCommons;
-
+  
   const _MetadataInspector({
     required this.item,
     required this.imageQuality,

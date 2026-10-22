@@ -11,6 +11,7 @@ import 'author_portfolio_page.dart';
 import 'map_page.dart';
 import 'pipeline_page.dart';
 import 'features_page.dart';
+import 'legal_pages.dart';
 import 'analytics_service.dart';
 import 'seo_service.dart';
 
@@ -60,6 +61,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/features',
       builder: (context, state) => const FeaturesPage(),
+    ),
+    GoRoute(
+      path: '/terms',
+      builder: (context, state) => const TermsOfUsePage(),
+    ),
+    GoRoute(
+      path: '/privacy',
+      builder: (context, state) => const PrivacyPolicyPage(),
     ),
     GoRoute(
       path: '/author',

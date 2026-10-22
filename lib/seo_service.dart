@@ -80,6 +80,24 @@ abstract final class SeoService {
       );
     }
 
+    if (path == '/terms') {
+      return const _SeoMetadata(
+        title: 'Terms of Use | CommonsLens',
+        description:
+            'Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.',
+        canonical: '$_origin/terms/',
+      );
+    }
+
+    if (path == '/privacy') {
+      return const _SeoMetadata(
+        title: 'Privacy Policy | CommonsLens',
+        description:
+            'Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.',
+        canonical: '$_origin/privacy/',
+      );
+    }
+
     // Asset, author, and query-state URLs are useful to share, but they are
     // effectively unbounded and do not have server-rendered unique content.
     // Keep links followable without turning them into an indexing crawl trap.

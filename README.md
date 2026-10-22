@@ -7,7 +7,7 @@
 
   CommonsLens is a free browser-based research interface for finding reusable images, SVGs, audio, video, and documents through advanced metadata filters, geographic discovery, rights guidance, bulk downloads, and visual data pipelines.
 
-  [Open CommonsLens](https://commonslens.github.io/) · [Explore all features](https://commonslens.github.io/features/) · [View the source](https://github.com/commonslens/commonslens.github.io)
+  [Open CommonsLens](https://commonslens.github.io/) · [Explore all features](https://commonslens.github.io/features/) · [Terms](https://commonslens.github.io/terms/) · [Privacy](https://commonslens.github.io/privacy/) · [View the source](https://github.com/commonslens/commonslens.github.io)
 
   [![Deploy Flutter Web](https://github.com/commonslens/commonslens.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/commonslens/commonslens.github.io/actions/workflows/deploy.yml)
 </div>
@@ -652,6 +652,18 @@ Contributions and well-scoped bug reports are welcome.
 5. Open a pull request explaining the behaviour and trade-offs.
 
 For search or metadata changes, please preserve Wikimedia API courtesy limits and avoid inferring legal conclusions from missing rights fields.
+
+Unless explicitly stated otherwise, contributions submitted for inclusion in CommonsLens are accepted under the Apache License 2.0.
+
+## License
+
+CommonsLens is open-source software licensed under the [Apache License 2.0](LICENSE).
+
+Copyright © 2026 Pratham Shah.
+
+The licence applies to the CommonsLens software in this repository. Third-party dependencies and bundled components remain under their respective licence notices. Wikimedia Commons media and metadata displayed or downloaded through the application are not part of the software licence; every file retains the rights and reuse requirements shown on its original source page.
+
+The Apache License does not grant permission to use CommonsLens trade names, trademarks, service marks, or product identity except as needed to accurately describe the origin of the software.
 
 ## Media rights and disclaimer
 

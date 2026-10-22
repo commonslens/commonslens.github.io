@@ -320,6 +320,165 @@ const _pages = <_SeoPage>[
       ),
     ],
   ),
+  _SeoPage(
+    path: 'terms',
+    title: 'Terms of Use | CommonsLens',
+    description:
+        'Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.',
+    heading: 'CommonsLens Terms of Use',
+    intro:
+        'Effective and last reviewed 22 October 2026. CommonsLens helps people find and understand reusable media, but every file keeps its own licence and attribution requirements. Users are responsible for checking and following them.',
+    sections: [
+      _SeoSection(
+        heading: 'Agreement, scope, and independence',
+        intro:
+            'These terms apply to the website, search tools, map, viewer, downloads, exports, and visual pipelines. CommonsLens is independent and is not operated, sponsored, endorsed, or warranted by Wikimedia or any connected provider.',
+        items: [
+          'By using CommonsLens, you agree to these Terms; if you do not agree, do not use the service.',
+          'CommonsLens does not own displayed files and does not grant a new licence when a file is viewed or downloaded.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Media licences and attribution are mandatory',
+        intro:
+            'You MUST follow every attribution, credit, source-link, licence notice, share-alike, modification disclosure, author-requested credit line, and other reuse requirement set by the file licence, Commons description page, and author or rightsholder. The original page and applicable licence control if a CommonsLens summary is incomplete or conflicts.',
+        items: [
+          'Open the original Commons file page before publishing or distributing a file.',
+          'Credit the creator rather than merely the uploader unless the source says otherwise.',
+          'Name or link the licence, indicate modifications, and apply share-alike terms whenever required.',
+          'Do not remove credit, rights statements, watermarks, or notices in a way the licence forbids.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Rights beyond copyright',
+        intro:
+            'A free copyright licence does not clear every proposed use. Privacy, publicity or personality rights, moral rights, trademarks, patents, cultural restrictions, sensitive subjects, and local law may still apply.',
+        items: [
+          'Commercial, advertising, political, medical, and defamatory contexts can require extra care or permission.',
+          'Rights filters, warnings, and generated attribution snippets are conveniences, not legal advice or a guarantee.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Responsible Wikimedia and map use',
+        intro:
+            'CommonsLens limits concurrency, spaces requests, caches some pipeline results, and backs off when Wikimedia asks it to slow down. Users should still avoid many continuous queries and pause between large batches.',
+        items: [
+          'Avoid rapid refreshes, several query-heavy tabs, repetitive searches, and repeated large pipeline runs.',
+          'Do not bypass rate limits, retry signals, technical safeguards, or provider usage policies.',
+          'Do not use the interactive site as a bot, scraper, crawler, or high-volume automation endpoint.',
+          'Do not bulk-fetch or prefetch map tiles; use official APIs for sustained automated research and obey their rules.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Acceptable use and third-party services',
+        intro:
+            'Use CommonsLens lawfully without disrupting or attempting unauthorized access to CommonsLens or connected services. Users are responsible for their searches, exports, publications, and downstream media use.',
+        items: [
+          'Wikimedia, Wikidata, OpenStreetMap, Esri, Google Analytics, GitHub Pages, and linked sites apply their own terms and policies.',
+          'Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Availability and limits of responsibility',
+        intro:
+            'CommonsLens is free and provided as is and as available. Search results, rights fields, snippets, maps, exports, and external APIs may be incomplete, inaccurate, changed, delayed, or unavailable.',
+        items: [
+          'No warranty is made about accuracy, fitness, non-infringement, uninterrupted availability, or preservation of local data, to the extent law permits.',
+          'To the extent permitted by law, CommonsLens and its maintainers are not liable for loss from metadata, third-party services, unavailable data, or media reuse.',
+          'CommonsLens source code is licensed under Apache License 2.0, except for third-party material under its own notices. That software licence does not apply to Wikimedia media or data displayed through the app.',
+        ],
+      ),
+    ],
+  ),
+  _SeoPage(
+    path: 'privacy',
+    title: 'Privacy Policy | CommonsLens',
+    description:
+        'Learn exactly what CommonsLens stores locally, what Google Analytics receives, which third-party services are contacted, and what is not collected.',
+    heading: 'CommonsLens Privacy Policy',
+    intro:
+        'Effective and last reviewed 22 October 2026. CommonsLens has no accounts and no private application database. Most work happens in the browser, while analytics and the services delivering media, maps, APIs, and hosting receive the requests described below.',
+    sections: [
+      _SeoSection(
+        heading: 'The short version',
+        intro:
+            'CommonsLens minimises data through local processing, no accounts, and no application backend, but does not claim that web use is invisible or fully anonymous.',
+        items: [
+          'No name, email address, password, payment method, or profile is requested.',
+          'Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.',
+          'Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.',
+          'Google Analytics receives page, search, filter, file, download, browse, and map interactions.',
+          'CommonsLens does not sell personal information, run ads, or enable Google Signals or advertising-personalization signals.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Information sent to Google Analytics',
+        intro:
+            'CommonsLens uses Google Analytics 4 measurement ID G-LBBV97ZD24. It sends the page URL and path, which can contain search text, filters, a file title, an author username, or search state. URLs can also remain in browser history, bookmarks, shared links, or browser-sync services. Do not put sensitive information in searches, URLs, pipeline names, or notes.',
+        items: [
+          'Search terms, tabs, result counts, filter types and values, formats, sorting, and tab changes.',
+          'Wikimedia file titles, media kinds, open sources, download sizes, source-page and reuse actions, related files, and nearby-media actions.',
+          'Bulk selection counts and completion, partial-failure, or cancellation status.',
+          'Browse category, template, subject, and author values; map modes, radii, layers, bounding boxes, cluster sizes, and route transitions.',
+          'Google default data such as the _ga cookie/client identifier, sessions, approximate location, device and browser details, language, screen information, title, and referrer.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Analytics limits and choices',
+        intro:
+            'Google Signals and advertising-personalization signals are configured off. CommonsLens sends no account ID or User-ID and uses no analytics data to serve ads. Blocking analytics does not stop core features.',
+        items: [
+          'Google says GA4 derives approximate location from the request IP and discards the IP before logging or storage.',
+          'Analytics retention follows property configuration; standard aggregated reports are not governed by user/event retention settings.',
+          'Users can block Analytics with browser controls, extensions, DNS filtering, or Google’s opt-out add-on and clear cookies to reset the identifier.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Information stored only on the device',
+        intro:
+            'CommonsLens does not sync this browser data to an account or application server.',
+        items: [
+          'Local storage remembers web-optimised or full-resolution image preview preference.',
+          'IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results.',
+          'Browser and service-worker caches may retain application files, images, media, tiles, and responses.',
+          'Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses.',
+          'Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Direct requests to outside providers',
+        intro:
+            'The browser contacts providers directly. They normally receive the IP address, user agent, requested resource, time, referrer where supplied, and standard request information under their own policies.',
+        items: [
+          'GitHub Pages hosts the app and may log page requests and technical usage data.',
+          'Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests.',
+          'OpenStreetMap receives street-tile requests and Esri receives satellite and reference-tile requests when those layers are used.',
+          'External source, licence, usage, and repository pages apply their own privacy policies.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'What CommonsLens does not collect',
+        intro:
+            'CommonsLens does not maintain a private application database or identity profile.',
+        items: [
+          'No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.',
+          'No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.',
+          'No device precise-location permission; map searches use user-chosen locations and public file coordinates.',
+          'No CommonsLens-owned cloud database, advertising profile, data-broker feed, or cross-device identity.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Privacy choices, security, and contact',
+        intro:
+            'Users can clear browser site data to remove the Analytics identifier, preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.',
+        items: [
+          'No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.',
+          'This policy is updated when collection or providers materially change.',
+          'Questions and corrections can be raised in the public source repository without posting sensitive information.',
+        ],
+      ),
+    ],
+  ),
 ];
 
 void main(List<String> arguments) {
@@ -501,6 +660,10 @@ $items
       <a href="/map/">Search Wikimedia Commons by location</a>
       <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
       <a href="/features/">Explore all CommonsLens features</a>
+      <a href="/terms/">Terms of Use</a>
+      <a href="/privacy/">Privacy Policy</a>
+      <a href="https://github.com/commonslens/commonslens.github.io">Source code on GitHub</a>
+      <a href="https://github.com/commonslens/commonslens.github.io/blob/master/LICENSE">Apache License 2.0</a>
     </nav>
 
 $sections
@@ -510,6 +673,13 @@ $sections
       <p>CommonsLens runs in the browser, requires no Commons account, and uses official Wikimedia and Wikidata APIs. Media remains hosted by Wikimedia Commons and retains its original source and rights information.</p>
       <p><a href="https://github.com/commonslens/commonslens.github.io">View the CommonsLens source code on GitHub</a>.</p>
     </section>
+
+    <footer>
+      <a href="/terms/">Terms of Use</a>
+      <a href="/privacy/">Privacy Policy</a>
+      <a href="https://github.com/commonslens/commonslens.github.io">CommonsLens source code</a>
+      <a href="https://github.com/commonslens/commonslens.github.io/blob/master/LICENSE">Apache License 2.0</a>
+    </footer>
   </main>''';
 }
 

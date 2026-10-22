@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
+import 'seo_service.dart';
+
 void main() {
   GoRouter.optionURLReflectsImperativeAPIs = true;
   usePathUrlStrategy();
+  SeoService.syncCurrentRoute();
   runApp(
     const ProviderScope(
       child: WikiSearchApp(),
@@ -21,7 +24,7 @@ class WikiSearchApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp.router(
       routerConfig: appRouter,
-      title: 'CommonsLens: Explore Wikimedia',
+      onGenerateTitle: (_) => SeoService.currentTitle,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,

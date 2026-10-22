@@ -10,18 +10,22 @@ import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
 import 'map_page.dart';
 import 'pipeline_page.dart';
+import 'features_page.dart';
 import 'analytics_service.dart';
+import 'seo_service.dart';
 
-/// Fires a GA4 page_view on every route push/pop/replace — GA's automatic
-/// page_view only fires once, on the initial script load, since this is a
-/// single-page app and go_router never triggers another full page load.
+/// Keeps SEO metadata in sync and fires a GA4 page_view on every route
+/// push/pop/replace. GA's automatic page_view only fires once, on the initial
+/// script load, since this is a single-page app and go_router never triggers
+/// another full page load.
 /// Reads the live browser URL (accurate thanks to usePathUrlStrategy() in
 /// main.dart) rather than trying to reconstruct a path from GoRouter's own
 /// route objects, which is simpler and can't drift out of sync with what's
 /// actually in the address bar.
-class _AnalyticsNavObserver extends NavigatorObserver {
+class _NavigationObserver extends NavigatorObserver {
   void _track() {
     final loc = html.window.location;
+    SeoService.sync(Uri.parse('${loc.pathname}${loc.search}'));
     AnalyticsService.pageView('${loc.pathname}${loc.search}');
   }
 
@@ -35,7 +39,7 @@ class _AnalyticsNavObserver extends NavigatorObserver {
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
-  observers: [_AnalyticsNavObserver()],
+  observers: [_NavigationObserver()],
   routes: [
     GoRoute(
       path: '/',
@@ -52,6 +56,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/pipeline',
       builder: (context, state) => const PipelinePage(),
+    ),
+    GoRoute(
+      path: '/features',
+      builder: (context, state) => const FeaturesPage(),
     ),
     GoRoute(
       path: '/author',

@@ -21,6 +21,11 @@ jobs:
 
       - run: flutter build web --release --base-href /
 
+      # GitHub Pages otherwise returns the SPA fallback with a 404 status for
+      # direct visits to these routes. Generate route-specific 200-status HTML
+      # entry documents with unique metadata and crawlable page summaries.
+      - run: dart run tool/generate_seo_pages.dart build/web
+
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

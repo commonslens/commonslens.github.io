@@ -538,7 +538,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+
+                TextButton.icon(
+                  onPressed: () => context.push('/features'),
+                  icon:
+                      const Icon(Icons.auto_awesome_mosaic_outlined, size: 17),
+                  label: const Text('Explore every CommonsLens feature'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: const Color(0xFF9AB9FF),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
 
                 // Search Examples
                 Wrap(

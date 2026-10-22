@@ -48,32 +48,33 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0B0B0B">
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="application-name" content="CommonsLens">
   <meta name="apple-mobile-web-app-title" content="CommonsLens">
   <link rel="canonical" href="https://commonslens.github.io/">
 
-  <title>CommonsLens: Explore Wikimedia</title>
+  <title>CommonsLens — Advanced Wikimedia Commons Search</title>
   <meta name="description"
-    content="Explore, search, map, and download reusable images, audio, video, and documents from Wikimedia Commons with advanced metadata filters.">
-  <meta name="keywords"
-    content="Wikimedia Commons, Creative Commons, Public Domain, Image Search, Metadata, Wikidata, Open Source, Researcher Tool">
+    content="Search and download reusable Wikimedia Commons images, SVGs, audio, video, and documents with advanced license, Wikidata, category, date, and map filters.">
   <meta name="author" content="Pratham Shah">
 
   <meta property="og:site_name" content="CommonsLens">
-  <meta property="og:title" content="CommonsLens: Explore Wikimedia">
+  <meta property="og:title" content="CommonsLens — Advanced Wikimedia Commons Search">
   <meta property="og:description"
-    content="Explore, search, map, and download reusable images, audio, video, and documents from Wikimedia Commons with advanced metadata filters.">
+    content="Search and download reusable Wikimedia Commons media with advanced license, Wikidata, category, date, and map filters.">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="en_US">
   <meta property="og:url" content="https://commonslens.github.io/">
   <meta property="og:image" content="https://commonslens.github.io/favicon.png">
   <meta property="og:image:alt" content="CommonsLens logo">
 
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="CommonsLens: Explore Wikimedia">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="CommonsLens — Advanced Wikimedia Commons Search">
   <meta name="twitter:description"
-    content="Explore, search, map, and download reusable images, audio, video, and documents from Wikimedia Commons with advanced metadata filters.">
+    content="Search and download reusable Wikimedia Commons media with advanced license, Wikidata, category, date, and map filters.">
   <meta name="twitter:image" content="https://commonslens.github.io/favicon.png">
 
   <link rel="apple-touch-icon" href="favicon.png">
@@ -82,62 +83,213 @@
 
   <link rel="manifest" href="manifest.json">
 
-  <script type="application/ld+json">
+  <style>
+    /*
+      A real static first render for people, crawlers, and no-JS readers.
+      Flutter paints the equivalent application above it, while the semantic
+      HTML remains in the rendered DOM instead of disappearing after startup.
+    */
+    #seo-fallback {
+      box-sizing: border-box;
+      position: fixed;
+      inset: 0;
+      min-height: 100vh;
+      overflow: auto;
+      padding: 48px max(24px, calc((100vw - 1080px) / 2));
+      background: #0b0b0b;
+      color: #d5d5d5;
+      font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    #seo-fallback h1,
+    #seo-fallback h2 {
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    #seo-fallback h1 {
+      max-width: 820px;
+      margin: 0 0 16px;
+      font-size: clamp(32px, 6vw, 54px);
+    }
+
+    #seo-fallback h2 {
+      margin-top: 42px;
+      font-size: 23px;
+    }
+
+    #seo-fallback p,
+    #seo-fallback ul {
+      max-width: 900px;
+    }
+
+    #seo-fallback nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin: 28px 0 36px;
+      padding: 18px 0;
+      border-block: 1px solid #262626;
+    }
+
+    #seo-fallback a {
+      color: #7aabff;
+    }
+
+    #seo-fallback li {
+      margin-bottom: 8px;
+    }
+  </style>
+
+  <script id="structured-data" type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "CommonsLens",
-    "url": "https://commonslens.github.io/",
-    "description": "Explore, search, map, and download reusable images, audio, video, and documents from Wikimedia Commons with advanced metadata filters.",
-    "applicationCategory": "UtilitiesApplication",
-    "operatingSystem": "Any",
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
-    },
-    "author": {
-      "@type": "Person",
-      "name": "Pratham Shah"
-    },
-    "isAccessibleForFree": true
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://commonslens.github.io/#website",
+        "url": "https://commonslens.github.io/",
+        "name": "CommonsLens",
+        "alternateName": "Commons Lens",
+        "description": "Advanced search and discovery tools for reusable Wikimedia Commons media.",
+        "inLanguage": "en"
+      },
+      {
+        "@type": "WebApplication",
+        "@id": "https://commonslens.github.io/#app",
+        "name": "CommonsLens",
+        "url": "https://commonslens.github.io/",
+        "description": "Search and download reusable Wikimedia Commons images, SVGs, audio, video, and documents with advanced license, Wikidata, category, date, and map filters.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript and a modern web browser.",
+        "isAccessibleForFree": true,
+        "featureList": [
+          "Full-text and filter-only Wikimedia Commons search",
+          "Multi-term OR search and direct file autocomplete",
+          "Image, SVG, audio, video, PDF, DjVu, and document discovery",
+          "Exact file-format and date sorting controls",
+          "Wikidata depicts and property-value statement search",
+          "Category and template include or exclude filters",
+          "Recursive Commons subcategory search",
+          "CC0, CC BY, CC BY-SA, and Public Domain filters",
+          "Attribution and Commons quality filters",
+          "Language, content model, date, resolution, file size, and color depth filters",
+          "Point, radius, named-place, and bounding-box map search",
+          "Street, satellite, and hybrid map layers with marker clustering",
+          "Author upload portfolios and related-media discovery",
+          "Native image, vector, audio, video, and PDF viewing",
+          "Structured Data on Commons and global Wikimedia usage inspection",
+          "Plain-text, HTML, and WikiText attribution generation",
+          "Original and scaled individual downloads",
+          "Bulk original or web-optimized ZIP export with CSV metadata manifests",
+          "Thirty-one-node visual Wikimedia data pipeline builder",
+          "CSV, JSON, ZIP, preview, and Search pipeline outputs",
+          "Autosaved, importable, and exportable pipeline graphs",
+          "Responsive, installable, shareable browser application"
+        ],
+        "offers": {
+          "@type": "Offer",
+          "price": 0,
+          "priceCurrency": "USD"
+        },
+        "author": {
+          "@type": "Person",
+          "name": "Pratham Shah"
+        },
+        "sameAs": "https://github.com/commonslens/commonslens.github.io"
+      }
+    ]
   }
   </script>
 </head>
 
 <body>
-  <!--
-    Flutter web (CanvasKit) renders to a <canvas>, which is invisible to
-    crawlers that don't execute JS or that skip canvas contents. This block
-    is the real, load-bearing SEO content: it mirrors what the app actually
-    does, in plain indexable HTML. It's visually hidden (not display:none —
-    Google discounts display:none content) but present in the DOM and
-    accessible to screen readers, which keeps it legitimate progressive
-    enhancement rather than cloaking.
-  -->
-  <div id="seo-fallback" style="position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">
-    <h1>CommonsLens: Explore Wikimedia</h1>
-    <p>Explore, search, map, and download reusable images, audio, video, and documents from Wikimedia Commons with
-      advanced metadata filters.</p>
+  <!-- Static, readable first render; Flutter paints the equivalent UI above it. -->
+  <main id="seo-fallback">
+    <h1>Advanced Wikimedia Commons search</h1>
+    <p>CommonsLens helps researchers, educators, journalists, designers, and developers search and download reusable
+      images, SVGs, audio, video, and documents from Wikimedia Commons.</p>
 
-    <h2>Features</h2>
+    <nav aria-label="CommonsLens tools">
+      <a href="/">Advanced media search</a>
+      <a href="/browse/">Browse Wikimedia categories, templates, and subjects</a>
+      <a href="/map/">Search Wikimedia Commons by location</a>
+      <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
+      <a href="/features/">Explore all CommonsLens features</a>
+    </nav>
+
+    <section>
+    <h2>Advanced media search</h2>
     <ul>
-      <li>Semantic subject search ("depicts"): find media depicting a specific subject via Wikidata, with
-        multi-select include and exclude filtering.</li>
-      <li>Category search: filter and exclude by Wikimedia Commons category, including deep-category mode.</li>
-      <li>License filtering: CC0, CC BY 4.0, CC BY-SA 4.0, and Public Domain.</li>
-      <li>Quality assessment: Quality Images and Valued Images.</li>
-      <li>Geolocation search: find media near a given latitude and longitude.</li>
-      <li>Date filtering: creation date and last-edited date ranges.</li>
-      <li>File-type filtering: images, SVG/vector diagrams, audio, video, and documents.</li>
+      <li>Search images, SVG and vector graphics, audio, video, PDFs, DjVu files, and other documents.</li>
+      <li>Use direct file autocomplete, multi-term OR queries with +, or search entirely from filters.</li>
+      <li>Filter 17 exact formats, sort six ways, load results continuously, remove individual filter chips, and inspect the generated CirrusSearch query.</li>
+      <li>Share a complete text, filter, and asset-view state as a clean URL.</li>
     </ul>
+    </section>
 
-    <h2>About</h2>
+    <section>
+    <h2>Semantic, rights, and technical filters</h2>
+    <ul>
+      <li>Include or exclude Wikidata depicts entities and arbitrary property-value statements with AND or OR logic.</li>
+      <li>Include or exclude categories and templates, combine categories with intersection or union, and recursively search subcategories.</li>
+      <li>Filter CC0, CC BY 4.0, CC BY-SA 4.0, Public Domain, attribution requirement, Quality Images, Valued Images, and Featured Pictures.</li>
+      <li>Filter language, content model, creation and edit dates, dimensions, file size, color depth, coordinates, radius, or proximity to a named place.</li>
+    </ul>
+    </section>
+
+    <section>
+    <h2>Map, directories, and connected discovery</h2>
+    <ul>
+      <li>Browse paginated Commons categories and templates or search Wikidata subject Q-codes.</li>
+      <li>Search the map by point, radius, named place, or bounding box and plot an existing search as clustered thumbnail markers.</li>
+      <li>Use street, satellite, or hybrid layers with zoom, rotation, camera fitting, and responsive result panes.</li>
+      <li>Browse author upload portfolios, related files, nearby geotagged media, and global Wikimedia usage.</li>
+    </ul>
+    </section>
+
+    <section>
+    <h2>Media inspection and responsible reuse</h2>
+    <ul>
+      <li>View images, vectors, audio, video, and supported PDFs natively with fallbacks for other documents.</li>
+      <li>Inspect creator, uploader, descriptions, dates, dimensions, categories, assessments, coordinates, and Structured Data on Commons.</li>
+      <li>Review license, attribution, credit, usage terms, copyright status, permission, restrictions, and incomplete-rights warnings.</li>
+      <li>Copy ready-to-use plain-text attribution, HTML, or WikiText with links to the original source and full license.</li>
+    </ul>
+    </section>
+
+    <section>
+    <h2>Downloads and research exports</h2>
+    <ul>
+      <li>Download original files or available 640px, 1280px, and 1920px derivatives.</li>
+      <li>Select result subsets and export full-resolution or web-optimized ZIP archives with progress, cancellation, and large-batch splitting.</li>
+      <li>Receive a CSV metadata manifest containing source links, descriptions, technical fields, rights, attribution, dates, classifications, and coordinates.</li>
+      <li>Export pipeline results as CSV, JSON, original ZIPs, optimized ZIPs, previews, or a complete Search result collection.</li>
+    </ul>
+    </section>
+
+    <section>
+    <h2>Visual Wikimedia data pipelines</h2>
+    <ul>
+      <li>Connect 31 source, filter, set-operation, transform, preview, and export nodes on a no-code canvas.</li>
+      <li>Source media from text, categories, subjects, statements, templates, locations, authors, or related files.</li>
+      <li>Union, intersect, subtract, deduplicate, sort, sample, select fields, and enrich results with structured data or global usage.</li>
+      <li>Preview capped runs, autosave graphs in IndexedDB, reopen saved workflows, import or export JSON, and cache Wikimedia queries.</li>
+    </ul>
+    </section>
+
+    <section>
+    <h2>Free and open source</h2>
     <p>CommonsLens is powered by the Wikimedia CirrusSearch API and Wikidata, providing a fast, high-performance
       visual interface to run complex metadata queries against Wikimedia Commons without writing a query by hand.
       It's free, open source, and built for researchers, journalists, educators, and developers who need
       properly-licensed media.</p>
-  </div>
+    <p><a href="https://github.com/commonslens/commonslens.github.io">View the CommonsLens source code on GitHub</a>.</p>
+    </section>
+  </main>
+
+  <noscript>CommonsLens requires JavaScript to run. Its search tools use the official Wikimedia APIs.</noscript>
 
   <script src="flutter_bootstrap.js" async></script>
 </body>

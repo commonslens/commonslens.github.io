@@ -6,6 +6,7 @@ import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_ti
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:url_launcher/url_launcher.dart';
 
 import 'map_controller.dart';
 import 'search_components.dart';
@@ -19,22 +20,26 @@ const _kPanelBg = Color(0xFF141414);
 const _kBorder = Color(0xFF242424);
 const _kAccent = Color(0xFF3D7EFF);
 
-enum _BaseMapStyle { street, satellite, hybrid }
+enum _BaseMapStyle { dark, street, satellite, hybrid }
 
 extension on _BaseMapStyle {
   _BaseMapStyle get next {
     switch (this) {
+      case _BaseMapStyle.dark:
+        return _BaseMapStyle.street;
       case _BaseMapStyle.street:
         return _BaseMapStyle.satellite;
       case _BaseMapStyle.satellite:
         return _BaseMapStyle.hybrid;
       case _BaseMapStyle.hybrid:
-        return _BaseMapStyle.street;
+        return _BaseMapStyle.dark;
     }
   }
 
   IconData get icon {
     switch (this) {
+      case _BaseMapStyle.dark:
+        return Icons.dark_mode_outlined;
       case _BaseMapStyle.street:
         return Icons.map_outlined;
       case _BaseMapStyle.satellite:
@@ -46,12 +51,64 @@ extension on _BaseMapStyle {
 
   String get label {
     switch (this) {
+      case _BaseMapStyle.dark:
+        return 'Dark';
       case _BaseMapStyle.street:
         return 'Street';
       case _BaseMapStyle.satellite:
         return 'Satellite';
       case _BaseMapStyle.hybrid:
         return 'Hybrid';
+    }
+  }
+
+  String get tileUrl {
+    switch (this) {
+      case _BaseMapStyle.dark:
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+      case _BaseMapStyle.street:
+        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+      case _BaseMapStyle.satellite:
+      case _BaseMapStyle.hybrid:
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    }
+  }
+
+  String? get overlayUrl {
+    switch (this) {
+      case _BaseMapStyle.dark:
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
+      case _BaseMapStyle.hybrid:
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+      case _BaseMapStyle.street:
+      case _BaseMapStyle.satellite:
+        return null;
+    }
+  }
+
+  int get maxNativeZoom => this == _BaseMapStyle.dark ? 16 : 19;
+
+  String get attribution {
+    switch (this) {
+      case _BaseMapStyle.street:
+        return 'OpenStreetMap contributors';
+      case _BaseMapStyle.dark:
+        return 'Esri, HERE, Garmin, OpenStreetMap contributors & GIS community';
+      case _BaseMapStyle.satellite:
+      case _BaseMapStyle.hybrid:
+        return 'Esri and data providers';
+    }
+  }
+
+  String get attributionUrl {
+    switch (this) {
+      case _BaseMapStyle.street:
+        return 'https://www.openstreetmap.org/copyright';
+      case _BaseMapStyle.dark:
+        return 'https://goto.arcgisonline.com/maps/World_Dark_Gray_Base';
+      case _BaseMapStyle.satellite:
+      case _BaseMapStyle.hybrid:
+        return 'https://www.esri.com/en-us/legal/terms/data-attributions';
     }
   }
 }
@@ -68,7 +125,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   final _lngCtrl = TextEditingController();
   final _radiusCtrl = TextEditingController(text: '2000');
 
-  _BaseMapStyle _baseMapStyle = _BaseMapStyle.street;
+  _BaseMapStyle _baseMapStyle = _BaseMapStyle.dark;
   double _currentZoom = 2;
   double _currentRotation = 0;
 
@@ -600,21 +657,14 @@ class _MapPageState extends ConsumerState<MapPage> {
                     ),
                     children: [
                       _OptimizedTileLayer(
-                        urlTemplate: _baseMapStyle == _BaseMapStyle.street
-                            ? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
-                            : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                        urlTemplate: _baseMapStyle.tileUrl,
+                        maxNativeZoom: _baseMapStyle.maxNativeZoom,
                       ),
-                      if (_baseMapStyle != _BaseMapStyle.street) ...[
-                        // Hybrid = satellite imagery + this transparent
-                        // roads/labels overlay on top. Satellite alone
-                        // (the branch above without this layer) stays
-                        // available as its own mode for a clean image.
-                        if (_baseMapStyle == _BaseMapStyle.hybrid)
-                          const _OptimizedTileLayer(
-                            urlTemplate:
-                                'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-                          ),
-                      ],
+                      if (_baseMapStyle.overlayUrl case final overlayUrl?)
+                        _OptimizedTileLayer(
+                          urlTemplate: overlayUrl,
+                          maxNativeZoom: _baseMapStyle.maxNativeZoom,
+                        ),
                       if (state.boundingBox != null)
                         PolygonLayer(polygons: [
                           Polygon(
@@ -689,6 +739,22 @@ class _MapPageState extends ConsumerState<MapPage> {
                                   ),
                                 ))
                             .toList(),
+                      ),
+                      SimpleAttributionWidget(
+                        alignment: Alignment.bottomLeft,
+                        backgroundColor: _kBg.withValues(alpha: 0.82),
+                        source: Text(
+                          _baseMapStyle.attribution,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 9,
+                          ),
+                        ),
+                        onTap: () => launchUrl(
+                          Uri.parse(_baseMapStyle.attributionUrl),
+                          mode: LaunchMode.platformDefault,
+                          webOnlyWindowName: '_blank',
+                        ),
                       ),
                     ],
                   ),
@@ -790,7 +856,7 @@ class _MapPageState extends ConsumerState<MapPage> {
                   ),
                   if (session.loading)
                     const Positioned(
-                      bottom: 12,
+                      bottom: 34,
                       left: 12,
                       child: SizedBox(
                         width: 18,
@@ -918,8 +984,12 @@ List<_MarkerCluster> _clusterItems(List<SearchItem> items, double zoom) {
 /// of making the browser finish downloads that can no longer be displayed.
 class _OptimizedTileLayer extends StatefulWidget {
   final String urlTemplate;
+  final int maxNativeZoom;
 
-  const _OptimizedTileLayer({required this.urlTemplate});
+  const _OptimizedTileLayer({
+    required this.urlTemplate,
+    this.maxNativeZoom = 19,
+  });
 
   @override
   State<_OptimizedTileLayer> createState() => _OptimizedTileLayerState();
@@ -934,6 +1004,7 @@ class _OptimizedTileLayerState extends State<_OptimizedTileLayer> {
     return TileLayer(
       urlTemplate: widget.urlTemplate,
       userAgentPackageName: 'com.commonslens.app',
+      maxNativeZoom: widget.maxNativeZoom,
       maxZoom: 19,
       tileProvider: _tileProvider,
     );
@@ -1031,7 +1102,7 @@ class _MapTextQueryBarState extends State<_MapTextQueryBar> {
               decoration: const InputDecoration(
                 border: InputBorder.none,
                 isDense: true,
-                hintText: 'Search this map by text…',
+                hintText: 'Search within selected area…',
                 hintStyle: TextStyle(color: Colors.white38, fontSize: 12.5),
               ),
             ),

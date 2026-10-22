@@ -229,6 +229,7 @@ CommonsLens supports geographic discovery as both a starting point and an extens
 
 ### Map presentation
 
+- Dark Gray Canvas default map with reference labels.
 - Street map.
 - Satellite imagery.
 - Hybrid satellite and labels.

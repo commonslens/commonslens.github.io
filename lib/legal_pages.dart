@@ -219,7 +219,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           title: 'The short version',
           bullets: [
             'You do not give CommonsLens a name, email address, password, payment method, or profile.',
-            'CommonsLens does not use Google Analytics or any replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service.',
+            'CommonsLens does not use visitor analytics, advertising, fingerprinting, session-recording, or behavioural-tracking services.',
             'Searches go from your browser to Wikimedia services; map views request tiles from OpenStreetMap or Esri.',
             'Saved pipelines, notes, query caches, and your image-preview preference stay in storage in your browser.',
             'CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.',
@@ -228,7 +228,7 @@ class PrivacyPolicyPage extends StatelessWidget {
         const _LegalSection(
           title: '1. No analytics or behavioural tracking',
           paragraphs: [
-            'CommonsLens does not load Google Analytics, Google Tag Manager, advertising pixels, telemetry SDKs, session replay tools, or another visitor analytics service. The application does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
+            'CommonsLens does not load visitor analytics, tag managers, advertising pixels, telemetry SDKs, session replay tools, or behavioural-tracking services. The application does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
             'A static Google Search Console ownership-verification file is published with the site. It contains no script, cookie, pixel, or executable code, and it is not loaded by ordinary pages. Google may request that file periodically to confirm site ownership; it does not track visitors.',
             'CommonsLens does not intentionally set tracking cookies. Browser storage used for application preferences, saved pipelines, and caches is described below and is not used to follow you across sites.',
           ],
@@ -254,7 +254,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             'GitHub Pages hosts and delivers the application and may log page requests and technical usage data.',
             'Wikimedia Commons and Wikidata receive search terms, filters, file/page names, and API requests. Wikimedia media hosts receive thumbnail and original-file requests.',
             'OpenStreetMap receives requests for visible street-map tiles when that layer is used.',
-            'Esri receives requests for visible satellite imagery and reference tiles when satellite or hybrid layers are used.',
+            'Esri receives requests for visible dark-map, satellite-imagery, and reference tiles when those layers are used.',
             'Opening a source, licence, global-usage, or repository link takes you to that external site, which then applies its own policy.',
           ],
           links: const [

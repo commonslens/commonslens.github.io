@@ -74,6 +74,22 @@ class SearchPage extends ConsumerStatefulWidget {
   ConsumerState<SearchPage> createState() => _SearchPageState();
 }
 
+class _SearchExample {
+  final String category;
+  final String label;
+  final String tooltip;
+  final IconData icon;
+  final SearchState state;
+
+  const _SearchExample({
+    required this.category,
+    required this.label,
+    required this.tooltip,
+    required this.icon,
+    required this.state,
+  });
+}
+
 class _SearchPageState extends ConsumerState<SearchPage> {
   final ScrollController _scrollController = ScrollController();
   late final Widget _desktopFiltersPanel;
@@ -109,13 +125,68 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   // loop, no redundant re-fetch on every internal filter change.
   Map<String, String>? _lastSyncedParams;
 
-  static const _examples = [
-    'Apollo 11',
-    'Pride and Prejudice',
-    'Berlin',
-    'DNA helix',
-    'Charlie Chaplin',
-    'Mitridate, Re di Ponto'
+  static const _examples = <_SearchExample>[
+    _SearchExample(
+      category: 'AUDIO',
+      label: 'Mozart',
+      tooltip: 'Hear Commons audio results for Mozart',
+      icon: Icons.graphic_eq_rounded,
+      state: SearchState(
+        queryText: 'Mozart',
+        tab: MediaTabType.audio,
+      ),
+    ),
+    _SearchExample(
+      category: 'VIDEO',
+      label: 'Apollo 11',
+      tooltip: 'Watch Commons video results for Apollo 11',
+      icon: Icons.video_library_outlined,
+      state: SearchState(
+        queryText: 'Apollo 11',
+        tab: MediaTabType.video,
+      ),
+    ),
+    _SearchExample(
+      category: 'LOCATION',
+      label: 'Near Eiffel Tower',
+      tooltip: 'Find media geotagged within 2 km of the Eiffel Tower',
+      icon: Icons.location_on_outlined,
+      state: SearchState(
+        nearTitle: NearTitleFilter(title: 'Eiffel Tower', radiusKm: 2),
+      ),
+    ),
+    _SearchExample(
+      category: 'SVG',
+      label: 'DNA helix',
+      tooltip: 'Find SVG vector graphics of a DNA helix',
+      icon: Icons.polyline_outlined,
+      state: SearchState(
+        queryText: 'DNA helix',
+        tab: MediaTabType.vectors,
+        formats: {FileFormat.svg},
+      ),
+    ),
+    _SearchExample(
+      category: 'DOCUMENTS',
+      label: 'Pride and Prejudice',
+      tooltip: 'Find PDF and DjVu editions of Pride and Prejudice',
+      icon: Icons.menu_book_outlined,
+      state: SearchState(
+        queryText: 'Pride and Prejudice',
+        tab: MediaTabType.documents,
+        formats: {FileFormat.pdf, FileFormat.djvu},
+      ),
+    ),
+    _SearchExample(
+      category: 'GLAM',
+      label: 'The Met collection',
+      tooltip: 'Explore media contributed by The Metropolitan Museum of Art',
+      icon: Icons.museum_outlined,
+      state: SearchState(
+        tab: MediaTabType.images,
+        templates: {'Institution:Metropolitan Museum of Art'},
+      ),
+    ),
   ];
 
   @override
@@ -185,6 +256,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   void _search(String query) =>
       ref.read(searchControllerProvider.notifier).search(query);
+
+  void _runExample(_SearchExample example) => ref
+      .read(searchControllerProvider.notifier)
+      .search(example.state.queryText, overrideState: example.state);
 
   void _selectTab(MediaTabType tab) {
     ref.read(searchControllerProvider.notifier).applyFilterUpdate((current) {
@@ -545,7 +620,18 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: 2),
+
+                const Text(
+                  'Example queries:',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Color(0xFF777777),
+                    fontSize: 12.5,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
 
                 // Search Examples
                 Wrap(
@@ -553,8 +639,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   runSpacing: 12,
                   alignment: WrapAlignment.center,
                   children: _examples
-                      .map(
-                          (q) => ExampleChip(label: q, onTap: () => _search(q)))
+                      .map((example) => ExampleChip(
+                            category: example.category,
+                            label: example.label,
+                            tooltip: example.tooltip,
+                            icon: example.icon,
+                            onTap: () => _runExample(example),
+                          ))
                       .toList(),
                 ),
 

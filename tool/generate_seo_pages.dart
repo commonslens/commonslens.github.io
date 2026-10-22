@@ -104,7 +104,7 @@ const _pages = <_SeoPage>[
         intro:
             'Refine and navigate the map without losing the active geographic search.',
         items: [
-          'Switch between street, satellite, and hybrid layers.',
+          'Start with a dark basemap or switch between street, satellite, and hybrid layers.',
           'Zoom, rotate in 15-degree steps, reset north, and fit the camera to imported results.',
           'Filter by license, Commons quality assessment, and attribution requirement.',
           'Preserve relevant main-search context when moving between Search and Map.',
@@ -260,7 +260,7 @@ const _pages = <_SeoPage>[
         items: [
           'Search by map tap, coordinates and radius, named place, or a two-point bounding box.',
           'Plot the current search, cluster thumbnail markers, browse cluster grids, and fit the camera to results.',
-          'Use street, satellite, or hybrid layers with zoom, rotation, and north-reset controls.',
+          'Use a dark default basemap or switch to street, satellite, and hybrid layers with zoom, rotation, and north-reset controls.',
           'Refine map results by license, quality, and attribution or continue the query in main Search.',
         ],
       ),
@@ -405,7 +405,7 @@ const _pages = <_SeoPage>[
             'CommonsLens minimises data through local processing, no accounts, and no application backend, but does not claim that web use is invisible or fully anonymous.',
         items: [
           'No name, email address, password, payment method, or profile is requested.',
-          'No Google Analytics or replacement analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.',
+          'No visitor analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.',
           'Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.',
           'Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.',
           'CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.',
@@ -414,7 +414,7 @@ const _pages = <_SeoPage>[
       _SeoSection(
         heading: 'No analytics or behavioural tracking',
         intro:
-            'CommonsLens does not load Google Analytics, Google Tag Manager, ad pixels, telemetry SDKs, session replay tools, or another visitor analytics service. It does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
+            'CommonsLens does not load visitor analytics, tag managers, ad pixels, telemetry SDKs, session replay tools, or behavioural-tracking services. It does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
         items: [
           'The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.',
           'CommonsLens does not intentionally set tracking cookies.',
@@ -440,7 +440,7 @@ const _pages = <_SeoPage>[
         items: [
           'GitHub Pages hosts the app and may log page requests and technical usage data.',
           'Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests.',
-          'OpenStreetMap receives street-tile requests and Esri receives satellite and reference-tile requests when those layers are used.',
+          'OpenStreetMap receives street-tile requests and Esri receives dark-map, satellite-imagery, and reference-tile requests when those layers are used.',
           'External source, licence, usage, and repository pages apply their own privacy policies.',
         ],
       ),

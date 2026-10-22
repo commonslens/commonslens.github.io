@@ -357,35 +357,106 @@ class WikiLogo extends StatelessWidget {
 }
 
 class ExampleChip extends StatefulWidget {
+  final String category;
   final String label;
+  final String tooltip;
+  final IconData icon;
   final VoidCallback onTap;
-  const ExampleChip({super.key, required this.label, required this.onTap});
+  const ExampleChip({
+    super.key,
+    required this.category,
+    required this.label,
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+  });
+
   @override
   State<ExampleChip> createState() => _ExampleChipState();
 }
 
 class _ExampleChipState extends State<ExampleChip> {
   bool _hovered = false;
+
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-              color:
-                  _hovered ? const Color(0xFF191919) : const Color(0xFF141414),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF242424))),
-          child: Text(widget.label,
-              style: const TextStyle(
-                  color: Color(0xFFAAAAAA),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500)),
+    return Semantics(
+      button: true,
+      label: widget.tooltip,
+      child: Tooltip(
+        message: widget.tooltip,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              onTap: widget.onTap,
+              borderRadius: BorderRadius.circular(18),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                decoration: BoxDecoration(
+                  color: _hovered
+                      ? const Color(0xFF182032)
+                      : const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: _hovered
+                        ? const Color(0xFF3D7EFF)
+                        : const Color(0xFF292929),
+                  ),
+                  boxShadow: _hovered
+                      ? const [
+                          BoxShadow(
+                            color: Color(0x263D7EFF),
+                            blurRadius: 14,
+                            offset: Offset(0, 4),
+                          ),
+                        ]
+                      : const [],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      widget.icon,
+                      size: 18,
+                      color: const Color(0xFF7AABFF),
+                    ),
+                    const SizedBox(width: 9),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.category,
+                          style: const TextStyle(
+                            color: Color(0xFF6F8FC9),
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.15,
+                          ),
+                        ),
+                        const SizedBox(height: 1),
+                        Text(
+                          widget.label,
+                          style: const TextStyle(
+                            color: Color(0xFFD0D0D0),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );

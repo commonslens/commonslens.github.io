@@ -39,7 +39,9 @@ final GoRouter appRouter = GoRouter(
   routes: [
     GoRoute(
       path: '/',
-      builder: (context, state) => const SearchPage(),
+      builder: (context, state) => SearchPage(
+        queryParameters: Map<String, String>.from(state.uri.queryParameters),
+      ),
     ),
     GoRoute(
       path: '/browse',
@@ -47,7 +49,9 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/map',
-      builder: (context, state) => const MapPage(),
+      builder: (context, state) => MapPage(
+        queryParameters: Map<String, String>.from(state.uri.queryParameters),
+      ),
     ),
     GoRoute(
       path: '/pipeline',
@@ -79,6 +83,7 @@ final GoRouter appRouter = GoRouter(
         final fileId = params['id'] ?? '';
         final author = params['author'];
         final from = params['from'];
+        final viewerContext = Map<String, String>.from(params)..remove('id');
 
         final String returnUrl;
         if (from == 'map') {
@@ -105,7 +110,11 @@ final GoRouter appRouter = GoRouter(
           ).toString();
         }
 
-        return AssetViewer(fileId: fileId, returnUrl: returnUrl);
+        return AssetViewer(
+          key: ValueKey(Uri(queryParameters: viewerContext).query),
+          fileId: fileId,
+          returnUrl: returnUrl,
+        );
       },
     ),
   ],

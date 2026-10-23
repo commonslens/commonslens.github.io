@@ -4,7 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'search_service.dart';
 import 'search_controller.dart';
 import 'search_models.dart';
+import 'search_url_codec.dart';
 import 'backend_providers.dart';
+
+void _openSearchWith(
+  BuildContext context,
+  WidgetRef ref,
+  SearchState Function(SearchState current) update,
+) {
+  final current = ref.read(searchControllerProvider).filterState;
+  final next = update(current);
+  final params = SearchUrlCodec.toQueryParams(next);
+  context.go(
+    Uri(path: '/', queryParameters: params.isEmpty ? null : params).toString(),
+  );
+}
 
 class BrowsePage extends StatefulWidget {
   const BrowsePage({super.key});
@@ -80,9 +94,12 @@ class _CategoryTab extends ConsumerWidget {
       titleFor: (item) => item.name,
       subtitleFor: (item) => '${item.size} files in this category',
       onSelect: (item) {
-        ref.read(searchControllerProvider.notifier).applyFilterUpdate((state) =>
-            state.copyWith(categories: {...state.categories, item.name}));
-        context.go('/');
+        _openSearchWith(
+          context,
+          ref,
+          (state) =>
+              state.copyWith(categories: {...state.categories, item.name}),
+        );
       },
     );
   }
@@ -101,9 +118,11 @@ class _TemplateTab extends ConsumerWidget {
       titleFor: (item) => item,
       subtitleFor: (_) => 'MediaWiki Template',
       onSelect: (item) {
-        ref.read(searchControllerProvider.notifier).applyFilterUpdate(
-            (state) => state.copyWith(templates: {...state.templates, item}));
-        context.go('/');
+        _openSearchWith(
+          context,
+          ref,
+          (state) => state.copyWith(templates: {...state.templates, item}),
+        );
       },
     );
   }
@@ -258,9 +277,13 @@ class _DepictsTabState extends ConsumerState<_DepictsTab> {
   }
 
   void _select(DepictsEntity entity) {
-    ref.read(searchControllerProvider.notifier).applyFilterUpdate(
-        (c) => c.copyWith(depictsInclude: {...c.depictsInclude, entity}));
-    context.go('/');
+    _openSearchWith(
+      context,
+      ref,
+      (state) => state.copyWith(
+        depictsInclude: {...state.depictsInclude, entity},
+      ),
+    );
   }
 
   @override

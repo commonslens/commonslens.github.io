@@ -92,6 +92,21 @@ class _DeferredBackend extends CommonsBackend {
   }
 }
 
+class _DeferredGeoBackend extends CommonsBackend {
+  final request = Completer<MediaSearchResult>();
+
+  @override
+  Future<MediaSearchResult> geosearch({
+    double? lat,
+    double? lng,
+    double radiusMeters = 1000,
+    List<double>? boundingBox,
+    int limit = 500,
+    Map<String, dynamic>? continueToken,
+  }) =>
+      request.future;
+}
+
 void main() {
   group('CommonsSearchSession', () {
     test('empty query resets without calling the backend', () async {
@@ -179,5 +194,26 @@ void main() {
     expect(result.items.map((item) => item.title), ['Alpha.jpg', 'Bravo.jpg']);
     expect(result.hasMore, isFalse);
     expect(backend.authorCalls, 2);
+  });
+
+  test('GeoBrowseSession reset clears area and ignores a stale response',
+      () async {
+    final backend = _DeferredGeoBackend();
+    final session = GeoBrowseSession(backend: backend);
+
+    final staleSearch = session.searchRadius(48.8584, 2.2945, 500);
+    expect(session.session.loading, isTrue);
+
+    session.reset();
+    expect(session.lat, isNull);
+    expect(session.lng, isNull);
+    expect(session.boundingBox, isNull);
+    expect(session.session.hasSearched, isFalse);
+
+    backend.request.complete(_page([_item('Stale nearby result.jpg')]));
+    await staleSearch;
+
+    expect(session.session.hasSearched, isFalse);
+    expect(session.session.items, isEmpty);
   });
 }

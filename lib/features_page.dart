@@ -37,7 +37,7 @@ class FeaturesPage extends StatelessWidget {
       features: [
         'Search by tapping a map, entering coordinates and a radius, searching near a named place, or drawing a bounding box.',
         'Plot the current search on a map, cluster thumbnail markers, inspect clusters, and open results in a split-screen grid.',
-        'Use a dark default basemap or switch to street, satellite, and hybrid layers, with zoom, rotation, north reset, camera fitting, and responsive mobile controls.',
+        'Use multilingual street, English-labelled street, satellite, and hybrid layers with zoom, rotation, north reset, camera fitting, and responsive mobile controls.',
         'Carry search context into the map, apply license, quality, and attribution filters, or send a map query back to Search.',
       ],
     ),

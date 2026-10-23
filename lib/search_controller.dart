@@ -90,16 +90,19 @@ class SearchController extends Notifier<SearchViewState> {
     );
   }
 
-  /// Restores filters from a shared/deep-link URL and runs the search.
-  /// Safe to call unconditionally — if the resulting filters produce no
-  /// usable query, [CommonsSearchSession.search] itself is a no-op (no
-  /// network call, session resets to the unsearched default), so there's
-  /// no need to pre-check emptiness here the way the old controller did.
-  void hydrateFromUrl(Map<String, String> params) {
-    if (params.isEmpty) return;
+  /// Makes the search surface exactly match a shared/deep-link URL.
+  ///
+  /// This deliberately also hydrates an empty parameter map. Browser Back
+  /// from `/?q=...` to `/` must clear the old filters and results; treating
+  /// an empty URL as "nothing to do" leaves stale content underneath a URL
+  /// that no longer describes it. [CommonsSearchSession.search] resets an
+  /// empty [SearchState] synchronously without making a network request and
+  /// increments its generation, so an older in-flight response cannot put
+  /// the stale search back afterward.
+  Future<void> hydrateFromUrl(Map<String, String> params) {
     final nextFilter =
         SearchUrlCodec.fromQueryParams(params, const SearchState());
-    search(nextFilter.queryText, overrideState: nextFilter);
+    return search(nextFilter.queryText, overrideState: nextFilter);
   }
 
   /// Runs a search. [overrideState], when given, replaces every filter at

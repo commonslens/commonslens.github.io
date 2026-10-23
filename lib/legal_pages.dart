@@ -253,8 +253,8 @@ class PrivacyPolicyPage extends StatelessWidget {
           bullets: const [
             'GitHub Pages hosts and delivers the application and may log page requests and technical usage data.',
             'Wikimedia Commons and Wikidata receive search terms, filters, file/page names, and API requests. Wikimedia media hosts receive thumbnail and original-file requests.',
-            'OpenStreetMap receives requests for visible street-map tiles when that layer is used.',
-            'Esri receives requests for visible dark-map, satellite-imagery, and reference tiles when those layers are used.',
+            'OpenStreetMap receives requests for visible multilingual street-map tiles when that layer is used.',
+            'Esri receives requests for visible English street-map, satellite-imagery, and reference tiles when those layers are used.',
             'Opening a source, licence, global-usage, or repository link takes you to that external site, which then applies its own policy.',
           ],
           links: const [

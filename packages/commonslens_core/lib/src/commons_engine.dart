@@ -286,6 +286,17 @@ class GeoBrowseSession {
   List<double>? get boundingBox => _boundingBox;
   bool get isBoxMode => _boundingBox != null;
 
+  /// Clears the current area and invalidates any request still in flight.
+  /// Used when browser navigation returns to a bare map URL.
+  void reset() {
+    _generation++;
+    _lat = null;
+    _lng = null;
+    _radiusMeters = 1000;
+    _boundingBox = null;
+    _session = const SearchSession();
+  }
+
   SearchSession _fromResult(MediaSearchResult result) {
     return SearchSession(
       items: result.items,

@@ -121,6 +121,16 @@ class MapSearchController extends Notifier<MapViewState> {
     state = state.copyWith(mode: mode, session: _activeSessionFor(mode));
   }
 
+  /// Restores the state represented by a bare `/map` URL and invalidates
+  /// results still loading for an older deep link.
+  void reset() {
+    _browseEngine.reset();
+    // An empty search is a synchronous reset that also invalidates the
+    // filtered engine's current generation.
+    _filteredEngine.search(const SearchState());
+    state = const MapViewState();
+  }
+
   /// Radius search around [lat]/[lng] against whichever engine
   /// [state.mode] currently points at — see [GeoMode] doc.
   Future<void> searchRadius(double lat, double lng, double radiusMeters) async {

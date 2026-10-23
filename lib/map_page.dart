@@ -20,28 +20,28 @@ const _kPanelBg = Color(0xFF141414);
 const _kBorder = Color(0xFF242424);
 const _kAccent = Color(0xFF3D7EFF);
 
-enum _BaseMapStyle { dark, street, satellite, hybrid }
+enum _BaseMapStyle { street, englishStreet, satellite, hybrid }
 
 extension on _BaseMapStyle {
   _BaseMapStyle get next {
     switch (this) {
-      case _BaseMapStyle.dark:
-        return _BaseMapStyle.street;
       case _BaseMapStyle.street:
+        return _BaseMapStyle.englishStreet;
+      case _BaseMapStyle.englishStreet:
         return _BaseMapStyle.satellite;
       case _BaseMapStyle.satellite:
         return _BaseMapStyle.hybrid;
       case _BaseMapStyle.hybrid:
-        return _BaseMapStyle.dark;
+        return _BaseMapStyle.street;
     }
   }
 
   IconData get icon {
     switch (this) {
-      case _BaseMapStyle.dark:
-        return Icons.dark_mode_outlined;
       case _BaseMapStyle.street:
         return Icons.map_outlined;
+      case _BaseMapStyle.englishStreet:
+        return Icons.translate;
       case _BaseMapStyle.satellite:
         return Icons.satellite_alt;
       case _BaseMapStyle.hybrid:
@@ -51,10 +51,10 @@ extension on _BaseMapStyle {
 
   String get label {
     switch (this) {
-      case _BaseMapStyle.dark:
-        return 'Dark';
       case _BaseMapStyle.street:
-        return 'Street';
+        return 'Multilingual street';
+      case _BaseMapStyle.englishStreet:
+        return 'English street';
       case _BaseMapStyle.satellite:
         return 'Satellite';
       case _BaseMapStyle.hybrid:
@@ -64,10 +64,10 @@ extension on _BaseMapStyle {
 
   String get tileUrl {
     switch (this) {
-      case _BaseMapStyle.dark:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
       case _BaseMapStyle.street:
         return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+      case _BaseMapStyle.englishStreet:
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
       case _BaseMapStyle.satellite:
       case _BaseMapStyle.hybrid:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -76,24 +76,21 @@ extension on _BaseMapStyle {
 
   String? get overlayUrl {
     switch (this) {
-      case _BaseMapStyle.dark:
-        return 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}';
       case _BaseMapStyle.hybrid:
         return 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
       case _BaseMapStyle.street:
+      case _BaseMapStyle.englishStreet:
       case _BaseMapStyle.satellite:
         return null;
     }
   }
 
-  int get maxNativeZoom => this == _BaseMapStyle.dark ? 16 : 19;
-
   String get attribution {
     switch (this) {
       case _BaseMapStyle.street:
         return 'OpenStreetMap contributors';
-      case _BaseMapStyle.dark:
-        return 'Esri, HERE, Garmin, OpenStreetMap contributors & GIS community';
+      case _BaseMapStyle.englishStreet:
+        return 'Esri, data providers, OpenStreetMap contributors';
       case _BaseMapStyle.satellite:
       case _BaseMapStyle.hybrid:
         return 'Esri and data providers';
@@ -104,8 +101,8 @@ extension on _BaseMapStyle {
     switch (this) {
       case _BaseMapStyle.street:
         return 'https://www.openstreetmap.org/copyright';
-      case _BaseMapStyle.dark:
-        return 'https://goto.arcgisonline.com/maps/World_Dark_Gray_Base';
+      case _BaseMapStyle.englishStreet:
+        return 'https://goto.arcgisonline.com/maps/World_Street_Map';
       case _BaseMapStyle.satellite:
       case _BaseMapStyle.hybrid:
         return 'https://www.esri.com/en-us/legal/terms/data-attributions';
@@ -114,7 +111,13 @@ extension on _BaseMapStyle {
 }
 
 class MapPage extends ConsumerStatefulWidget {
-  const MapPage({super.key});
+  const MapPage({
+    super.key,
+    this.queryParameters = const {},
+  });
+
+  final Map<String, String> queryParameters;
+
   @override
   ConsumerState<MapPage> createState() => _MapPageState();
 }
@@ -125,7 +128,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   final _lngCtrl = TextEditingController();
   final _radiusCtrl = TextEditingController(text: '2000');
 
-  _BaseMapStyle _baseMapStyle = _BaseMapStyle.dark;
+  _BaseMapStyle _baseMapStyle = _BaseMapStyle.street;
   double _currentZoom = 2;
   double _currentRotation = 0;
 
@@ -135,7 +138,7 @@ class _MapPageState extends ConsumerState<MapPage> {
   bool _drawingBbox = false;
   ll.LatLng? _bboxFirstPoint;
 
-  bool _handledInitialParams = false;
+  Map<String, String>? _lastUrlParams;
 
   static const double _minZoom = 2;
   static const double _maxZoom = 19;
@@ -145,34 +148,65 @@ class _MapPageState extends ConsumerState<MapPage> {
     return r < _kMinRadiusMeters ? _kMinRadiusMeters : r;
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_handledInitialParams) return;
-    _handledInitialParams = true;
+  bool _sameParams(Map<String, String> a, Map<String, String>? b) {
+    if (b == null || a.length != b.length) return false;
+    for (final entry in a.entries) {
+      if (b[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
+
+  void _consumeUrlParams(Map<String, String> incoming) {
+    final params = Map<String, String>.from(incoming);
+    if (_sameParams(params, _lastUrlParams)) return;
+    _lastUrlParams = params;
 
     // Deep-link entry point for AssetViewer's "View Photos Clicked Nearby"
     // — /map?lat=..&lng=..&radiusKm=.. — triggers a pure geosearch (browse
-    // mode) radius search around that point on first load.
-    final params = GoRouterState.of(context).uri.queryParameters;
+    // mode) radius search around that point. Browser Back/Forward can call
+    // this again with a different area or with no area at all.
     final lat = double.tryParse(params['lat'] ?? '');
     final lng = double.tryParse(params['lng'] ?? '');
-    if (lat == null || lng == null) return;
-
     final radiusKm = double.tryParse(params['radiusKm'] ?? '') ?? 10;
     final radiusM = radiusKm * 1000;
 
-    _latCtrl.text = lat.toStringAsFixed(6);
-    _lngCtrl.text = lng.toStringAsFixed(6);
-    _radiusCtrl.text = radiusM.toStringAsFixed(0);
+    if (lat == null || lng == null) {
+      _latCtrl.clear();
+      _lngCtrl.clear();
+      _radiusCtrl.text = '2000';
+    } else {
+      _latCtrl.text = lat.toStringAsFixed(6);
+      _lngCtrl.text = lng.toStringAsFixed(6);
+      _radiusCtrl.text = radiusM.toStringAsFixed(0);
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (!_sameParams(params, widget.queryParameters)) return;
+      if (lat == null || lng == null) {
+        ref.read(mapSearchControllerProvider.notifier).reset();
+        _mapController.move(const ll.LatLng(20, 0), 2);
+        return;
+      }
       _mapController.move(ll.LatLng(lat, lng), 12);
       ref
           .read(mapSearchControllerProvider.notifier)
           .browseRadius(lat, lng, radiusM);
     });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _consumeUrlParams(widget.queryParameters);
+  }
+
+  @override
+  void didUpdateWidget(covariant MapPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameParams(widget.queryParameters, oldWidget.queryParameters)) {
+      _consumeUrlParams(widget.queryParameters);
+    }
   }
 
   void _searchAt(double lat, double lng) {
@@ -658,12 +692,10 @@ class _MapPageState extends ConsumerState<MapPage> {
                     children: [
                       _OptimizedTileLayer(
                         urlTemplate: _baseMapStyle.tileUrl,
-                        maxNativeZoom: _baseMapStyle.maxNativeZoom,
                       ),
                       if (_baseMapStyle.overlayUrl case final overlayUrl?)
                         _OptimizedTileLayer(
                           urlTemplate: overlayUrl,
-                          maxNativeZoom: _baseMapStyle.maxNativeZoom,
                         ),
                       if (state.boundingBox != null)
                         PolygonLayer(polygons: [
@@ -833,6 +865,9 @@ class _MapPageState extends ConsumerState<MapPage> {
                       children: [
                         _OverlayIconButton(
                           icon: _baseMapStyle.icon,
+                          text: _baseMapStyle == _BaseMapStyle.englishStreet
+                              ? 'EN'
+                              : null,
                           tooltip:
                               '${_baseMapStyle.label} map — tap for ${_baseMapStyle.next.label}',
                           onTap: () {
@@ -984,12 +1019,8 @@ List<_MarkerCluster> _clusterItems(List<SearchItem> items, double zoom) {
 /// of making the browser finish downloads that can no longer be displayed.
 class _OptimizedTileLayer extends StatefulWidget {
   final String urlTemplate;
-  final int maxNativeZoom;
 
-  const _OptimizedTileLayer({
-    required this.urlTemplate,
-    this.maxNativeZoom = 19,
-  });
+  const _OptimizedTileLayer({required this.urlTemplate});
 
   @override
   State<_OptimizedTileLayer> createState() => _OptimizedTileLayerState();
@@ -1004,7 +1035,6 @@ class _OptimizedTileLayerState extends State<_OptimizedTileLayer> {
     return TileLayer(
       urlTemplate: widget.urlTemplate,
       userAgentPackageName: 'com.commonslens.app',
-      maxNativeZoom: widget.maxNativeZoom,
       maxZoom: 19,
       tileProvider: _tileProvider,
     );
@@ -1315,11 +1345,13 @@ class _CenterDot extends StatelessWidget {
 
 class _OverlayIconButton extends StatelessWidget {
   final IconData icon;
+  final String? text;
   final String tooltip;
   final VoidCallback onTap;
   final bool active;
   const _OverlayIconButton({
     required this.icon,
+    this.text,
     required this.tooltip,
     required this.onTap,
     this.active = false,
@@ -1341,7 +1373,19 @@ class _OverlayIconButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: active ? _kAccent : _kBorder),
           ),
-          child: Icon(icon, color: Colors.white, size: 20),
+          child: Center(
+            child: text == null
+                ? Icon(icon, color: Colors.white, size: 20)
+                : Text(
+                    text!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+          ),
         ),
       ),
     );
@@ -1488,7 +1532,7 @@ class _ResultsPane extends StatelessWidget {
                     session.error ??
                         '${session.items.length} RESULT${session.items.length == 1 ? '' : 'S'}',
                     style: const TextStyle(
-                        color: Color(0xFF7A7A7A),
+                        color: Color(0xFFA0A0A0),
                         fontSize: 10.5,
                         letterSpacing: 1.2,
                         fontWeight: FontWeight.w700),
@@ -1512,7 +1556,7 @@ class _ResultsPane extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(noteText!,
                     style: const TextStyle(
-                        color: Color(0xFF555555), fontSize: 10.5)),
+                        color: Color(0xFF8C8C8C), fontSize: 10.5)),
               ],
             ],
           ),
@@ -1528,7 +1572,7 @@ class _ResultsPane extends StatelessWidget {
                             : 'Tap the map, or enter coordinates, to search a radius.',
                     textAlign: TextAlign.center,
                     style:
-                        const TextStyle(color: Color(0xFF404040), fontSize: 13),
+                        const TextStyle(color: Color(0xFFA0A0A0), fontSize: 13),
                   ),
                 )
               : MediaResultsGrid(

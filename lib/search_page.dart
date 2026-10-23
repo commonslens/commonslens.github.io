@@ -68,7 +68,15 @@ class _FeatureCardState extends State<_FeatureCard> {
 }
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({
+    super.key,
+    this.queryParameters = const {},
+  });
+
+  /// The URL state supplied by the router. Keeping it as an explicit widget
+  /// input guarantees [didUpdateWidget] runs when only the query string
+  /// changes, even though the route path remains `/`.
+  final Map<String, String> queryParameters;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -149,10 +157,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     _SearchExample(
       category: 'LOCATION',
       label: 'Near Eiffel Tower',
-      tooltip: 'Find media geotagged within 2 km of the Eiffel Tower',
+      tooltip: 'Find media geotagged within 500 m of the Eiffel Tower',
       icon: Icons.location_on_outlined,
       state: SearchState(
-        nearTitle: NearTitleFilter(title: 'Eiffel Tower', radiusKm: 2),
+        nearCoord: NearCoordFilter(
+          lat: 48.8583701,
+          lng: 2.2944813,
+          radiusKm: 0.5,
+        ),
       ),
     ),
     _SearchExample(
@@ -202,6 +214,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     _scrollController.addListener(_onScroll);
     PaintingBinding.instance.imageCache.maximumSize = 80;
     PaintingBinding.instance.imageCache.maximumSizeBytes = 30 << 20;
+    _consumeUrlParams(widget.queryParameters);
   }
 
   bool _sameParams(Map<String, String> a, Map<String, String>? b) {
@@ -213,16 +226,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return true;
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final params = GoRouterState.of(context).uri.queryParameters;
+  void _consumeUrlParams(Map<String, String> incoming) {
+    final params = Map<String, String>.from(incoming);
     if (_sameParams(params, _lastSyncedParams)) return;
-    _lastSyncedParams = Map<String, String>.from(params);
+    _lastSyncedParams = params;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Back/Forward can move again before this frame runs. Only the newest
+      // URL is allowed to hydrate the controller.
+      if (!_sameParams(params, widget.queryParameters)) return;
       ref.read(searchControllerProvider.notifier).hydrateFromUrl(params);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant SearchPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameParams(widget.queryParameters, oldWidget.queryParameters)) {
+      _consumeUrlParams(widget.queryParameters);
+    }
   }
 
   @override
@@ -620,17 +642,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   ),
                 ),
 
-                const SizedBox(height: 2),
-
-                const Text(
-                  'Example queries:',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Color(0xFF777777),
-                    fontSize: 12.5,
-                  ),
-                ),
-
                 const SizedBox(height: 14),
 
                 // Search Examples
@@ -826,11 +837,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (session.error != null)
       return Center(
           child: Text(session.error!,
-              style: const TextStyle(color: Color(0xFF484848), fontSize: 14)));
+              style: const TextStyle(color: Color(0xFFFF9B91), fontSize: 14)));
     if (session.items.isEmpty)
       return Center(
           child: Text(configForTab(filterState.tab).emptyMessage,
-              style: const TextStyle(color: Color(0xFF404040), fontSize: 14)));
+              style: const TextStyle(color: Color(0xFFA0A0A0), fontSize: 14)));
 
     return MediaResultsGrid(
       controller: _scrollController,
@@ -891,7 +902,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           if (session.hasSearched) ...[
             Text('${session.items.length} RESULTS${session.hasMore ? '+' : ''}',
                 style: const TextStyle(
-                    color: Color(0xFF323232),
+                    color: Color(0xFFA0A0A0),
                     fontSize: 10,
                     letterSpacing: 2,
                     fontWeight: FontWeight.w600)),

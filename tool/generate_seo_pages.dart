@@ -104,7 +104,7 @@ const _pages = <_SeoPage>[
         intro:
             'Refine and navigate the map without losing the active geographic search.',
         items: [
-          'Start with a dark basemap or switch between street, satellite, and hybrid layers.',
+          'Switch between multilingual street, English-labelled street, satellite, and hybrid layers.',
           'Zoom, rotate in 15-degree steps, reset north, and fit the camera to imported results.',
           'Filter by license, Commons quality assessment, and attribution requirement.',
           'Preserve relevant main-search context when moving between Search and Map.',
@@ -260,7 +260,7 @@ const _pages = <_SeoPage>[
         items: [
           'Search by map tap, coordinates and radius, named place, or a two-point bounding box.',
           'Plot the current search, cluster thumbnail markers, browse cluster grids, and fit the camera to results.',
-          'Use a dark default basemap or switch to street, satellite, and hybrid layers with zoom, rotation, and north-reset controls.',
+          'Use multilingual street, English-labelled street, satellite, or hybrid layers with zoom, rotation, and north-reset controls.',
           'Refine map results by license, quality, and attribution or continue the query in main Search.',
         ],
       ),
@@ -440,7 +440,7 @@ const _pages = <_SeoPage>[
         items: [
           'GitHub Pages hosts the app and may log page requests and technical usage data.',
           'Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests.',
-          'OpenStreetMap receives street-tile requests and Esri receives dark-map, satellite-imagery, and reference-tile requests when those layers are used.',
+          'OpenStreetMap receives multilingual street-tile requests; Esri receives English street-map, satellite-imagery, and reference-tile requests when those layers are used.',
           'External source, licence, usage, and repository pages apply their own privacy policies.',
         ],
       ),

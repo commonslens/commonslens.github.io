@@ -157,12 +157,12 @@ class WikimediaRequestGate {
 
         final delay = _retryDelay(response, attempt, throttled: throttled);
         if (throttled) _extendGlobalCooldown(delay);
-        await _wait(delay, cancelled);
+        await _wait(delay, cancelled, uri);
         continue;
       }
 
       if (attempt < maxAttempts) {
-        await _wait(_networkBackoff(attempt), cancelled);
+        await _wait(_networkBackoff(attempt), cancelled, uri);
       }
     }
 
@@ -218,12 +218,13 @@ class WikimediaRequestGate {
   static Future<void> _wait(
     Duration duration,
     bool Function()? cancelled,
+    Uri uri,
   ) async {
     var remaining = duration;
     const slice = Duration(milliseconds: 250);
     while (remaining > Duration.zero) {
       if (cancelled?.call() == true) {
-        throw const _GateCancelled();
+        throw http.ClientException('Request cancelled', uri);
       }
       final wait = remaining < slice ? remaining : slice;
       await Future.delayed(wait);
@@ -271,8 +272,4 @@ class WikimediaRequestGate {
       _pumpTimer = Timer(minimumStartSpacing, _pump);
     }
   }
-}
-
-class _GateCancelled implements Exception {
-  const _GateCancelled();
 }

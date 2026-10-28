@@ -660,162 +660,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       .toList(),
                 ),
 
-                const SizedBox(height: 80),
-
-                // Capability Index — every real, working feature in the
-                // engine, organized by function rather than a flat list.
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isMobile = constraints.maxWidth < 600;
-                    final cardWidth = isMobile ? double.infinity : 270.0;
-
-                    Widget group(String label, List<_FeatureCard> cards) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 40),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(label,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: Color(0xFF3D7EFF),
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 2.0)),
-                            const SizedBox(height: 16),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 16,
-                              runSpacing: 16,
-                              children: cards,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        group('SEMANTIC & METADATA SEARCH', [
-                          _FeatureCard(
-                            icon: Icons.travel_explore,
-                            title: 'Wikidata Depicts Search',
-                            description:
-                                'Search by exact visual subject via Wikidata Q-codes, with independent include and exclude sets.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.category_outlined,
-                            title: 'Category Include / Exclude',
-                            description:
-                                'Multi-select Commons categories: isolate or eliminate entire category trees, deep-traversal included.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.merge_type,
-                            title: 'Multi-Term OR Search',
-                            description:
-                                'Combine unrelated searches into one query with "+", e.g. "eiffel tower + colosseum".',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.filter_alt_outlined,
-                            title: 'Filter-Only Search',
-                            description:
-                                'Run a full search from filters alone: depicts, category, license, etc. No text query required.',
-                            width: cardWidth,
-                          ),
-                        ]),
-                        group('PRECISION FILTERING', [
-                          _FeatureCard(
-                            icon: Icons.copyright,
-                            title: 'License Filtering',
-                            description:
-                                'Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, or Public Domain.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.verified_outlined,
-                            title: 'Quality Assessment',
-                            description:
-                                'Isolate Commons-reviewed Quality Images and Valued Images.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.location_on_outlined,
-                            title: 'Geolocation Search',
-                            description:
-                                'Find media captured near an exact latitude and longitude, with adjustable radius.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.calendar_month_outlined,
-                            title: 'Date Range Filtering',
-                            description:
-                                'Filter by creation date and last-edited date, independently.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.perm_media_outlined,
-                            title: 'File-Type Precision',
-                            description:
-                                'Isolate exact formats: images, vectors, audio, video, documents.',
-                            width: cardWidth,
-                          ),
-                        ]),
-                        group('DISCOVERY', [
-                          _FeatureCard(
-                            icon: Icons.person_search_outlined,
-                            title: 'Author Portfolios',
-                            description:
-                                'Browse every upload from a single contributor, fully paginated.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.link,
-                            title: 'Shareable Search State',
-                            description:
-                                'Every query, filter combination, and asset view is a URL you can send.',
-                            width: cardWidth,
-                          ),
-                        ]),
-                        group('RESEARCH WORKFLOW', [
-                          _FeatureCard(
-                            icon: Icons.archive_outlined,
-                            title: 'Bulk Export',
-                            description:
-                                'Select any subset of results and download as one .zip, entirely in-browser.',
-                            width: cardWidth,
-                          ),
-                          _FeatureCard(
-                            icon: Icons.bolt,
-                            title: 'High-Volume Rendering',
-                            description:
-                                'Staggered lazy-loading handles large result sets without UI lockup.',
-                            width: cardWidth,
-                          ),
-                        ]),
-                      ],
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 8),
-
+                const SizedBox(height: 40),
                 const Text(
-                  'CommonsLens is an independent, non-commercial research interface. Media and data are sourced directly from Wikimedia Commons. CommonsLens does not make, host, own, license, or claim copyright over displayed content.',
+                  'CommonsLens is an independent, non-commercial research interface.\nMedia and data are sourced directly from Wikimedia Commons.\nCommonsLens does not make, host, own, license, or claim copyright over displayed content.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF555555),
-                    fontSize: 12,
+                    color: Colors.grey,
+                    fontSize: 14,
                     height: 1.6,
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 2),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 720),
-                  child: const SiteFooter(),
+                  child: const SiteFooter(showDivider: false,),
                 ),
                 const SizedBox(height: 16),
               ],

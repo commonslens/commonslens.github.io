@@ -241,6 +241,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
   // ---- Geolocation ----
 
+  // ignore: unused_element
   void _applyGeolocation() {
     final lat = double.tryParse(_latCtrl.text);
     final lng = double.tryParse(_lngCtrl.text);
@@ -486,7 +487,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   children: [
                     Expanded(
                       child: _combineModeButton(
-                        label: 'Intersection (AND)',
+                        label: 'Intersection',
                         selected: !state.depictsUnion,
                         onTap: () => _setDepictsUnion(false),
                       ),
@@ -494,20 +495,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _combineModeButton(
-                        label: 'Union (OR)',
+                        label: 'Union',
                         selected: state.depictsUnion,
                         onTap: () => _setDepictsUnion(true),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  state.depictsUnion
-                      ? 'Matches files depicting ANY selected subject below (this OR this), still excluding anything marked "not".'
-                      : 'Matches files depicting ALL selected subjects below (this AND this), and excludes anything marked "not".',
-                  style: const TextStyle(
-                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 _EntitySetPicker<DepictsEntity>(
@@ -530,7 +523,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   children: [
                     Expanded(
                       child: _combineModeButton(
-                        label: 'Intersection (AND)',
+                        label: 'Intersection',
                         selected: !state.statementsUnion,
                         onTap: () => _setStatementsUnion(false),
                       ),
@@ -538,20 +531,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _combineModeButton(
-                        label: 'Union (OR)',
+                        label: 'Union',
                         selected: state.statementsUnion,
                         onTap: () => _setStatementsUnion(true),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  state.statementsUnion
-                      ? 'Matches ANY selected property below (this OR this), still excluding anything marked "not".'
-                      : 'Matches ALL selected properties below (this AND this), and excludes anything marked "not".',
-                  style: const TextStyle(
-                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 _StatementsPicker(
@@ -567,7 +552,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   children: [
                     Expanded(
                       child: _combineModeButton(
-                        label: 'Intersection (AND)',
+                        label: 'Intersection',
                         selected: !state.categoriesUnion,
                         onTap: () => _setCategoriesUnion(false),
                       ),
@@ -575,20 +560,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _combineModeButton(
-                        label: 'Union (OR)',
+                        label: 'Union',
                         selected: state.categoriesUnion,
                         onTap: () => _setCategoriesUnion(true),
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  state.categoriesUnion
-                      ? 'Matches files in ANY selected category below (this OR this), still excluding anything marked "not".'
-                      : 'Matches files in ALL selected categories below (this AND this), and excludes anything marked "not".',
-                  style: const TextStyle(
-                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
                 _StringSetPicker(
@@ -635,7 +612,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                             Text(
                               state.deepCategoryMode
                                   ? 'Deep: also pulls files from every subcategory nested beneath the categories above.'
-                                  : 'Strict: only files filed directly in the exact categories above — nested subcategories are skipped.',
+                                  : 'Strict: only files filed directly in these exact categories. Nested subcategories are skipped.',
                               style: const TextStyle(
                                   color: Color(0xFF888888),
                                   fontSize: 11,
@@ -655,14 +632,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 ),
                 const SizedBox(height: 24),
                 _sectionHeader('TEMPLATES'),
-                Text(
-                  'Matches files carrying a specific template — e.g. a GLAM/institutional '
-                  'set ("Institution:Metropolitan Museum of Art") or a granular PD template '
-                  '("PD-USGov-NASA"). Always required (AND), no union mode.',
-                  style: const TextStyle(
-                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
-                ),
-                const SizedBox(height: 12),
                 _StringSetPicker(
                   include: state.templates,
                   exclude: state.excludeTemplates,
@@ -697,9 +666,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 const SizedBox(height: 20),
                 _sectionHeader('LICENSE / RIGHTS'),
                 Text(
-                  'Select one or more — a file matching ANY selected license '
-                  'is included (a file only ever carries one license, so this '
-                  'is always OR, never AND).',
+                  'Select one or more.',
                   style: const TextStyle(
                       color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
@@ -717,13 +684,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 ),
                 const SizedBox(height: 24),
                 _sectionHeader('ATTRIBUTION'),
-                Text(
-                  'No CirrusSearch keyword covers this — it\'s filtered '
-                  'client-side after each page loads, so a page can come '
-                  'back with fewer than the usual result count.',
-                  style: const TextStyle(
-                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
-                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<bool?>(
                   dropdownColor: const Color(0xFF1E1E1E),
@@ -1008,52 +968,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: const [
-                    Expanded(child: Divider(color: Color(0xFF222222))),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 10),
-                      child: Text('OR SEARCH NEAR A PLACE',
-                          style: TextStyle(
-                              color: Color(0xFF555555),
-                              fontSize: 9,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                    Expanded(child: Divider(color: Color(0xFF222222))),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _nearTitleCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'e.g. Eiffel Tower'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: TextField(
-                        controller: _nearTitleRadiusCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        decoration: _fieldDecoration(hint: 'km'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _groupApplyButton('Apply Geolocation', _applyGeolocation),
-                const SizedBox(height: 10),
               ],
             ),
           ),

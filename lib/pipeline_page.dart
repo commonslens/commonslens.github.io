@@ -261,6 +261,18 @@ String _nodeSummary(PipelineNode node) {
     return '${values.take(2).join(', ')}${values.length > 2 ? ' +${values.length - 2}' : ''}';
   }
 
+  String joinedLicenses() {
+    final values = c['licenses'];
+    if (values is! List || values.isEmpty) return '';
+    final labels = values.map((value) {
+      for (final preset in LicensePreset.values) {
+        if (preset.name == value) return licensePresetLabel(preset);
+      }
+      return value.toString();
+    }).toList();
+    return '${labels.take(2).join(', ')}${labels.length > 2 ? ' +${labels.length - 2}' : ''}';
+  }
+
   switch (node.type) {
     case PipelineNodeType.sourceTextQuery:
       final query = (c['query'] as String?)?.trim() ?? '';
@@ -295,7 +307,7 @@ String _nodeSummary(PipelineNode node) {
           ? 'Set a location'
           : '${c['lat']}, ${c['lng']} - ${c['radiusKm'] ?? 10} km';
     case PipelineNodeType.filterLicense:
-      return joined('licenses').isEmpty ? 'Any license' : joined('licenses');
+      return joinedLicenses().isEmpty ? 'Any license' : joinedLicenses();
     case PipelineNodeType.filterFormat:
       return joined('formats').isEmpty
           ? 'Any format'
@@ -539,7 +551,8 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
             key: 'licenses',
             label: 'Licenses',
             kind: ConfigFieldKind.multiChoice,
-            options: ['cc0', 'ccBy4', 'ccBySa4', 'publicDomain'])
+            options:
+                LicensePreset.values.map((license) => license.name).toList())
       ];
     case PipelineNodeType.filterQuality:
       return [

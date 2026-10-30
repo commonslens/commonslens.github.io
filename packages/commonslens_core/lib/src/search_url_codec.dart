@@ -370,7 +370,10 @@ class SearchUrlCodec {
   }
 
   static bool hasSearchContext(Map<String, String> params) {
-    final relevant = Map<String, String>.from(params)..remove('id');
+    final relevant = Map<String, String>.from(params)
+      ..remove('id')
+      ..remove('view')
+      ..remove('from');
     return relevant.isNotEmpty;
   }
 }

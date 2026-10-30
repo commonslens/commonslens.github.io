@@ -27,7 +27,7 @@ class FeaturesPage extends StatelessWidget {
         'Search arbitrary Wikidata property-value statements with independent include and exclude rules.',
         'Include or exclude multiple Commons categories, switch between AND and OR, and recursively include subcategories.',
         'Filter by MediaWiki templates, language, content model, creation and edit dates, resolution, file size, and color depth.',
-        'Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, Public Domain, attribution status, or Commons quality assessments.',
+        'Restrict results to standard Creative Commons, GFDL, Free Art, and public-domain statuses, plus attribution status or Commons quality assessments.',
       ],
     ),
     _FeatureGroup(
@@ -35,7 +35,7 @@ class FeaturesPage extends StatelessWidget {
       description:
           'Discover geotagged Commons media spatially instead of relying only on words.',
       features: [
-        'Search by tapping a map, entering coordinates and a radius, searching near a named place, or drawing a bounding box.',
+        'Search by tapping a map, choosing a circular radius, or searching near a named place.',
         'Plot the current search on a map, cluster thumbnail markers, inspect clusters, and open results in a split-screen grid.',
         'Use multilingual street, English-labelled street, satellite, and hybrid layers with zoom, rotation, north reset, camera fitting, and responsive mobile controls.',
         'Carry search context into the map, apply license, quality, and attribution filters, or send a map query back to Search.',

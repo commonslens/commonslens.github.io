@@ -7,6 +7,7 @@ import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
+import 'search_map_view.dart';
 import 'bulk_download_tray.dart';
 import 'legal_pages.dart';
 
@@ -104,15 +105,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   bool _showQueryPreview = false;
   bool? _isFiltersExpanded;
-
-  // Desktop-only: whether the docked filters sidebar (see build's
-  // isDesktop branch) is minimized to a thin rail. Independent from
-  // _isFiltersExpanded above, which toggles the FileType-filter row
-  // beneath the top bar on every viewport — this instead hides the whole
-  // 380px docked panel down to a reopen affordance, for when someone
-  // wants the extra width back for results without losing their filter
-  // state (unlike the mobile Drawer, collapsing never clears anything).
-  bool _filtersSidebarCollapsed = false;
+  bool _showMap = false;
+  bool _mapHasOpened = false;
 
   // Tracks the query params this page has already "consumed" — either by
   // hydrating from them, or by being the one that pushed them via the
@@ -204,12 +198,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _showMap = widget.queryParameters['view'] == 'map';
+    _mapHasOpened = _showMap;
     // Keep this exact widget instance across search/pagination rebuilds.
     // FilterPanelContent listens to filter-state changes itself, so making
     // its large widget tree rebuild for result loading changes only adds
     // work (and was particularly visible as scroll jank on Flutter web).
     _desktopFiltersPanel = FilterPanelContent(
-      onCollapse: _collapseFiltersSidebar,
+      docked: true,
+      onLocationSelected: _openMapFromLocation,
     );
     _scrollController.addListener(_onScroll);
     PaintingBinding.instance.imageCache.maximumSize = 80;
@@ -230,12 +227,32 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final params = Map<String, String>.from(incoming);
     if (_sameParams(params, _lastSyncedParams)) return;
     _lastSyncedParams = params;
+    final requestedMap = params['view'] == 'map';
+    if (_showMap != requestedMap) {
+      if (mounted) {
+        setState(() {
+          _showMap = requestedMap;
+          _mapHasOpened = _mapHasOpened || requestedMap;
+        });
+      } else {
+        _showMap = requestedMap;
+        _mapHasOpened = _mapHasOpened || requestedMap;
+      }
+    }
+    final searchParams = Map<String, String>.from(params)..remove('view');
+    final currentSearchParams = SearchUrlCodec.toQueryParams(
+      ref.read(searchControllerProvider).filterState,
+    );
+    // Back/Forward between grid and map changes presentation only. If the
+    // actual search parameters still match the live controller, do not rerun
+    // the network query just because `view=map` appeared or disappeared.
+    if (_sameParams(searchParams, currentSearchParams)) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       // Back/Forward can move again before this frame runs. Only the newest
       // URL is allowed to hydrate the controller.
       if (!_sameParams(params, widget.queryParameters)) return;
-      ref.read(searchControllerProvider.notifier).hydrateFromUrl(params);
+      ref.read(searchControllerProvider.notifier).hydrateFromUrl(searchParams);
     });
   }
 
@@ -260,10 +277,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     super.dispose();
   }
 
-  void _collapseFiltersSidebar() {
-    setState(() => _filtersSidebarCollapsed = true);
-  }
-
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
@@ -278,6 +291,59 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   void _search(String query) =>
       ref.read(searchControllerProvider.notifier).search(query);
+
+  Map<String, String> _urlParamsFor(SearchState state) {
+    final params = SearchUrlCodec.toQueryParams(state);
+    if (_showMap) params['view'] = 'map';
+    return params;
+  }
+
+  void _replaceSearchUrl() {
+    final params = _urlParamsFor(
+      ref.read(searchControllerProvider).filterState,
+    );
+    _lastSyncedParams = Map<String, String>.from(params);
+    final nextUrl = Uri(
+      path: '/',
+      queryParameters: params.isEmpty ? null : params,
+    ).toString();
+    if (GoRouterState.of(context).uri.toString() != nextUrl) {
+      context.replace(nextUrl);
+    }
+  }
+
+  void _setMapVisible(bool visible) {
+    if (_showMap == visible) return;
+    setState(() {
+      _showMap = visible;
+      _mapHasOpened = _mapHasOpened || visible;
+    });
+    _replaceSearchUrl();
+  }
+
+  void _openMapFromLocation() => _setMapVisible(true);
+
+  void _searchLocation(double lat, double lng, double radiusKm) {
+    ref.read(searchControllerProvider.notifier).applyFilterUpdate(
+          (current) => current.copyWith(
+            nearCoord: NearCoordFilter(
+              lat: lat,
+              lng: lng,
+              radiusKm: radiusKm,
+            ),
+            clearNearTitle: true,
+          ),
+        );
+  }
+
+  void _clearLocation() {
+    ref.read(searchControllerProvider.notifier).applyFilterUpdate(
+          (current) => current.copyWith(
+            clearNearCoord: true,
+            clearNearTitle: true,
+          ),
+        );
+  }
 
   void _runExample(_SearchExample example) => ref
       .read(searchControllerProvider.notifier)
@@ -425,7 +491,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         if (previous == next) return;
         final currentUri = GoRouterState.of(context).uri;
         if (currentUri.path != '/') return;
-        final params = SearchUrlCodec.toQueryParams(next);
+        final params = _urlParamsFor(next);
         // Mark these params as already synced *before* pushing the URL, so
         // the didChangeDependencies this triggers recognizes it as our own
         // echo (not an external change) and doesn't re-hydrate — see the
@@ -450,73 +516,210 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     // instantly (see FilterPanelContent) — at that point a modal Drawer
     // that covers the results you're trying to react to is actively in
     // the way. Above this breakpoint the filter panel docks permanently
-    // alongside results, same split-screen shape map_page.dart already
-    // uses for its own results pane; below it, screen space doesn't allow
-    // a permanent dock, so it stays a Drawer, just no longer hardcoded to
-    // an overflow-prone 600px.
+    // alongside results and the integrated map; below it, screen space
+    // doesn't allow a permanent dock, so it stays a Drawer, just no longer
+    // hardcoded to an overflow-prone 600px.
     final isDesktop = screenWidth >= 900;
+    final showSearchChrome = session.hasSearched || _showMap;
+
+    final gridOrLanding = session.hasSearched
+        ? _buildResults(session, filterState)
+        : _showMap
+            ? const SizedBox.shrink()
+            : _buildLanding(
+                filterState: filterState,
+                isDesktop: isDesktop,
+              );
+
+    final resultSurface = IndexedStack(
+      index: _showMap ? 1 : 0,
+      sizing: StackFit.expand,
+      children: [
+        gridOrLanding,
+        _mapHasOpened
+            ? SearchMapView(
+                session: session,
+                filterState: filterState,
+                onSearchLocation: _searchLocation,
+                onClearLocation: _clearLocation,
+                onLoadMore: () =>
+                    ref.read(searchControllerProvider.notifier).loadMore(),
+                onShowResults: () => _setMapVisible(false),
+              )
+            : const SizedBox.shrink(),
+      ],
+    );
 
     final mainColumn = Column(
       children: [
-        SearchTopBar(
-          initialQuery: filterState.queryText,
-          onSearch: _search,
-          showFiltersButton: !isDesktop,
-        ),
-        _buildHeaderBar(session, filterState),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          child: _isFiltersExpanded!
+        AnimatedSwitcher(
+          // Keep the top search bar and every filetype-filter row in one
+          // animated block. When a search is cleared this lets the whole
+          // block move down and shrink together instead of collapsing in
+          // separate stages.
+          duration: const Duration(milliseconds: 500),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            return ClipRect(
+              child: SizeTransition(
+                sizeFactor: animation,
+                axisAlignment: -1,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.08),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: showSearchChrome
               ? Column(
+                  key: const ValueKey('active-search-header'),
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildTabBar(filterState),
-                    _buildFormatChips(filterState),
-                    _buildActiveChipsBar(viewState.lastBuiltQuery),
-                    _buildQueryPreviewBar(
-                        viewState.lastBuiltQuery, session.hasSearched),
+                    TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 500),
+                      curve: Curves.easeOutCubic,
+                      tween: Tween(begin: 0.8, end: 1.0),
+                      builder: (context, widthFactor, child) {
+                        return FractionallySizedBox(
+                          widthFactor: widthFactor,
+                          child: child,
+                        );
+                      },
+                      child: SearchTopBar(
+                        key: const ValueKey('top-search-bar'),
+                        initialQuery: filterState.queryText,
+                        onSearch: _search,
+                        showFiltersButton: !isDesktop,
+                      ),
+                    ),
+                    _buildHeaderBar(session, filterState),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      child: _isFiltersExpanded!
+                          ? Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _buildTabBar(filterState),
+                                _buildFormatChips(filterState),
+                                _buildActiveChipsBar(viewState.lastBuiltQuery),
+                                _buildQueryPreviewBar(viewState.lastBuiltQuery,
+                                    session.hasSearched),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 )
-              : const SizedBox.shrink(),
+              : const SizedBox(
+                  key: ValueKey('empty-search-header'),
+                ),
         ),
-        Expanded(
-            child: session.hasSearched
-                ? _buildResults(session, filterState)
-                : _buildLanding()),
+        Expanded(child: resultSurface),
         BulkDownloadTray(availableItems: session.items),
       ],
     );
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),
-      endDrawer: isDesktop ? null : const AdvancedFiltersDrawer(),
+      drawer: isDesktop
+          ? null
+          : AdvancedFiltersDrawer(onLocationSelected: _openMapFromLocation),
       body: isDesktop
           ? Row(
               children: [
+                _desktopFiltersPanel,
                 Expanded(child: mainColumn),
-                if (_filtersSidebarCollapsed)
-                  _CollapsedFiltersRail(
-                    onExpand: () =>
-                        setState(() => _filtersSidebarCollapsed = false),
-                  )
-                else
-                  Container(
-                    width: 380,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF111111),
-                      border:
-                          Border(left: BorderSide(color: Color(0xFF1E1E1E))),
-                    ),
-                    child: _desktopFiltersPanel,
-                  ),
               ],
             )
           : mainColumn,
     );
   }
 
-  Widget _buildLanding() {
+  /// The search control has two homes: the normal top bar once a search is
+  /// active, and a hero/search prompt above the ETL button while the landing
+  /// page is idle. Keeping the two slots animated makes the transition feel
+  /// intentional while preserving the top-bar layout for result browsing.
+  Widget _buildSearchSlot({
+    required bool visible,
+    required bool centered,
+    required SearchState filterState,
+    required bool isDesktop,
+  }) {
+    final emptyKey = ValueKey<String>(
+        centered ? 'landing-search-empty' : 'top-search-empty');
+    final searchKey =
+        ValueKey<String>(centered ? 'landing-search-bar' : 'top-search-bar');
+
+    final searchBar = centered
+        ? FractionallySizedBox(
+            key: searchKey,
+            widthFactor: 0.8,
+            child: SearchTopBar(
+              initialQuery: filterState.queryText,
+              onSearch: _search,
+              autofocus: true,
+              showFiltersButton: !isDesktop,
+            ),
+          )
+        : SearchTopBar(
+            key: searchKey,
+            initialQuery: filterState.queryText,
+            onSearch: _search,
+            showFiltersButton: !isDesktop,
+          );
+
+    final slot = AnimatedSize(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOutCubic,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 500),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          final begin =
+              centered ? const Offset(0, -0.08) : const Offset(0, 0.08);
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(begin: begin, end: Offset.zero)
+                  .animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: visible ? searchBar : SizedBox.shrink(key: emptyKey),
+      ),
+    );
+
+    if (!centered) return slot;
+
+    // The landing slot is mounted when returning from results, so give it a
+    // small upward-to-center entrance of its own. This visually connects to
+    // the active header's downward motion above it.
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, progress, child) {
+        return Transform.translate(
+          offset: Offset(0, -24 * (1 - progress)),
+          child: child,
+        );
+      },
+      child: slot,
+    );
+  }
+
+  Widget _buildLanding({
+    required SearchState filterState,
+    required bool isDesktop,
+  }) {
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -587,6 +790,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         fontWeight: FontWeight.w400)),
 
                 const SizedBox(height: 32),
+
+                _buildSearchSlot(
+                  visible: true,
+                  centered: true,
+                  filterState: filterState,
+                  isDesktop: isDesktop,
+                ),
+
+                const SizedBox(height: 18),
 
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 410),
@@ -673,7 +885,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 const SizedBox(height: 2),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 720),
-                  child: const SiteFooter(showDivider: false,),
+                  child: const SiteFooter(
+                    showDivider: false,
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
@@ -1009,62 +1223,5 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       case SortMode.oldestCreated:
         return 'Oldest created';
     }
-  }
-}
-
-/// The desktop filters sidebar's minimized state — a thin 44px rail with a
-/// single reopen affordance, replacing the full 380px docked
-/// FilterPanelContent so the person can get results width back without
-/// losing any filter state (unlike closing the mobile Drawer, which just
-/// hides the same live FilterPanelContent — nothing here is torn down or
-/// reset, it's purely a layout swap in SearchPage.build).
-class _CollapsedFiltersRail extends StatelessWidget {
-  final VoidCallback onExpand;
-  const _CollapsedFiltersRail({required this.onExpand});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      decoration: const BoxDecoration(
-        color: Color(0xFF111111),
-        border: Border(left: BorderSide(color: Color(0xFF1E1E1E))),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 10),
-            Tooltip(
-              message: 'Show filters',
-              child: IconButton(
-                icon: const Icon(Icons.chevron_left, color: Colors.white54),
-                onPressed: onExpand,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: GestureDetector(
-                onTap: onExpand,
-                behavior: HitTestBehavior.opaque,
-                child: const Center(
-                  child: RotatedBox(
-                    quarterTurns: 3,
-                    child: Text(
-                      'FILTERS',
-                      style: TextStyle(
-                        color: Color(0xFF555555),
-                        fontSize: 11,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

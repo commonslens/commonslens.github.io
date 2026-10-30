@@ -57,7 +57,7 @@ abstract final class SeoService {
       return const _SeoMetadata(
         title: 'Wikimedia Commons Map Search | CommonsLens',
         description:
-            'Discover geotagged Wikimedia Commons media with point, radius, place, and bounding-box searches, clustered previews, metadata filters, and downloadable results.',
+            'Discover geotagged Wikimedia Commons media with point, radius, and place searches, clustered previews, metadata filters, and downloadable results.',
         canonical: '$_origin/map/',
       );
     }

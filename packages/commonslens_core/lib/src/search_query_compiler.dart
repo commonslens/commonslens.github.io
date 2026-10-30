@@ -11,8 +11,21 @@ class SearchQueryCompiler {
 
   static const Map<LicensePreset, String> _licenseClauses = {
     LicensePreset.cc0: 'haswbstatement:P275=Q6938433',
+    LicensePreset.ccBy1: 'haswbstatement:P275=Q30942811',
+    LicensePreset.ccBy2: 'haswbstatement:P275=Q19125117',
+    LicensePreset.ccBy25: 'haswbstatement:P275=Q18810333',
+    LicensePreset.ccBy3: 'haswbstatement:P275=Q14947546',
     LicensePreset.ccBy4: 'haswbstatement:P275=Q20007257',
+    LicensePreset.ccBySa1: 'haswbstatement:P275=Q47001652',
+    LicensePreset.ccBySa2: 'haswbstatement:P275=Q19068220',
+    LicensePreset.ccBySa25: 'haswbstatement:P275=Q19113751',
+    LicensePreset.ccBySa3: 'haswbstatement:P275=Q14946043',
     LicensePreset.ccBySa4: 'haswbstatement:P275=Q18199165',
+    LicensePreset.gfdl11: 'haswbstatement:P275=Q26921685',
+    LicensePreset.gfdl12: 'haswbstatement:P275=Q26921686',
+    LicensePreset.gfdl13: 'haswbstatement:P275=Q26921691',
+    LicensePreset.freeArt12: 'haswbstatement:P275=Q137831551',
+    LicensePreset.freeArt13: 'haswbstatement:P275=Q124150926',
     LicensePreset.publicDomain: 'haswbstatement:P6216=Q88088423',
   };
 

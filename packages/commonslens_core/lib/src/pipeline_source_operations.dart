@@ -119,7 +119,7 @@ mixin _PipelineSourceOperations {
   /// [mode] 'filtered' sets `nearCoord` on a normal SearchState — stays
   /// compilable, still combines with License/Quality/etc. downstream, and
   /// goes through the ordinary CirrusSearch path (matches GeoMode.filtered
-  /// in map_controller.dart). [mode] 'browse' bypasses CirrusSearch
+  /// in the integrated map search). [mode] 'browse' bypasses CirrusSearch
   /// entirely via `CommonsBackend.geosearch` (matches GeoMode.browse) — no
   /// relevance ranking, none of SearchState's other filters apply at fetch
   /// time, and it always materializes immediately, same as Author above.

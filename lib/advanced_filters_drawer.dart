@@ -11,6 +11,13 @@ import 'autocomplete_request_coordinator.dart';
 
 part 'advanced_filter_pickers.dart';
 
+enum _FilterGroup {
+  imageClassification,
+  license,
+  metadata,
+  location,
+}
+
 // -----------------------------------------------------------------------------
 // Container: mobile-only Drawer wrapper. Desktop docks FilterPanelContent
 // directly into search_page.dart's layout instead of going through a Drawer
@@ -20,7 +27,12 @@ part 'advanced_filter_pickers.dart';
 // -----------------------------------------------------------------------------
 
 class AdvancedFiltersDrawer extends StatelessWidget {
-  const AdvancedFiltersDrawer({super.key});
+  final VoidCallback? onLocationSelected;
+
+  const AdvancedFiltersDrawer({
+    super.key,
+    this.onLocationSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +44,10 @@ class AdvancedFiltersDrawer extends StatelessWidget {
     return Drawer(
       width: drawerWidth,
       backgroundColor: const Color(0xFF111111),
-      child: const FilterPanelContent(showCloseButton: true),
+      child: FilterPanelContent(
+        showCloseButton: true,
+        onLocationSelected: onLocationSelected,
+      ),
     );
   }
 }
@@ -62,16 +77,13 @@ class AdvancedFiltersDrawer extends StatelessWidget {
 
 class FilterPanelContent extends ConsumerStatefulWidget {
   final bool showCloseButton;
-  // Non-null only in the desktop docked layout (see search_page.dart's
-  // isDesktop branch). Renders a collapse chevron in the header next to
-  // (or instead of) the close button, so the sidebar can be minimized to a
-  // thin rail without a Drawer to pop — a docked panel is never "closed",
-  // only collapsed and re-expandable in place.
-  final VoidCallback? onCollapse;
+  final bool docked;
+  final VoidCallback? onLocationSelected;
   const FilterPanelContent({
     super.key,
     this.showCloseButton = false,
-    this.onCollapse,
+    this.docked = false,
+    this.onLocationSelected,
   });
 
   @override
@@ -79,6 +91,15 @@ class FilterPanelContent extends ConsumerStatefulWidget {
 }
 
 class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
+  static const double _outerExpandedWidth = 200;
+  static const double _innerExpandedWidth = 400;
+  static const double _collapsedRailWidth = 52;
+
+  _FilterGroup _activeGroup = _FilterGroup.imageClassification;
+  _FilterGroup _innerGroup = _FilterGroup.imageClassification;
+  bool _outerBarExpanded = true;
+  bool _innerPanelExpanded = true;
+
   late TextEditingController _minWidthCtrl;
   late TextEditingController _minHeightCtrl;
   late TextEditingController _maxWidthCtrl;
@@ -87,12 +108,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   late TextEditingController _maxFileSizeCtrl;
   bool _fileSizeUnitMB = true;
   int? _colorDepthBits;
-
-  late TextEditingController _latCtrl;
-  late TextEditingController _lngCtrl;
-  late TextEditingController _radiusCtrl;
-  late TextEditingController _nearTitleCtrl;
-  late TextEditingController _nearTitleRadiusCtrl;
 
   late TextEditingController _langCtrl;
   late TextEditingController _modelCtrl;
@@ -125,16 +140,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         TextEditingController(text: _bytesToMBText(state.maxFileSizeBytes));
     _colorDepthBits = state.colorDepthBits;
 
-    _latCtrl =
-        TextEditingController(text: state.nearCoord?.lat.toString() ?? '');
-    _lngCtrl =
-        TextEditingController(text: state.nearCoord?.lng.toString() ?? '');
-    _radiusCtrl = TextEditingController(
-        text: state.nearCoord?.radiusKm.toString() ?? '10');
-    _nearTitleCtrl = TextEditingController(text: state.nearTitle?.title ?? '');
-    _nearTitleRadiusCtrl = TextEditingController(
-        text: state.nearTitle?.radiusKm.toString() ?? '10');
-
     _langCtrl = TextEditingController(text: state.languageCode ?? '');
     _modelCtrl = TextEditingController(text: state.contentModel ?? '');
     _createdFromCtrl =
@@ -164,12 +169,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     if (_colorDepthBits != state.colorDepthBits) {
       setState(() => _colorDepthBits = state.colorDepthBits);
     }
-    sync(_latCtrl, state.nearCoord?.lat.toString() ?? '');
-    sync(_lngCtrl, state.nearCoord?.lng.toString() ?? '');
-    sync(_radiusCtrl, state.nearCoord?.radiusKm.toString() ?? _radiusCtrl.text);
-    sync(_nearTitleCtrl, state.nearTitle?.title ?? '');
-    sync(_nearTitleRadiusCtrl,
-        state.nearTitle?.radiusKm.toString() ?? _nearTitleRadiusCtrl.text);
     sync(_langCtrl, state.languageCode ?? '');
     sync(_modelCtrl, state.contentModel ?? '');
     sync(_createdFromCtrl, state.createdDate?.from ?? '');
@@ -186,11 +185,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     _maxHeightCtrl.dispose();
     _minFileSizeCtrl.dispose();
     _maxFileSizeCtrl.dispose();
-    _latCtrl.dispose();
-    _lngCtrl.dispose();
-    _radiusCtrl.dispose();
-    _nearTitleCtrl.dispose();
-    _nearTitleRadiusCtrl.dispose();
     _langCtrl.dispose();
     _modelCtrl.dispose();
     _createdFromCtrl.dispose();
@@ -202,6 +196,406 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
   void _update(SearchState Function(SearchState current) updater) {
     ref.read(searchControllerProvider.notifier).applyFilterUpdate(updater);
+  }
+
+  double get _preferredPanelWidth {
+    if (_outerBarExpanded && _innerPanelExpanded) {
+      return _outerExpandedWidth + _innerExpandedWidth;
+    }
+    if (_outerBarExpanded) {
+      return _outerExpandedWidth + _collapsedRailWidth;
+    }
+    if (_innerPanelExpanded) {
+      return _collapsedRailWidth + _innerExpandedWidth;
+    }
+    return _collapsedRailWidth;
+  }
+
+  void _toggleOuterBar() {
+    setState(() => _outerBarExpanded = !_outerBarExpanded);
+  }
+
+  void _toggleInnerPanel() {
+    setState(() => _innerPanelExpanded = !_innerPanelExpanded);
+  }
+
+  void _selectGroup(_FilterGroup group) {
+    if (group == _FilterGroup.location) {
+      // Location opens the map instead of owning a feature panel. Keep the
+      // last advanced-filter group mounted in the secondary panel so map and
+      // filters remain usable side by side.
+      setState(() => _activeGroup = group);
+      widget.onLocationSelected?.call();
+      if (widget.showCloseButton && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    setState(() {
+      _activeGroup = group;
+      _innerGroup = group;
+      _innerPanelExpanded = true;
+    });
+  }
+
+  String _groupTitle(_FilterGroup group) {
+    switch (group) {
+      case _FilterGroup.imageClassification:
+        return 'IMAGE CLASSIFICATION';
+      case _FilterGroup.license:
+        return 'LICENSE';
+      case _FilterGroup.metadata:
+        return 'METADATA';
+      case _FilterGroup.location:
+        return 'LOCATION';
+    }
+  }
+
+  IconData _groupIcon(_FilterGroup group) {
+    switch (group) {
+      case _FilterGroup.imageClassification:
+        return Icons.image_search_outlined;
+      case _FilterGroup.license:
+        return Icons.copyright_outlined;
+      case _FilterGroup.metadata:
+        return Icons.data_object_outlined;
+      case _FilterGroup.location:
+        return Icons.location_on_outlined;
+    }
+  }
+
+  List<String> _selectedFeatureLabels(_FilterGroup group, SearchState state) {
+    switch (group) {
+      case _FilterGroup.imageClassification:
+        return [
+          if (state.depictsInclude.isNotEmpty)
+            '${state.depictsInclude.length} subject${state.depictsInclude.length == 1 ? '' : 's'}',
+          if (state.depictsExclude.isNotEmpty)
+            '${state.depictsExclude.length} excluded subject${state.depictsExclude.length == 1 ? '' : 's'}',
+          if (state.categories.isNotEmpty)
+            '${state.categories.length} categor${state.categories.length == 1 ? 'y' : 'ies'}',
+          if (state.excludeCategories.isNotEmpty)
+            '${state.excludeCategories.length} excluded categor${state.excludeCategories.length == 1 ? 'y' : 'ies'}',
+          if (state.statementsInclude.isNotEmpty)
+            '${state.statementsInclude.length} property rule${state.statementsInclude.length == 1 ? '' : 's'}',
+          if (state.statementsExclude.isNotEmpty)
+            '${state.statementsExclude.length} excluded property rule${state.statementsExclude.length == 1 ? '' : 's'}',
+          if (state.templates.isNotEmpty)
+            '${state.templates.length} template${state.templates.length == 1 ? '' : 's'}',
+          if (state.excludeTemplates.isNotEmpty)
+            '${state.excludeTemplates.length} excluded template${state.excludeTemplates.length == 1 ? '' : 's'}',
+          if (state.qualityFilter != QualityFilter.any)
+            qualityFilterLabel(state.qualityFilter),
+        ];
+      case _FilterGroup.license:
+        return [
+          ...state.licensePresets.map(licensePresetLabel),
+          if (state.attributionRequired == true) 'Attribution required',
+          if (state.attributionRequired == false) 'No attribution required',
+        ];
+      case _FilterGroup.metadata:
+        return [
+          if (state.languageCode?.isNotEmpty == true)
+            'Language: ${state.languageCode}',
+          if (state.contentModel?.isNotEmpty == true)
+            'Model: ${state.contentModel}',
+          if (state.createdDate != null) 'Creation dates',
+          if (state.editedDate != null) 'Edit dates',
+          if (state.minWidth != null ||
+              state.maxWidth != null ||
+              state.minHeight != null ||
+              state.maxHeight != null)
+            'Resolution bounds',
+          if (state.minFileSizeBytes != null || state.maxFileSizeBytes != null)
+            'File size bounds',
+          if (state.colorDepthBits != null)
+            '${state.colorDepthBits}-bit color depth',
+        ];
+      case _FilterGroup.location:
+        return [
+          if (state.nearTitle != null) 'Near ${state.nearTitle!.title}',
+          if (state.nearCoord != null)
+            'Near coordinates (${state.nearCoord!.radiusKm} km)',
+        ];
+    }
+  }
+
+  Widget _buildGroupSummary(SearchState state, _FilterGroup group) {
+    final labels = _selectedFeatureLabels(group, state);
+    if (labels.isEmpty) {
+      return const Text(
+        'No filters selected',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: Color(0xFF666666), fontSize: 10.5),
+      );
+    }
+
+    final visible = labels.take(2).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final label in visible)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Color(0xFF8EAFFF), fontSize: 10.5, height: 1.2),
+            ),
+          ),
+        if (labels.length > visible.length)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Text(
+              '+${labels.length - visible.length} more',
+              style: const TextStyle(color: Color(0xFF666666), fontSize: 10),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildOuterBar(SearchState state, {required double width}) {
+    final groups = _FilterGroup.values;
+
+    if (!_outerBarExpanded) {
+      return Container(
+        width: width,
+        decoration: const BoxDecoration(
+          color: Color(0xFF0D0D0D),
+          border: Border(right: BorderSide(color: Color(0xFF242424))),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            IconButton(
+              icon: const Icon(Icons.chevron_right, color: Colors.white54),
+              tooltip: 'Expand filter groups',
+              onPressed: _toggleOuterBar,
+            ),
+            if (widget.showCloseButton)
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white54, size: 18),
+                tooltip: 'Close filters',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            const Divider(color: Color(0xFF222222), height: 1),
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: groups.length,
+                itemBuilder: (context, index) {
+                  final group = groups[index];
+                  final selected = _selectedFeatureLabels(group, state);
+                  return Tooltip(
+                    message: _groupTitle(group),
+                    child: InkWell(
+                      onTap: () => _selectGroup(group),
+                      child: SizedBox(
+                        height: 48,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Icon(
+                              _groupIcon(group),
+                              color: group == _activeGroup
+                                  ? const Color(0xFF7AABFF)
+                                  : const Color(0xFF666666),
+                              size: 19,
+                            ),
+                            if (selected.isNotEmpty)
+                              Positioned(
+                                top: 8,
+                                right: 9,
+                                child: Container(
+                                  width: 7,
+                                  height: 7,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF3D7EFF),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final content = ListView(
+      padding: const EdgeInsets.all(12),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 2, 0, 10),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text('FILTER GROUPS',
+                    style: TextStyle(
+                        color: Color(0xFF777777),
+                        fontSize: 10,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w700)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_left,
+                    color: Colors.white54, size: 18),
+                tooltip: 'Minimize filter groups',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: _toggleOuterBar,
+              ),
+              if (widget.showCloseButton)
+                IconButton(
+                  icon:
+                      const Icon(Icons.close, color: Colors.white54, size: 18),
+                  tooltip: 'Close filters',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+            ],
+          ),
+        ),
+        for (final group in groups)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _selectGroup(group),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: group == _activeGroup
+                      ? const Color(0xFF182032)
+                      : const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: group == _activeGroup
+                          ? const Color(0xFF3D7EFF)
+                          : const Color(0xFF252525)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(_groupIcon(group),
+                            size: 16,
+                            color: group == _activeGroup
+                                ? const Color(0xFF7AABFF)
+                                : const Color(0xFF777777)),
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Text(_groupTitle(group),
+                              style: TextStyle(
+                                  color: group == _activeGroup
+                                      ? Colors.white
+                                      : const Color(0xFFAAAAAA),
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                    _buildGroupSummary(state, group),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    return Container(
+      width: width,
+      decoration: const BoxDecoration(
+        color: Color(0xFF0D0D0D),
+        border: Border(right: BorderSide(color: Color(0xFF242424))),
+      ),
+      child: content,
+    );
+  }
+
+  Widget _buildInnerPanel(Widget content, {required double width}) {
+    return Container(
+      width: width,
+      color: const Color(0xFF111111),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(_groupTitle(_innerGroup),
+                      style: const TextStyle(
+                          color: Color(0xFFB0B0B0),
+                          fontSize: 10,
+                          letterSpacing: 1.3,
+                          fontWeight: FontWeight.w700)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_left,
+                      color: Colors.white54, size: 18),
+                  tooltip: 'Minimize feature panel',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: _toggleInnerPanel,
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Color(0xFF222222), height: 1),
+          Expanded(child: content),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInnerCollapsedRail({required double width}) {
+    return Container(
+      width: width,
+      color: const Color(0xFF111111),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          IconButton(
+            icon: const Icon(Icons.chevron_right,
+                color: Colors.white54, size: 18),
+            tooltip: 'Expand feature panel',
+            onPressed: _toggleInnerPanel,
+          ),
+          Expanded(
+            child: Center(
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: Text(
+                  _groupTitle(_innerGroup),
+                  style: const TextStyle(
+                      color: Color(0xFF555555),
+                      fontSize: 10,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // ---- Resolution / file size / color depth ----
@@ -236,33 +630,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           clearMaxFileSizeBytes: maxFileSize == null,
           colorDepthBits: _colorDepthBits,
           clearColorDepthBits: _colorDepthBits == null,
-        ));
-  }
-
-  // ---- Geolocation ----
-
-  // ignore: unused_element
-  void _applyGeolocation() {
-    final lat = double.tryParse(_latCtrl.text);
-    final lng = double.tryParse(_lngCtrl.text);
-    final rad = double.tryParse(_radiusCtrl.text) ?? 10.0;
-    final nearTitleText = _nearTitleCtrl.text.trim();
-    final nearTitleRad = double.tryParse(_nearTitleRadiusCtrl.text) ?? 10.0;
-
-    NearCoordFilter? coordFilter;
-    NearTitleFilter? titleFilter;
-    if (nearTitleText.isNotEmpty) {
-      titleFilter =
-          NearTitleFilter(title: nearTitleText, radiusKm: nearTitleRad);
-    } else if (lat != null && lng != null) {
-      coordFilter = NearCoordFilter(lat: lat, lng: lng, radiusKm: rad);
-    }
-
-    _update((c) => c.copyWith(
-          nearCoord: coordFilter,
-          clearNearCoord: coordFilter == null,
-          nearTitle: titleFilter,
-          clearNearTitle: titleFilter == null,
         ));
   }
 
@@ -430,45 +797,14 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       searchControllerProvider.select((value) => value.filterState),
     );
 
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
+    final panel = SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final availableWidth = constraints.maxWidth;
+          final featureContent = ListView(
             padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('FILTERS',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w800)),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.onCollapse != null)
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right,
-                            color: Colors.white54),
-                        tooltip: 'Collapse filters',
-                        onPressed: widget.onCollapse,
-                      ),
-                    if (widget.showCloseButton)
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white54),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Color(0xFF222222), height: 1),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(20),
-              children: [
+            children: [
+              if (_innerGroup == _FilterGroup.imageClassification) ...[
                 _sectionDivider('IMAGE CLASSIFICATION'),
                 const SizedBox(height: 20),
                 GestureDetector(
@@ -646,6 +982,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 const SizedBox(height: 24),
                 _sectionHeader('QUALITY ASSESSMENT'),
                 DropdownButtonFormField<QualityFilter>(
+                  isExpanded: true,
                   dropdownColor: const Color(0xFF1E1E1E),
                   decoration: _fieldDecoration(),
                   value: state.qualityFilter,
@@ -662,6 +999,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   },
                 ),
                 const SizedBox(height: 24),
+              ],
+              if (_innerGroup == _FilterGroup.license) ...[
                 _sectionDivider('LICENSE'),
                 const SizedBox(height: 20),
                 _sectionHeader('LICENSE / RIGHTS'),
@@ -686,6 +1025,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 _sectionHeader('ATTRIBUTION'),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<bool?>(
+                  isExpanded: true,
                   dropdownColor: const Color(0xFF1E1E1E),
                   decoration: _fieldDecoration(),
                   value: state.attributionRequired,
@@ -708,6 +1048,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       clearAttributionRequired: val == null)),
                 ),
                 const SizedBox(height: 24),
+              ],
+              if (_innerGroup == _FilterGroup.metadata) ...[
                 _sectionDivider('METADATA AND LOCATION'),
                 const SizedBox(height: 20),
                 _sectionHeader('LANGUAGE & CONTENT'),
@@ -899,6 +1241,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int?>(
+                  isExpanded: true,
                   dropdownColor: const Color(0xFF1E1E1E),
                   decoration: _fieldDecoration(hint: 'Any color depth'),
                   value: _colorDepthBits,
@@ -934,45 +1277,84 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 _groupApplyButton(
                     'Apply Resolution & Size', _applyResolutionAndSize),
                 const SizedBox(height: 24),
-                _sectionHeader('GEOLOCATION (LAT / LNG / RADIUS KM)'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _latCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'Lat'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _lngCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'Lng'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _radiusCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
-                        ],
-                        decoration: _fieldDecoration(hint: 'km'),
-                      ),
-                    ),
-                  ],
-                ),
               ],
-            ),
-          ),
-        ],
+            ],
+          );
+
+          final bothCollapsed = !_outerBarExpanded && !_innerPanelExpanded;
+          double outerWidth;
+          double innerWidth = 0;
+
+          if (widget.docked) {
+            outerWidth = availableWidth
+                .clamp(
+                  0,
+                  _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth,
+                )
+                .toDouble();
+            if (!bothCollapsed) {
+              innerWidth = (availableWidth - outerWidth)
+                  .clamp(
+                    0,
+                    _innerPanelExpanded
+                        ? _innerExpandedWidth
+                        : _collapsedRailWidth,
+                  )
+                  .toDouble();
+            }
+          } else if (_outerBarExpanded && _innerPanelExpanded) {
+            outerWidth = (availableWidth / 3)
+                .clamp(_collapsedRailWidth, _outerExpandedWidth)
+                .toDouble();
+            innerWidth = (availableWidth - outerWidth)
+                .clamp(0, _innerExpandedWidth)
+                .toDouble();
+          } else if (_outerBarExpanded) {
+            outerWidth =
+                availableWidth.clamp(0, _outerExpandedWidth).toDouble();
+            innerWidth = (availableWidth - outerWidth)
+                .clamp(0, _collapsedRailWidth)
+                .toDouble();
+          } else if (_innerPanelExpanded) {
+            outerWidth =
+                availableWidth.clamp(0, _collapsedRailWidth).toDouble();
+            innerWidth = (availableWidth - outerWidth)
+                .clamp(0, _innerExpandedWidth)
+                .toDouble();
+          } else {
+            outerWidth =
+                availableWidth.clamp(0, _collapsedRailWidth).toDouble();
+          }
+
+          final outer = _buildOuterBar(state, width: outerWidth);
+          final Widget? inner = bothCollapsed
+              ? null
+              : _innerPanelExpanded
+                  ? _buildInnerPanel(featureContent, width: innerWidth)
+                  : _buildInnerCollapsedRail(width: innerWidth);
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              outer,
+              if (inner != null) inner,
+            ],
+          );
+        },
       ),
+    );
+
+    if (!widget.docked) return panel;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeInOutCubic,
+      width: _preferredPanelWidth,
+      decoration: const BoxDecoration(
+        color: Color(0xFF111111),
+        border: Border(right: BorderSide(color: Color(0xFF1E1E1E))),
+      ),
+      child: panel,
     );
   }
 

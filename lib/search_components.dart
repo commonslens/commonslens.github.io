@@ -20,6 +20,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class SearchTopBar extends ConsumerStatefulWidget {
   final String initialQuery;
   final ValueChanged<String> onSearch;
+  final bool autofocus;
 
   // Hidden once the filter panel is permanently docked (desktop — see
   // SearchPage.build's isDesktop branch): there's nothing to "open" when
@@ -32,6 +33,7 @@ class SearchTopBar extends ConsumerStatefulWidget {
     super.key,
     required this.initialQuery,
     required this.onSearch,
+    this.autofocus = false,
     this.showFiltersButton = true,
   });
 
@@ -47,6 +49,7 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
   // select, same pattern the drawer's category/depicts pickers use.
   TextEditingController? _fieldController;
   VoidCallback? _listener;
+  bool _autofocusRequested = false;
   final _autocompleteRequests = AutocompleteRequestCoordinator<String>();
 
   @override
@@ -59,6 +62,9 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
   @override
   void didUpdateWidget(SearchTopBar oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!oldWidget.autofocus && widget.autofocus) {
+      _autofocusRequested = false;
+    }
     if (oldWidget.initialQuery != widget.initialQuery &&
         _fieldController != null &&
         _fieldController!.text != widget.initialQuery) {
@@ -106,11 +112,8 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
     });
   }
 
-  /// Compact icon-only variant of the Map/Filters buttons, used once the
-  /// bar drops to mobile width (see build's isMobile). Same visual
-  /// language (outlined, dark) as the labeled buttons, just square and
-  /// without the text — three labeled buttons plus the search field no
-  /// longer fit side by side on a phone-width screen.
+  /// Compact icon-only variant of the Filters button, used once the bar
+  /// drops to mobile width (see build's isMobile).
   Widget _iconOnlyButton({
     required IconData icon,
     required String tooltip,
@@ -137,10 +140,9 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
 
   @override
   Widget build(BuildContext context) {
-    // Below this width: Map/Filters collapse to icon-only, and the Search
-    // button disappears entirely (Enter in the field, or the field's own
-    // submit action, already triggers a search — a third, separate Search
-    // button was redundant crowding on a narrow bar next to Map+Filters).
+    // Below this width the Filters control collapses to icon-only, and the
+    // Search button disappears entirely. Enter/the field submit action
+    // already triggers a search and leaves more room for the query.
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
@@ -182,6 +184,15 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                       controller.addListener(_listener!);
                     }
 
+                    if (widget.autofocus && !_autofocusRequested) {
+                      _autofocusRequested = true;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && widget.autofocus) {
+                          focusNode.requestFocus();
+                        }
+                      });
+                    }
+
                     return TextField(
                       keyboardType: (kIsWeb &&
                               (defaultTargetPlatform == TargetPlatform.iOS ||
@@ -190,6 +201,7 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                           ? TextInputType.text
                           : TextInputType.url,
                       textInputAction: TextInputAction.search,
+                      autofocus: widget.autofocus,
                       autocorrect: false,
                       enableSuggestions: false,
                       spellCheckConfiguration:
@@ -260,36 +272,13 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                 ),
               ),
             ),
-            const SizedBox(width: 10),
-            isMobile
-                ? _iconOnlyButton(
-                    icon: Icons.map_outlined,
-                    tooltip: 'Map',
-                    onPressed: () => context.push('/map'),
-                  )
-                : SizedBox(
-                    height: 38,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF2A2A2A)),
-                          foregroundColor: const Color(0xFFB0B0B0),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14)),
-                      onPressed: () => context.push('/map'),
-                      icon: const Icon(Icons.map_outlined, size: 16),
-                      label: const Text('Map',
-                          style: TextStyle(
-                              fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    ),
-                  ),
             if (widget.showFiltersButton) ...[
               const SizedBox(width: 8),
               isMobile
                   ? _iconOnlyButton(
                       icon: Icons.tune,
                       tooltip: 'Filters',
-                      onPressed: () => Scaffold.of(context).openEndDrawer(),
+                      onPressed: () => Scaffold.of(context).openDrawer(),
                     )
                   : SizedBox(
                       height: 38,
@@ -301,7 +290,7 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                                 borderRadius: BorderRadius.circular(6)),
                             padding:
                                 const EdgeInsets.symmetric(horizontal: 14)),
-                        onPressed: () => Scaffold.of(context).openEndDrawer(),
+                        onPressed: () => Scaffold.of(context).openDrawer(),
                         child: const Text('Filters',
                             style: TextStyle(
                                 fontSize: 12.5, fontWeight: FontWeight.w600)),

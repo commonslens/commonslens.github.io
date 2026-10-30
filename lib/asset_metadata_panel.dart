@@ -355,10 +355,11 @@ class _NearbyMediaButton extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: () {
           context.push(
-            Uri(path: '/map', queryParameters: {
+            Uri(path: '/', queryParameters: {
               'lat': item.resolvedLatitude!.toStringAsFixed(6),
               'lng': item.resolvedLongitude!.toStringAsFixed(6),
-              'radiusKm': '10',
+              'radius': '10',
+              'view': 'map',
             }).toString(),
           );
         },

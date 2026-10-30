@@ -119,4 +119,16 @@ void main() {
     expect(restored.qualityFilter, QualityFilter.any);
     expect(restored.formats, {FileFormat.jpg});
   });
+
+  test('view-only navigation parameters are not search context', () {
+    expect(SearchUrlCodec.hasSearchContext({'view': 'map'}), isFalse);
+    expect(
+      SearchUrlCodec.hasSearchContext({'from': 'map', 'view': 'map'}),
+      isFalse,
+    );
+    expect(
+      SearchUrlCodec.hasSearchContext({'q': 'aurora', 'view': 'map'}),
+      isTrue,
+    );
+  });
 }

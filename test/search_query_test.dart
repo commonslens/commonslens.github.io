@@ -144,6 +144,25 @@ void main() {
     expect(query, contains('neartitle:"7km,Eiffel Tower"'));
   });
 
+  test('supports the expanded Commons license presets', () {
+    final query = service
+        .buildQuery(const SearchState(
+          queryText: 'open media',
+          licensePresets: {
+            LicensePreset.ccBy1,
+            LicensePreset.ccBySa3,
+            LicensePreset.gfdl13,
+            LicensePreset.freeArt13,
+          },
+        ))
+        .srsearch;
+
+    expect(query, contains('haswbstatement:P275=Q30942811'));
+    expect(query, contains('haswbstatement:P275=Q14946043'));
+    expect(query, contains('haswbstatement:P275=Q26921691'));
+    expect(query, contains('haswbstatement:P275=Q124150926'));
+  });
+
   test('set-backed clauses compile in a stable order', () {
     const first = SearchState(
       categories: {'Zulu', 'Alpha'},

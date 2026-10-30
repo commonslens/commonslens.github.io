@@ -15,7 +15,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
-import 'map_controller.dart';
 import 'pipeline_controller.dart';
 import 'backend_providers.dart';
 
@@ -77,17 +76,6 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   bool _isFetchingInjected = false;
   String? _authorName;
 
-  // Set when this viewer was opened from the map page (see
-  // MapPage._openItem / _ResultsSheet's MediaCard extraParams, and
-  // router.dart's 'from' == 'map' branch for the return route). When true,
-  // the gallery is sourced from mapSearchControllerProvider's live session
-  // instead of the main searchControllerProvider — that session already
-  // has real results (browse or filtered mode) sitting in memory from the
-  // map page, so there's nothing to re-fetch and, critically, no reason to
-  // hijack the main page's search session the way hydrating it here used
-  // to.
-  bool _isMapMode = false;
-
   // Pipeline previews already own complete SearchItem objects in the
   // PipelineController's last-run output. Keep that exact in-memory list as
   // the viewer gallery instead of re-fetching a tapped title and losing the
@@ -142,27 +130,6 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         // _getCombinedItems); nothing to hydrate up front, it loads itself
         // on first watch.
         _authorName = author;
-      } else if (from == 'map') {
-        // Map-originated navigation (see MapPage._openItem / _ResultsSheet's
-        // MediaCard extraParams, and router.dart's 'from' == 'map' branch
-        // for the return route). The gallery already lives in
-        // mapSearchControllerProvider's session — populated by whatever the
-        // person was looking at on the map, for both browse and filtered
-        // geo modes — so there's nothing to fetch here. Crucially, this
-        // must NOT fall into the hasSearchContext branch below: a
-        // filtered-mode map result carries filterState params too, and
-        // hydrating those into searchControllerProvider would hijack the
-        // main page's session and re-run the query against the wrong
-        // engine. If the map session is empty (e.g. this URL was opened
-        // directly, or the app reloaded and the in-memory session never
-        // got populated), fall back to a standalone single-item view
-        // instead of showing an empty gallery.
-        if (ref.read(mapSearchControllerProvider).session.items.isEmpty) {
-          _isStandalone = true;
-          _fetchInjectedTarget();
-        } else {
-          _isMapMode = true;
-        }
       } else if (from == 'pipeline') {
         final nodeId = params['pipelineNode']?.trim();
         final pipelineItems = nodeId == null || nodeId.isEmpty
@@ -193,8 +160,8 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         _fetchInjectedTarget();
       }
 
-      // Now that _authorName/_isMapMode are resolved, find the tapped
-      // image's index in the correct source — matching
+      // Now that the gallery source is resolved, find the tapped image's
+      // index in the correct source — matching
       // _getCombinedItems()'s branching — instead of always reading the
       // main search session regardless of mode, which is what caused every
       // author-page (and, previously, map) tap to open on page 0.
@@ -207,21 +174,19 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
       // and fine: _initialIndexResolved below is left false whenever the
       // list we searched was empty, and build()'s
       // _maybeResolveInitialIndex re-runs this same lookup once the
-      // gallery this viewer actually reads from (search/author/map)
+      // gallery this viewer actually reads from (search/author)
       // populates for real, correcting the page if needed. Standalone
       // mode has no gallery to search against (a single injected item is
       // inserted at index 0 by _getCombinedItems), so it's always
       // considered resolved.
       final initialItems = _authorName != null
           ? ref.read(authorPortfolioProvider(_authorName!)).items
-          : _isMapMode
-              ? ref.read(mapSearchControllerProvider).session.items
-              : _isPipelineMode
-                  ? ref
-                          .read(pipelineControllerProvider.notifier)
-                          .materializedItemsFor(_pipelineNodeId!) ??
-                      const <SearchItem>[]
-                  : ref.read(searchControllerProvider).activeSession.items;
+          : _isPipelineMode
+              ? ref
+                      .read(pipelineControllerProvider.notifier)
+                      .materializedItemsFor(_pipelineNodeId!) ??
+                  const <SearchItem>[]
+              : ref.read(searchControllerProvider).activeSession.items;
 
       final targetId = _normalizedTitle(widget.fileId);
       final startIndex = initialItems
@@ -321,8 +286,6 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
       gallery = ref.watch(authorPortfolioProvider(_authorName!)).items;
     } else if (_isStandalone) {
       gallery = const <SearchItem>[];
-    } else if (_isMapMode) {
-      gallery = ref.watch(mapSearchControllerProvider).session.items;
     } else if (_isPipelineMode) {
       // Watch the public pipeline state so this viewer rebuilds if the
       // controller is replaced, while reading the runtime output through
@@ -368,11 +331,6 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         ref
             .read(authorPortfolioProvider(_authorName!).notifier)
             .loadMore(_authorName!);
-      } else if (_isMapMode) {
-        // See GeoBrowseSession/CommonsSearchSession's loadMore docs (via
-        // MapSearchController) — a no-op in most geosearch cases, but the
-        // correct call regardless of geo mode.
-        ref.read(mapSearchControllerProvider.notifier).loadMore();
       } else if (!_isPipelineMode) {
         ref.read(searchControllerProvider.notifier).loadMore();
       }
@@ -424,8 +382,6 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
     final portfolioSession = _authorName != null
         ? ref.watch(authorPortfolioProvider(_authorName!))
         : null;
-    final mapSession =
-        _isMapMode ? ref.watch(mapSearchControllerProvider).session : null;
     final items = _getCombinedItems();
 
     // Initial-load correction — see _maybeResolveInitialIndex's doc. No-op
@@ -437,10 +393,8 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         (portfolioSession != null &&
             portfolioSession.loading &&
             items.isEmpty) ||
-        (mapSession != null && mapSession.loading && items.isEmpty) ||
         (_authorName == null &&
             !_isStandalone &&
-            !_isMapMode &&
             !_isPipelineMode &&
             session.loading &&
             items.isEmpty);

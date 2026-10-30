@@ -86,8 +86,21 @@ enum SortMode {
 
 enum LicensePreset {
   cc0,
+  ccBy1,
+  ccBy2,
+  ccBy25,
+  ccBy3,
   ccBy4,
+  ccBySa1,
+  ccBySa2,
+  ccBySa25,
+  ccBySa3,
   ccBySa4,
+  gfdl11,
+  gfdl12,
+  gfdl13,
+  freeArt12,
+  freeArt13,
   publicDomain,
 }
 
@@ -95,10 +108,36 @@ String licensePresetLabel(LicensePreset preset) {
   switch (preset) {
     case LicensePreset.cc0:
       return 'CC0';
+    case LicensePreset.ccBy1:
+      return 'CC BY 1.0';
+    case LicensePreset.ccBy2:
+      return 'CC BY 2.0';
+    case LicensePreset.ccBy25:
+      return 'CC BY 2.5';
+    case LicensePreset.ccBy3:
+      return 'CC BY 3.0';
     case LicensePreset.ccBy4:
       return 'CC BY 4.0';
+    case LicensePreset.ccBySa1:
+      return 'CC BY-SA 1.0';
+    case LicensePreset.ccBySa2:
+      return 'CC BY-SA 2.0';
+    case LicensePreset.ccBySa25:
+      return 'CC BY-SA 2.5';
+    case LicensePreset.ccBySa3:
+      return 'CC BY-SA 3.0';
     case LicensePreset.ccBySa4:
       return 'CC BY-SA 4.0';
+    case LicensePreset.gfdl11:
+      return 'GFDL 1.1';
+    case LicensePreset.gfdl12:
+      return 'GFDL 1.2';
+    case LicensePreset.gfdl13:
+      return 'GFDL 1.3';
+    case LicensePreset.freeArt12:
+      return 'Free Art 1.2';
+    case LicensePreset.freeArt13:
+      return 'Free Art 1.3';
     case LicensePreset.publicDomain:
       return 'Public domain';
   }

@@ -1060,13 +1060,10 @@ class _MultiChoiceField extends StatelessWidget {
   });
 
   String _display(String value) {
-    const licenses = {
-      'cc0': 'CC0',
-      'ccBy4': 'CC BY 4.0',
-      'ccBySa4': 'CC BY-SA 4.0',
-      'publicDomain': 'Public domain',
-    };
-    return licenses[value] ?? value.toUpperCase();
+    for (final preset in LicensePreset.values) {
+      if (preset.name == value) return licensePresetLabel(preset);
+    }
+    return value.toUpperCase();
   }
 
   @override

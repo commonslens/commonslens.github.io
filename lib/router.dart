@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'search_page.dart';
 import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
-import 'map_page.dart';
 import 'pipeline_page.dart';
 import 'features_page.dart';
 import 'legal_pages.dart';
@@ -49,9 +48,15 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/map',
-      builder: (context, state) => MapPage(
-        queryParameters: Map<String, String>.from(state.uri.queryParameters),
-      ),
+      redirect: (context, state) {
+        final params = Map<String, String>.from(state.uri.queryParameters);
+        final legacyRadius = params.remove('radiusKm');
+        if (legacyRadius != null && !params.containsKey('radius')) {
+          params['radius'] = legacyRadius;
+        }
+        params['view'] = 'map';
+        return Uri(path: '/', queryParameters: params).toString();
+      },
     ),
     GoRoute(
       path: '/pipeline',
@@ -87,15 +92,8 @@ final GoRouter appRouter = GoRouter(
 
         final String returnUrl;
         if (from == 'map') {
-          // Map-originated navigation (see MapPage._openItem and
-          // _ResultsSheet's MediaCard extraParams). Closing always goes
-          // back to '/map' regardless of which geo mode (browse/filtered)
-          // produced this item, or whether filterState params are also
-          // present in the URL — those params are there for AssetViewer's
-          // own gallery sourcing (see 'from' handling there), not for
-          // reconstructing a return route. Without this branch, 'from' was
-          // silently ignored and this fell through to the '/' case below —
-          // which is what sent map taps back to the main search page.
+          // Compatibility for links created by the retired standalone map.
+          // /map now redirects into the integrated map search surface.
           returnUrl = '/map';
         } else if (from == 'pipeline') {
           returnUrl = '/pipeline';

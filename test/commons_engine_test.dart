@@ -120,6 +120,20 @@ void main() {
       expect(backend.searchCalls, 0);
     });
 
+    test('format-only query resets without calling the backend', () async {
+      final backend = _ScriptedBackend();
+      final session = CommonsSearchSession(backend: backend);
+
+      final result = await session.search(const SearchState(
+        formats: {FileFormat.jpg},
+      ));
+
+      expect(result.hasSearched, isFalse);
+      expect(result.items, isEmpty);
+      expect(session.filterState.formats, contains(FileFormat.jpg));
+      expect(backend.searchCalls, 0);
+    });
+
     test('loads, deduplicates, and re-sorts appended pages', () async {
       final alpha = _item('Alpha.jpg');
       final bravo = _item('Bravo.jpg');

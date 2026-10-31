@@ -29,7 +29,6 @@ class SearchMapView extends StatefulWidget {
   final void Function(double lat, double lng, double radiusKm) onSearchLocation;
   final VoidCallback onClearLocation;
   final VoidCallback onLoadMore;
-  final VoidCallback onShowResults;
 
   const SearchMapView({
     super.key,
@@ -38,7 +37,6 @@ class SearchMapView extends StatefulWidget {
     required this.onSearchLocation,
     required this.onClearLocation,
     required this.onLoadMore,
-    required this.onShowResults,
   });
 
   @override
@@ -57,6 +55,7 @@ class _SearchMapViewState extends State<SearchMapView> {
   double _zoom = 2;
   double _rotation = 0;
   bool _mapReady = false;
+  bool _previewExpanded = true;
 
   @override
   void initState() {
@@ -174,7 +173,8 @@ class _SearchMapViewState extends State<SearchMapView> {
 
   void _openItem(SearchItem item) {
     final source = MediaQueueSource.search(widget.filterState, map: true);
-    final queueId = ProviderScope.containerOf(context).read(mediaQueueStoreProvider)
+    final queueId = ProviderScope.containerOf(context)
+        .read(mediaQueueStoreProvider)
         .capture(source, widget.session.items, hasMore: widget.session.hasMore);
     context.push(source.urlFor(item.title, queueId: queueId));
   }
@@ -363,7 +363,8 @@ class _SearchMapViewState extends State<SearchMapView> {
             ),
             Positioned(
               top: 12,
-              right: 12,
+              left: showResultsPreview ? 330 : null,
+              right: showResultsPreview ? null : 12,
               child: _MapControlButton(
                 icon: _style.icon,
                 text: _style == _SearchMapStyle.englishStreet ? 'EN' : null,
@@ -382,11 +383,39 @@ class _SearchMapViewState extends State<SearchMapView> {
                   loading: widget.session.loading || widget.session.loadingMore,
                   hasMore: widget.session.hasMore,
                   onLoadMore: widget.onLoadMore,
-                  onShowResults: widget.onShowResults,
-                  showSwitchToGrid: !showResultsPreview,
                 ),
               ),
             ),
+            if (showResultsPreview)
+              Positioned(
+                left: 12,
+                bottom: 82,
+                child: IgnorePointer(
+                  ignoring: _previewExpanded,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder: (child, animation) => SizeTransition(
+                      sizeFactor: animation,
+                      axis: Axis.horizontal,
+                      axisAlignment: -1,
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                    ),
+                    child: _previewExpanded
+                        ? const SizedBox(
+                            key: ValueKey('expanded-map-preview-pill'),
+                          )
+                        : _CollapsedMapResultsPreview(
+                            key: const ValueKey('collapsed-map-preview-pill'),
+                            session: widget.session,
+                            onExpand: () =>
+                                setState(() => _previewExpanded = true),
+                          ),
+                  ),
+                ),
+              ),
             Positioned(
               right: 12,
               bottom: 28,
@@ -421,13 +450,24 @@ class _SearchMapViewState extends State<SearchMapView> {
       return Row(
         children: [
           Expanded(child: mapCanvas),
-          SizedBox(
-            width: previewWidth,
-            child: MapResultsPreview(
-              session: widget.session,
-              searchState: widget.filterState,
-              onLoadMore: widget.onLoadMore,
-              onShowResults: widget.onShowResults,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeInOutCubic,
+            width: _previewExpanded ? previewWidth : 0,
+            child: ClipRect(
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                opacity: _previewExpanded ? 1 : 0,
+                child: SizedBox(
+                  width: previewWidth,
+                  child: MapResultsPreview(
+                    session: widget.session,
+                    searchState: widget.filterState,
+                    onLoadMore: widget.onLoadMore,
+                    onMinimize: () => setState(() => _previewExpanded = false),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -667,8 +707,6 @@ class _MapStatusPanel extends StatelessWidget {
   final bool loading;
   final bool hasMore;
   final VoidCallback onLoadMore;
-  final VoidCallback onShowResults;
-  final bool showSwitchToGrid;
 
   const _MapStatusPanel({
     required this.mappedCount,
@@ -676,8 +714,6 @@ class _MapStatusPanel extends StatelessWidget {
     required this.loading,
     required this.hasMore,
     required this.onLoadMore,
-    required this.onShowResults,
-    required this.showSwitchToGrid,
   });
 
   @override
@@ -714,21 +750,6 @@ class _MapStatusPanel extends StatelessWidget {
               ),
               child: Text(loading ? 'Loading…' : 'Load more'),
             ),
-          if (showSwitchToGrid)
-            OutlinedButton.icon(
-              onPressed: onShowResults,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF8EAFFF),
-                side: const BorderSide(color: _mapAccent),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              icon: const Icon(Icons.grid_view_rounded, size: 14),
-              label: const Text('Switch to grid',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-            ),
         ],
       ),
     );
@@ -739,14 +760,14 @@ class MapResultsPreview extends StatelessWidget {
   final SearchSession session;
   final SearchState searchState;
   final VoidCallback onLoadMore;
-  final VoidCallback onShowResults;
+  final VoidCallback onMinimize;
 
   const MapResultsPreview({
     super.key,
     required this.session,
     required this.searchState,
     required this.onLoadMore,
-    required this.onShowResults,
+    required this.onMinimize,
   });
 
   @override
@@ -773,8 +794,9 @@ class MapResultsPreview extends StatelessWidget {
                     ),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: onShowResults,
+                IconButton(
+                  onPressed: onMinimize,
+                  tooltip: 'Minimize results preview',
                   style: TextButton.styleFrom(
                     foregroundColor: const Color(0xFF8EAFFF),
                     minimumSize: Size.zero,
@@ -782,11 +804,8 @@ class MapResultsPreview extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  icon: const Icon(Icons.grid_view_rounded, size: 14),
-                  label: const Text(
-                    'Switch to grid',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
-                  ),
+                  icon: const Icon(Icons.keyboard_double_arrow_right_rounded,
+                      size: 18),
                 ),
               ],
             ),
@@ -810,7 +829,8 @@ class MapResultsPreview extends StatelessWidget {
                 : MediaResultsGrid(
                     items: session.items,
                     loadingMore: session.loadingMore,
-                    queueSource: MediaQueueSource.search(searchState, map: true),
+                    queueSource:
+                        MediaQueueSource.search(searchState, map: true),
                     queueHasMore: session.hasMore,
                     onNearEnd: onLoadMore,
                     padding: const EdgeInsets.fromLTRB(10, 10, 10, 18),
@@ -824,6 +844,56 @@ class MapResultsPreview extends StatelessWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CollapsedMapResultsPreview extends StatelessWidget {
+  final SearchSession session;
+  final VoidCallback onExpand;
+
+  const _CollapsedMapResultsPreview({
+    super.key,
+    required this.session,
+    required this.onExpand,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onExpand,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: _mapPanel.withValues(alpha: 0.96),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _mapBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.photo_library_outlined,
+                  size: 15, color: Color(0xFF8EAFFF)),
+              const SizedBox(width: 7),
+              Text(
+                '${session.items.length} RESULTS${session.hasMore ? '+' : ''}',
+                style: const TextStyle(
+                  color: Color(0xFFBDBDBD),
+                  fontSize: 10,
+                  letterSpacing: 0.8,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 5),
+              const Icon(Icons.keyboard_double_arrow_left_rounded,
+                  size: 16, color: Color(0xFF8EAFFF)),
+            ],
+          ),
+        ),
       ),
     );
   }

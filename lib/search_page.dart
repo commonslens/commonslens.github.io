@@ -553,7 +553,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 onClearLocation: _clearLocation,
                 onLoadMore: () =>
                     ref.read(searchControllerProvider.notifier).loadMore(),
-                onShowResults: () => _setMapVisible(false),
               )
             : const SizedBox.shrink(),
       ],
@@ -917,11 +916,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   /// Single combined header row: the FileType-filters expand/collapse
-  /// toggle on the left, plus (once a search has actually run) the results
-  /// count and sort menu on the right — replacing what used to be two
-  /// separate stacked rows. The toggle only wraps its own text+icon in an
-  /// InkWell rather than the full row, so tapping the sort menu on the
-  /// right doesn't also fire the expand/collapse toggle underneath it.
+  /// FileType-filter toggle on the left, plus the results count, view toggle,
+  /// and sort menu on the right — keeping navigation with the result context
+  /// instead of mixing it into the filter controls.
   Widget _buildHeaderBar(SearchSession session, SearchState filterState) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -966,6 +963,26 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                     letterSpacing: 2,
                     fontWeight: FontWeight.w600)),
             const SizedBox(width: 14),
+          ],
+          TextButton.icon(
+            onPressed: () => _setMapVisible(!_showMap),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF8EAFFF),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: Icon(
+              _showMap ? Icons.grid_view_rounded : Icons.map_outlined,
+              size: 15,
+            ),
+            label: Text(
+              _showMap ? 'Grid' : 'Map',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          if (session.hasSearched) ...[
+            const SizedBox(width: 6),
             _buildSortMenu(filterState.sortMode),
           ],
         ],

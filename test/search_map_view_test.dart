@@ -21,7 +21,7 @@ const _mappedItem = SearchItem(
 );
 
 Widget _host({
-  required VoidCallback onShowResults,
+  required VoidCallback onMinimize,
 }) {
   return ProviderScope(
     child: MaterialApp(
@@ -38,7 +38,7 @@ Widget _host({
               ),
               searchState: const SearchState(),
               onLoadMore: () {},
-              onShowResults: onShowResults,
+              onMinimize: onMinimize,
             ),
           ),
         ),
@@ -50,21 +50,22 @@ Widget _host({
 void main() {
   testWidgets('loaded map results open in a right-hand preview',
       (tester) async {
-    var switchedToGrid = false;
+    var minimized = false;
     await tester.pumpWidget(
       _host(
-        onShowResults: () => switchedToGrid = true,
+        onMinimize: () => minimized = true,
       ),
     );
     await tester.pump();
 
     expect(find.byType(MediaCard), findsOneWidget);
     expect(find.text('1 RESULT'), findsOneWidget);
-    expect(find.text('Switch to grid'), findsOneWidget);
+    expect(find.byTooltip('Minimize results preview'), findsOneWidget);
 
-    await tester.tap(find.text('Switch to grid'));
+    await tester.tap(find.byTooltip('Minimize results preview'));
     await tester.pump();
-    expect(switchedToGrid, isTrue);
+    expect(minimized, isTrue);
+    expect(find.text('Switch to grid'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

@@ -95,7 +95,14 @@ class CommonsSearchSession {
     _filterState = state;
     _lastBuiltQuery = built;
 
-    if (built.srsearch.trim().isEmpty) {
+    // A filetype by itself is not a meaningful user search. CirrusSearch
+    // treats that query as an open-ended browse and returns the newest files
+    // of that type, which is surprising when a user has only tapped a format
+    // chip. Keep the selected format in filterState so it is ready for the
+    // next real query, but wait for text before hitting the backend.
+    final formatWithoutText =
+        state.queryText.trim().isEmpty && state.formats.isNotEmpty;
+    if (built.srsearch.trim().isEmpty || formatWithoutText) {
       _activeSession = const SearchSession();
       return _activeSession;
     }

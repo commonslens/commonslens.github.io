@@ -112,16 +112,23 @@ mixin _PipelineCollectionOperations {
       case PipelineNodeType.filterDateRange:
         final from = _cfgString(c, 'from');
         final to = _cfgString(c, 'to');
-        final field = _cfgString(c, 'field', 'created'); // 'created' | 'edited'
+        final field = _cfgString(c, 'field', 'created');
         final filter = (from.isEmpty && to.isEmpty)
             ? null
             : DateFilter(
                 from: from.isEmpty ? null : from, to: to.isEmpty ? null : to);
-        return field == 'edited'
-            ? state.copyWith(
-                editedDate: filter, clearEditedDate: filter == null)
-            : state.copyWith(
+        switch (field) {
+          case 'edited':
+            return state.copyWith(
+                editedDate: filter, clearEditedDate: filter == null);
+          case 'original': // Legacy pipeline value.
+          case 'originalDate':
+            return state.copyWith(
+                originalDate: filter, clearOriginalDate: filter == null);
+          default:
+            return state.copyWith(
                 createdDate: filter, clearCreatedDate: filter == null);
+        }
 
       case PipelineNodeType.filterLanguage:
         final lang = _cfgString(c, 'language');
@@ -389,6 +396,8 @@ mixin _PipelineCollectionOperations {
       createdDate:
           _mergeDateFilter(a.createdDate, b.createdDate, 'creation-date'),
       editedDate: _mergeDateFilter(a.editedDate, b.editedDate, 'edit-date'),
+      originalDate:
+          _mergeDateFilter(a.originalDate, b.originalDate, 'original-date'),
       sortMode: _mergeDefaulted(
           a.sortMode, b.sortMode, SortMode.relevance, 'sort mode'),
       licensePresets:

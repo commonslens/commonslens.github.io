@@ -703,7 +703,7 @@ class _GlobalUsageSection extends StatelessWidget {
   }
 }
 
-class _ReuseSection extends StatefulWidget {
+class _ReuseSection extends ConsumerStatefulWidget {
   final SearchItem item;
   final VoidCallback onLaunchCommons;
 
@@ -713,10 +713,10 @@ class _ReuseSection extends StatefulWidget {
   });
 
   @override
-  State<_ReuseSection> createState() => _ReuseSectionState();
+  ConsumerState<_ReuseSection> createState() => _ReuseSectionState();
 }
 
-class _ReuseSectionState extends State<_ReuseSection> {
+class _ReuseSectionState extends ConsumerState<_ReuseSection> {
   static const _reuseGuidanceUrl =
       'https://commons.wikimedia.org/wiki/Commons:Reusing_content_outside_Wikimedia';
 
@@ -783,6 +783,22 @@ class _ReuseSectionState extends State<_ReuseSection> {
   @override
   Widget build(BuildContext context) {
     final guide = _guide;
+    final structuredData = ref.watch(structuredDataProvider(widget.item.title));
+    final structuredStatements = structuredData.asData?.value?.statements ??
+        const <StructuredDataStatement>[];
+    final licensesByKey = <String, String>{};
+
+    void addLicense(String value) {
+      final license = value.trim();
+      if (license.isEmpty) return;
+      licensesByKey.putIfAbsent(license.toLowerCase(), () => license);
+    }
+
+    addLicense(guide.licenseName);
+    for (final statement in structuredStatements) {
+      if (statement.propertyId == 'P275') addLicense(statement.valueDisplay);
+    }
+    final reportedLicenses = licensesByKey.values.toList()..sort();
     final attributionStatus = guide.attributionRequired;
     final snippet = guide.snippetFor(_format);
     final statusLabel = attributionStatus == true
@@ -865,6 +881,73 @@ class _ReuseSectionState extends State<_ReuseSection> {
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              const Text(
+                'LICENSES REPORTED BY COMMONS',
+                style: TextStyle(
+                  color: Color(0xFF777777),
+                  fontSize: 9.5,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 7),
+              if (structuredData.isLoading && reportedLicenses.isEmpty)
+                const Text(
+                  'Loading all structured license claims…',
+                  style: TextStyle(color: Color(0xFFAAAAAA), fontSize: 12),
+                )
+              else if (reportedLicenses.isEmpty)
+                const Text(
+                  'No machine-readable license claims were supplied. Check the source file page before reuse.',
+                  style: TextStyle(
+                    color: Color(0xFFFFD994),
+                    fontSize: 12,
+                    height: 1.45,
+                  ),
+                )
+              else ...[
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: reportedLicenses
+                      .map(
+                        (license) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 9,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF3D7EFF).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(99),
+                            border: Border.all(
+                              color: const Color(0xFF3D7EFF)
+                                  .withValues(alpha: 0.45),
+                            ),
+                          ),
+                          child: Text(
+                            license,
+                            style: const TextStyle(
+                              color: Color(0xFFBFD4FF),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 7),
+                const Text(
+                  'Includes the primary label and every structured copyright-license claim. The source page remains authoritative for template-only terms.',
+                  style: TextStyle(
+                    color: Color(0xFF969696),
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ],
               if (!guide.hasCompleteReuseMetadata) ...[
                 const SizedBox(height: 12),
                 const Text(

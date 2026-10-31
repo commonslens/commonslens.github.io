@@ -531,6 +531,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
     required bool includeThumbWidth,
+    int originalDateScanPages = 0,
   }) async {
     try {
       final built = buildQuery(state, overrideFormat: overrideFormat);
@@ -617,6 +618,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             continueParams: continueParams,
             overrideFormat: overrideFormat,
             includeThumbWidth: false,
+            originalDateScanPages: originalDateScanPages,
           );
         }
 
@@ -679,6 +681,36 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             .where(
                 (item) => _matchesAttribution(item, state.attributionRequired!))
             .toList();
+      }
+
+      // Commons indexes file-page creation and edit timestamps, but not the
+      // date the pictured media was originally made. That value arrives as
+      // DateTimeOriginal metadata with each imageinfo record, so this filter
+      // necessarily runs after the page has been fetched. A missing or
+      // unparseable original date is not a match: showing it would make the
+      // selected range misleading.
+      if (state.originalDate != null && !state.originalDate!.isEmpty) {
+        filteredItems = filteredItems
+            .where((item) => _matchesOriginalDate(item, state.originalDate!))
+            .toList();
+
+        // A metadata-date range cannot be sent to CirrusSearch. Do not make
+        // a perfectly valid historical query look like "no results" merely
+        // because the first relevance page had no dated matches. Scan up to
+        // five underlying pages (250 candidates) to find the first visible
+        // page, while keeping a hard cap so a sparse/undated corpus cannot
+        // turn one user action into unbounded API traffic.
+        if (filteredItems.isEmpty &&
+            nextContinue != null &&
+            originalDateScanPages < 4) {
+          return _fetchSingleAttempt(
+            state,
+            continueParams: nextContinue,
+            overrideFormat: overrideFormat,
+            includeThumbWidth: includeThumbWidth,
+            originalDateScanPages: originalDateScanPages + 1,
+          );
+        }
       }
 
       return SearchResponse(
@@ -746,6 +778,34 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     if (raw.isEmpty) return false;
     final isRequired = raw == 'true' || raw == 'yes' || raw == '1';
     return isRequired == required;
+  }
+
+  /// Normalizes the useful precision carried by Commons' heterogeneous date
+  /// metadata to an ISO calendar day. EXIF commonly uses `YYYY:MM:DD`, while
+  /// description templates may expose just a year or an ISO date.
+  String? _originalDateDay(String raw) {
+    final match =
+        RegExp(r'(\d{4})(?:[-:](\d{1,2})(?:[-:](\d{1,2}))?)?').firstMatch(raw);
+    if (match == null) return null;
+
+    final year = int.tryParse(match.group(1)!);
+    final month = int.tryParse(match.group(2) ?? '') ?? 1;
+    final day = int.tryParse(match.group(3) ?? '') ?? 1;
+    if (year == null || month < 1 || month > 12 || day < 1 || day > 31) {
+      return null;
+    }
+    return '${year.toString().padLeft(4, '0')}-'
+        '${month.toString().padLeft(2, '0')}-'
+        '${day.toString().padLeft(2, '0')}';
+  }
+
+  bool _matchesOriginalDate(SearchItem item, DateFilter range) {
+    final day = _originalDateDay(item.dateTimeOriginal.trim());
+    if (day == null) return false;
+    final from = range.from?.trim() ?? '';
+    final to = range.to?.trim() ?? '';
+    return (from.isEmpty || day.compareTo(from) >= 0) &&
+        (to.isEmpty || day.compareTo(to) < 0);
   }
 
   bool _matchesMacroFormat(SearchItem item, Set<FileFormat> formats) {

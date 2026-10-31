@@ -156,4 +156,30 @@ void main() {
     expect(find.text('Valued images'), findsOneWidget);
     expect(find.text('Featured pictures'), findsOneWidget);
   });
+
+  testWidgets('license group presents multi-select reuse guidance',
+      (tester) async {
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('LICENSE'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('LICENSE / RIGHTS'), findsOneWidget);
+    expect(
+      find.text(
+        'Select one or more. Results match any selected license. A file may have more than one license. Open the file in the asset viewer to see all attribution info.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('CC0'), findsOneWidget);
+    expect(
+      find.text('Copy, adapt and use commercially; no credit required by CC0.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('CC0'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
 }

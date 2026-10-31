@@ -839,6 +839,7 @@ class _ConfigFieldWidget extends StatelessWidget {
       'oldestCreated': 'Oldest created',
       'created': 'Date created',
       'edited': 'Date edited',
+      'originalDate': 'Originally made / photographed',
       'all': 'All available',
       'custom': 'Custom maximum',
       'essential': 'Essential',

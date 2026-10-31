@@ -18,6 +18,7 @@ void main() {
       contentModel: 'wikitext',
       createdDate: DateFilter(from: '1900-01-01', to: '1950-01-01'),
       editedDate: DateFilter(from: '2020-01-01', to: '2025-01-01'),
+      originalDate: DateFilter(from: '1960-01-01', to: '1971-01-01'),
       sortMode: SortMode.oldestCreated,
       licensePresets: {LicensePreset.cc0, LicensePreset.ccBy4},
       qualityFilter: QualityFilter.featuredPicture,

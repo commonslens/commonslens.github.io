@@ -408,6 +408,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       next = current.copyWith(clearCreatedDate: true);
     } else if (chip.id == 'editedFrom' || chip.id == 'editedTo') {
       next = current.copyWith(clearEditedDate: true);
+    } else if (chip.id == 'originalFrom' || chip.id == 'originalTo') {
+      next = current.copyWith(clearOriginalDate: true);
     } else if (chip.id.startsWith('depicts:')) {
       final qid = chip.id.substring('depicts:'.length);
       next = current.copyWith(
@@ -897,12 +899,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       controller: _scrollController,
       items: session.items,
       loadingMore: session.loadingMore,
-      queueSource: ref.read(searchControllerProvider).externalQueueNodeId == null
-          ? MediaQueueSource.search(filterState)
-          : MediaQueueSource.pipeline(
-              ref.read(searchControllerProvider).externalQueueNodeId!,
-              returnUrl: '/',
-            ),
+      queueSource:
+          ref.read(searchControllerProvider).externalQueueNodeId == null
+              ? MediaQueueSource.search(filterState)
+              : MediaQueueSource.pipeline(
+                  ref.read(searchControllerProvider).externalQueueNodeId!,
+                  returnUrl: '/',
+                ),
       queueHasMore: session.hasMore,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 280,

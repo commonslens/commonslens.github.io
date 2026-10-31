@@ -172,6 +172,10 @@ class SearchUrlCodec {
     if (editedFrom.isNotEmpty) params['editedFrom'] = editedFrom;
     final editedTo = state.editedDate?.to?.trim() ?? '';
     if (editedTo.isNotEmpty) params['editedTo'] = editedTo;
+    final originalFrom = state.originalDate?.from?.trim() ?? '';
+    if (originalFrom.isNotEmpty) params['originalFrom'] = originalFrom;
+    final originalTo = state.originalDate?.to?.trim() ?? '';
+    if (originalTo.isNotEmpty) params['originalTo'] = originalTo;
 
     if (state.sortMode != SortMode.relevance) {
       params['sort'] = state.sortMode.name;
@@ -284,6 +288,11 @@ class SearchUrlCodec {
     final editedDate = editedFrom == null && editedTo == null
         ? null
         : DateFilter(from: editedFrom, to: editedTo);
+    final originalFrom = params['originalFrom'];
+    final originalTo = params['originalTo'];
+    final originalDate = originalFrom == null && originalTo == null
+        ? null
+        : DateFilter(from: originalFrom, to: originalTo);
 
     final licenses = <LicensePreset>{};
     final licensesParam = params['licenses'];
@@ -368,6 +377,7 @@ class SearchUrlCodec {
       contentModel: params['model'],
       createdDate: createdDate,
       editedDate: editedDate,
+      originalDate: originalDate,
       sortMode: enumValue(SortMode.values, params['sort'], SortMode.relevance),
       licensePresets: licenses,
       qualityFilters: parsedQuality ?? base.selectedQualityFilters,

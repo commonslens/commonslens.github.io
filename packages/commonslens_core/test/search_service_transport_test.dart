@@ -24,6 +24,60 @@ class _FixtureTransport implements WikimediaTransport {
 }
 
 void main() {
+  test('filters original media dates from Commons metadata client-side',
+      () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['generator'], 'search');
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "1": {
+                "title": "File:Elizabeth 1965.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/elizabeth-1965.jpg",
+                  "mime": "image/jpeg",
+                  "extmetadata": {
+                    "DateTimeOriginal": {"value": "1965:05:04 12:00:00"}
+                  }
+                }]
+              },
+              "2": {
+                "title": "File:Elizabeth 1972.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/elizabeth-1972.jpg",
+                  "mime": "image/jpeg",
+                  "extmetadata": {
+                    "DateTimeOriginal": {"value": "1972-01-01"}
+                  }
+                }]
+              },
+              "3": {
+                "title": "File:Undated.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/undated.jpg",
+                  "mime": "image/jpeg",
+                  "extmetadata": {}
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+    final service = SearchService(transport: transport);
+
+    final result = await service.fetchPage(
+        const SearchState(
+          queryText: 'queen elizabeth',
+          originalDate: DateFilter(from: '1960-01-01', to: '1971-01-01'),
+        ),
+        continueParams: null);
+
+    expect(result, isNotNull);
+    expect(result!.items.map((item) => item.title), ['Elizabeth 1965.jpg']);
+  });
+
   test('headless backend fetches and maps an item through injected transport',
       () async {
     final transport = _FixtureTransport((uri) async {

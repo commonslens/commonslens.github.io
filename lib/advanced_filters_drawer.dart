@@ -15,8 +15,41 @@ enum _FilterGroup {
   imageClassification,
   quality,
   license,
+  dates,
   metadata,
   location,
+}
+
+/// Plain-language reuse reminders for the license picker. These are purposefully
+/// short navigation aids, not substitutes for the license text or any other
+/// rights (privacy, personality, trademark, and so on) that can apply to a
+/// particular Commons file.
+String _licenseReuseSummary(LicensePreset preset) {
+  switch (preset) {
+    case LicensePreset.cc0:
+      return 'Copy, adapt and use commercially; no credit required by CC0.';
+    case LicensePreset.ccBy1:
+    case LicensePreset.ccBy2:
+    case LicensePreset.ccBy25:
+    case LicensePreset.ccBy3:
+    case LicensePreset.ccBy4:
+      return 'Copy, adapt and use commercially; give credit and note changes.';
+    case LicensePreset.ccBySa1:
+    case LicensePreset.ccBySa2:
+    case LicensePreset.ccBySa25:
+    case LicensePreset.ccBySa3:
+    case LicensePreset.ccBySa4:
+      return 'Copy and adapt commercially; credit it and share adaptations alike.';
+    case LicensePreset.gfdl11:
+    case LicensePreset.gfdl12:
+    case LicensePreset.gfdl13:
+      return 'Copy and modify, including commercially; preserve GFDL terms and notices.';
+    case LicensePreset.freeArt12:
+    case LicensePreset.freeArt13:
+      return 'Copy, share and adapt, including commercially; pass on the same freedoms.';
+    case LicensePreset.publicDomain:
+      return 'Generally reusable without copyright permission; check any file-specific limits.';
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -116,6 +149,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   late TextEditingController _createdToCtrl;
   late TextEditingController _editedFromCtrl;
   late TextEditingController _editedToCtrl;
+  late TextEditingController _originalFromCtrl;
+  late TextEditingController _originalToCtrl;
 
   @override
   void initState() {
@@ -148,6 +183,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     _createdToCtrl = TextEditingController(text: state.createdDate?.to ?? '');
     _editedFromCtrl = TextEditingController(text: state.editedDate?.from ?? '');
     _editedToCtrl = TextEditingController(text: state.editedDate?.to ?? '');
+    _originalFromCtrl =
+        TextEditingController(text: state.originalDate?.from ?? '');
+    _originalToCtrl = TextEditingController(text: state.originalDate?.to ?? '');
   }
 
   /// Re-seeds every range-filter controller from a freshly-changed
@@ -176,6 +214,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     sync(_createdToCtrl, state.createdDate?.to ?? '');
     sync(_editedFromCtrl, state.editedDate?.from ?? '');
     sync(_editedToCtrl, state.editedDate?.to ?? '');
+    sync(_originalFromCtrl, state.originalDate?.from ?? '');
+    sync(_originalToCtrl, state.originalDate?.to ?? '');
   }
 
   @override
@@ -192,6 +232,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     _createdToCtrl.dispose();
     _editedFromCtrl.dispose();
     _editedToCtrl.dispose();
+    _originalFromCtrl.dispose();
+    _originalToCtrl.dispose();
     super.dispose();
   }
 
@@ -248,6 +290,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         return 'QUALITY';
       case _FilterGroup.license:
         return 'LICENSE';
+      case _FilterGroup.dates:
+        return 'DATES';
       case _FilterGroup.metadata:
         return 'METADATA';
       case _FilterGroup.location:
@@ -263,6 +307,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         return Icons.verified_outlined;
       case _FilterGroup.license:
         return Icons.copyright_outlined;
+      case _FilterGroup.dates:
+        return Icons.date_range_outlined;
       case _FilterGroup.metadata:
         return Icons.data_object_outlined;
       case _FilterGroup.location:
@@ -306,14 +352,18 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           if (state.attributionRequired == true) 'Attribution required',
           if (state.attributionRequired == false) 'No attribution required',
         ];
+      case _FilterGroup.dates:
+        return [
+          if (state.createdDate != null) 'Submitted to Commons',
+          if (state.editedDate != null) 'Last edited',
+          if (state.originalDate != null) 'Originally made / shot',
+        ];
       case _FilterGroup.metadata:
         return [
           if (state.languageCode?.isNotEmpty == true)
             'Language: ${state.languageCode}',
           if (state.contentModel?.isNotEmpty == true)
             'Model: ${state.contentModel}',
-          if (state.createdDate != null) 'Creation dates',
-          if (state.editedDate != null) 'Edit dates',
           if (state.minWidth != null ||
               state.maxWidth != null ||
               state.minHeight != null ||
@@ -759,11 +809,16 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     final cTo = _createdToCtrl.text.trim();
     final eFrom = _editedFromCtrl.text.trim();
     final eTo = _editedToCtrl.text.trim();
+    final oFrom = _originalFromCtrl.text.trim();
+    final oTo = _originalToCtrl.text.trim();
     final created = (cFrom.isNotEmpty || cTo.isNotEmpty)
         ? DateFilter(from: cFrom, to: cTo)
         : null;
     final edited = (eFrom.isNotEmpty || eTo.isNotEmpty)
         ? DateFilter(from: eFrom, to: eTo)
+        : null;
+    final original = (oFrom.isNotEmpty || oTo.isNotEmpty)
+        ? DateFilter(from: oFrom, to: oTo)
         : null;
 
     _update((c) => c.copyWith(
@@ -771,6 +826,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           clearCreatedDate: created == null,
           editedDate: edited,
           clearEditedDate: edited == null,
+          originalDate: original,
+          clearOriginalDate: original == null,
         ));
   }
 
@@ -916,6 +973,72 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     });
   }
 
+  Widget _licenseListRow(LicensePreset preset, bool selected) {
+    final label = licensePresetLabel(preset);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label. ${_licenseReuseSummary(preset)}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => _toggleLicense(preset),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 140),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color:
+                  selected ? const Color(0xFF182B51) : const Color(0xFF181818),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF3D7EFF)
+                    : const Color(0xFF292929),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  color: selected
+                      ? const Color(0xFF7AABFF)
+                      : const Color(0xFF696969),
+                  size: 19,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: selected ? Colors.white : Colors.white70,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _licenseReuseSummary(preset),
+                        style: const TextStyle(
+                          color: Color(0xFF929292),
+                          fontSize: 10.5,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ---- Statements (instant, two-step property -> value) ----
 
   void _addStatement(WikidataStatement stmt, bool exclude) {
@@ -941,6 +1064,31 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           statementsExclude:
               c.statementsExclude.where((v) => v != stmt).toSet()));
 
+  Widget _dateRangeFields(
+      TextEditingController from, TextEditingController to) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            keyboardType: _urlKeyboardType(),
+            controller: from,
+            style: const TextStyle(color: Colors.white),
+            decoration: _fieldDecoration(hint: 'From'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: TextField(
+            keyboardType: _urlKeyboardType(),
+            controller: to,
+            style: const TextStyle(color: Colors.white),
+            decoration: _fieldDecoration(hint: 'Before'),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Keeps the range-filter controllers honest against external changes
@@ -963,6 +1111,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final availableWidth = constraints.maxWidth;
+          // Keep the picker prominent without pushing the attribution
+          // controls completely out of view.
+          final licenseListHeight = constraints.maxHeight * 0.6;
           final featureContent = ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -1209,22 +1360,34 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 _sectionDivider('LICENSE'),
                 const SizedBox(height: 20),
                 _sectionHeader('LICENSE / RIGHTS'),
-                Text(
-                  'Select one or more.',
-                  style: const TextStyle(
+                const Text(
+                  'Select one or more. Results match any selected license. A file may have more than one license. Open the file in the asset viewer to see all attribution info.',
+                  style: TextStyle(
                       color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: LicensePreset.values
-                      .map((preset) => _licenseToggleChip(
-                            label: licensePresetLabel(preset),
-                            selected: state.licensePresets.contains(preset),
-                            onTap: () => _toggleLicense(preset),
-                          ))
-                      .toList(),
+                SizedBox(
+                  height: licenseListHeight,
+                  child: Scrollbar(
+                    child: ListView.separated(
+                      primary: false,
+                      itemCount: LicensePreset.values.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final preset = LicensePreset.values[index];
+                        return _licenseListRow(
+                          preset,
+                          state.licensePresets.contains(preset),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Quick reuse guidance only. Open the file page and license text before publishing.',
+                  style: TextStyle(
+                      color: Color(0xFF666666), fontSize: 10, height: 1.35),
                 ),
                 const SizedBox(height: 24),
                 _sectionHeader('ATTRIBUTION'),
@@ -1252,6 +1415,42 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       attributionRequired: val,
                       clearAttributionRequired: val == null)),
                 ),
+                const SizedBox(height: 24),
+              ],
+              if (_innerGroup == _FilterGroup.dates) ...[
+                _sectionDivider('DATES'),
+                const SizedBox(height: 20),
+                const Text(
+                  'All dates must be written as YYYY-MM-DD.',
+                  style: TextStyle(
+                      color: Color(0xFF9A9A9A), fontSize: 12, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                _sectionHeader('SUBMITTED TO WIKIMEDIA COMMONS'),
+                const Text(
+                  'When the file page was first created on Commons.',
+                  style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+                ),
+                const SizedBox(height: 8),
+                _dateRangeFields(_createdFromCtrl, _createdToCtrl),
+                const SizedBox(height: 20),
+                _sectionHeader('LAST IMAGE-PAGE EDIT'),
+                const Text(
+                  'When the Commons file page was most recently edited.',
+                  style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+                ),
+                const SizedBox(height: 8),
+                _dateRangeFields(_editedFromCtrl, _editedToCtrl),
+                const SizedBox(height: 20),
+                _sectionHeader('ORIGINALLY MADE / PHOTOGRAPHED'),
+                const Text(
+                  'When the content was originally made.',
+                  style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+                ),
+                const SizedBox(height: 8),
+                _dateRangeFields(_originalFromCtrl, _originalToCtrl),
+                const SizedBox(height: 12),
+                _groupApplyButton('Apply Date Filters', _applyDates),
                 const SizedBox(height: 24),
               ],
               if (_innerGroup == _FilterGroup.metadata) ...[
@@ -1284,58 +1483,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                _sectionHeader('DATES (YYYY-MM-DD)'),
-                Text('CREATED', style: _groupLabelStyle()),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _createdFromCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'From'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _createdToCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'To'),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 12),
-                Text('EDITED', style: _groupLabelStyle()),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _editedFromCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'From'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        keyboardType: _urlKeyboardType(),
-                        controller: _editedToCtrl,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'To'),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _groupApplyButton('Apply Dates', _applyDates),
-                const SizedBox(height: 24),
                 _sectionHeader('RESOLUTION BOUNDS'),
                 Row(
                   children: [

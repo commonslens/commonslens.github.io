@@ -644,7 +644,7 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
             key: 'field',
             label: 'Field',
             kind: ConfigFieldKind.dropdown,
-            options: ['created', 'edited']),
+            options: ['created', 'edited', 'originalDate']),
         cf(key: 'from', label: 'From date', kind: ConfigFieldKind.date),
         cf(key: 'to', label: 'To date', kind: ConfigFieldKind.date),
       ];

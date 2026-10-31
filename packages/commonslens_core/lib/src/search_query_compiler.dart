@@ -181,12 +181,14 @@ class SearchQueryCompiler {
       if (created.from != null && created.from!.trim().isNotEmpty) {
         final from = created.from!.trim();
         parts.add('creationdate:>=$from');
-        chips.add(QueryChipData(id: 'createdFrom', label: 'Created ≥ $from'));
+        chips.add(QueryChipData(
+            id: 'createdFrom', label: 'Submitted to Commons ≥ $from'));
       }
       if (created.to != null && created.to!.trim().isNotEmpty) {
         final to = created.to!.trim();
         parts.add('creationdate:<$to');
-        chips.add(QueryChipData(id: 'createdTo', label: 'Created < $to'));
+        chips.add(QueryChipData(
+            id: 'createdTo', label: 'Submitted to Commons < $to'));
       }
     }
 
@@ -195,12 +197,31 @@ class SearchQueryCompiler {
       if (edited.from != null && edited.from!.trim().isNotEmpty) {
         final from = edited.from!.trim();
         parts.add('lasteditdate:>=$from');
-        chips.add(QueryChipData(id: 'editedFrom', label: 'Edited ≥ $from'));
+        chips
+            .add(QueryChipData(id: 'editedFrom', label: 'Last edited ≥ $from'));
       }
       if (edited.to != null && edited.to!.trim().isNotEmpty) {
         final to = edited.to!.trim();
         parts.add('lasteditdate:<$to');
-        chips.add(QueryChipData(id: 'editedTo', label: 'Edited < $to'));
+        chips.add(QueryChipData(id: 'editedTo', label: 'Last edited < $to'));
+      }
+    }
+
+    // Commons does not expose the image's EXIF/declared creation date as a
+    // CirrusSearch date field. SearchService applies this range against the
+    // DateTimeOriginal metadata returned for every result; still show it in
+    // the active-filter bar so the client-side work is visible and removable.
+    if (state.originalDate != null) {
+      final original = state.originalDate!;
+      if (original.from != null && original.from!.trim().isNotEmpty) {
+        chips.add(QueryChipData(
+            id: 'originalFrom',
+            label: 'Originally made / shot ≥ ${original.from!.trim()}'));
+      }
+      if (original.to != null && original.to!.trim().isNotEmpty) {
+        chips.add(QueryChipData(
+            id: 'originalTo',
+            label: 'Originally made / shot < ${original.to!.trim()}'));
       }
     }
 

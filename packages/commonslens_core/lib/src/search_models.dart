@@ -413,8 +413,16 @@ class SearchState {
   final bool localOnly;
   final String? languageCode;
   final String? contentModel;
+
+  /// When the file page was first created on Wikimedia Commons. This is the
+  /// closest indexed proxy for the file's initial submission/upload date.
   final DateFilter? createdDate;
   final DateFilter? editedDate;
+
+  /// When the media was made (for example, EXIF DateTimeOriginal). Unlike
+  /// page creation/edit timestamps this is file metadata, so it is applied
+  /// after Commons returns each result page.
+  final DateFilter? originalDate;
   final SortMode sortMode;
   // Multiple licenses select ANY-match (union) — a single file only ever
   // carries one license, so there's no meaningful "AND" reading here, only
@@ -528,6 +536,7 @@ class SearchState {
     this.contentModel,
     this.createdDate,
     this.editedDate,
+    this.originalDate,
     this.sortMode = SortMode.relevance,
     this.licensePresets = const {},
     this.qualityFilters = defaultQualityFilters,
@@ -572,6 +581,7 @@ class SearchState {
     String? contentModel,
     DateFilter? createdDate,
     DateFilter? editedDate,
+    DateFilter? originalDate,
     SortMode? sortMode,
     Set<LicensePreset>? licensePresets,
     Set<QualityFilter>? qualityFilters,
@@ -606,6 +616,7 @@ class SearchState {
     bool clearContentModel = false,
     bool clearCreatedDate = false,
     bool clearEditedDate = false,
+    bool clearOriginalDate = false,
     bool clearMinWidth = false,
     bool clearMinHeight = false,
     bool clearNearCoord = false,
@@ -632,6 +643,8 @@ class SearchState {
           clearContentModel ? null : (contentModel ?? this.contentModel),
       createdDate: clearCreatedDate ? null : (createdDate ?? this.createdDate),
       editedDate: clearEditedDate ? null : (editedDate ?? this.editedDate),
+      originalDate:
+          clearOriginalDate ? null : (originalDate ?? this.originalDate),
       sortMode: sortMode ?? this.sortMode,
       licensePresets: licensePresets ?? this.licensePresets,
       qualityFilters: qualityFilters ??
@@ -696,6 +709,7 @@ class SearchState {
         'contentModel': contentModel,
         'createdDate': createdDate?.toJson(),
         'editedDate': editedDate?.toJson(),
+        'originalDate': originalDate?.toJson(),
         'sortMode': sortMode.name,
         'licensePresets': licensePresets.map((l) => l.name).toList(),
         'qualityFilters': selectedQualityFilters.map((q) => q.name).toList(),
@@ -780,6 +794,7 @@ class SearchState {
 
     final createdDateRaw = _jsonObject(json['createdDate']);
     final editedDateRaw = _jsonObject(json['editedDate']);
+    final originalDateRaw = _jsonObject(json['originalDate']);
     final nearCoordRaw = _jsonObject(json['nearCoord']);
     final nearTitleRaw = _jsonObject(json['nearTitle']);
 
@@ -807,6 +822,8 @@ class SearchState {
           createdDateRaw == null ? null : DateFilter.fromJson(createdDateRaw),
       editedDate:
           editedDateRaw == null ? null : DateFilter.fromJson(editedDateRaw),
+      originalDate:
+          originalDateRaw == null ? null : DateFilter.fromJson(originalDateRaw),
       sortMode:
           _enumFromJson(SortMode.values, json['sortMode'], SortMode.relevance),
       licensePresets: (json['licensePresets'] is List)
@@ -863,6 +880,7 @@ class SearchState {
           other.contentModel == contentModel &&
           other.createdDate == createdDate &&
           other.editedDate == editedDate &&
+          other.originalDate == originalDate &&
           other.sortMode == sortMode &&
           _setEquals(other.licensePresets, licensePresets) &&
           _setEquals(other.selectedQualityFilters, selectedQualityFilters) &&
@@ -906,6 +924,7 @@ class SearchState {
         contentModel,
         createdDate,
         editedDate,
+        originalDate,
         sortMode,
         _setHash(licensePresets),
         _setHash(selectedQualityFilters),

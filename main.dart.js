@@ -63455,7 +63455,7 @@ c=h.x
 e=d.gt(b)
 a0=A.dk(g,g,g,B.pf,g,g,new A.aP6(h,a1),g,g,g,g,g)
 d=A.a3(a?""+(h.x+1)+" OF "+d.gt(b):"DIRECT LINK",g,g,g,g,B.adW,g,g,g)
-b=i?"Remove bookmark":"Bookmark image"
+b=i?"Remove bookmark":"Bookmark media"
 a=i?B.w8:B.iH
 d=A.rT(A.b([A.dk(g,g,g,A.cO(a,i?B.q:B.j,g,g),g,g,new A.aP7(h,k),g,g,g,b,g),A.os(new A.aP8(h)),B.aK],t.p),!0,B.k1,g,!0,0,B.fX,a0,g,g,d)
 b=h.z
@@ -66903,7 +66903,7 @@ $0(){return this.a.d=!1},
 $S:0}
 A.ac5.prototype={
 o9(a,b){var s,r=null,q=$.vH(),p=b.dR(new A.fe(q,new A.b2v(this),q.$ti.h("fe<dR.0,r>")),t.y)
-q=p?"Remove bookmark":"Bookmark image"
+q=p?"Remove bookmark":"Bookmark media"
 s=p?B.q.c4(0.9):B.r.c4(0.55)
 return A.jJ(A.dN(!1,B.F,!0,r,A.eF(!1,r,!0,new A.av(B.kM,A.cO(p?B.w8:B.iH,B.j,r,15),r),B.cO,!0,r,r,r,r,r,r,r,r,r,r,new A.b2w(this,b),r,r,r,r,r,r,r),B.l,s,0,r,r,B.cO,r,r,B.aS),q)}}
 A.b2v.prototype={

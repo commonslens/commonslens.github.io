@@ -252,14 +252,28 @@ class SearchQueryCompiler {
       ));
     }
 
-    if (state.qualityFilter != QualityFilter.any) {
-      final clause = _qualityClauses[state.qualityFilter];
-      if (clause != null) {
-        parts.add(clause);
-        chips.add(QueryChipData(
-          id: 'quality',
-          label: qualityFilterLabel(state.qualityFilter),
-        ));
+    final selectedQualities = state.selectedQualityFilters
+        .where((quality) => _qualityClauses.containsKey(quality))
+        .toList()
+      ..sort((left, right) => left.index.compareTo(right.index));
+    if (!state.allImagesMode &&
+        selectedQualities.isNotEmpty &&
+        selectedQualities.length < defaultQualityFilters.length) {
+      final clauses = selectedQualities
+          .map((quality) => _qualityClauses[quality])
+          .whereType<String>()
+          .toList();
+      if (clauses.isNotEmpty) {
+        parts.add(
+            clauses.length == 1 ? clauses.single : '(${clauses.join(' OR ')})');
+        for (final quality in selectedQualities) {
+          chips.add(QueryChipData(
+            id: selectedQualities.length == 1
+                ? 'quality'
+                : 'quality:${quality.name}',
+            label: qualityFilterLabel(quality),
+          ));
+        }
       }
     }
 

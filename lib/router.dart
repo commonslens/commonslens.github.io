@@ -10,6 +10,7 @@ import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
 import 'pipeline_page.dart';
 import 'features_page.dart';
+import 'bookmarks_page.dart';
 import 'legal_pages.dart';
 import 'seo_service.dart';
 
@@ -67,6 +68,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const FeaturesPage(),
     ),
     GoRoute(
+      path: '/bookmarks',
+      builder: (context, state) => const BookmarksPage(),
+    ),
+    GoRoute(
       path: '/terms',
       builder: (context, state) => const TermsOfUsePage(),
     ),
@@ -97,6 +102,8 @@ final GoRouter appRouter = GoRouter(
           returnUrl = '/map';
         } else if (from == 'pipeline') {
           returnUrl = '/pipeline';
+        } else if (from == 'bookmarks') {
+          returnUrl = '/bookmarks';
         } else if (author != null && author.trim().isNotEmpty) {
           returnUrl = Uri(path: '/author', queryParameters: {'name': author})
               .toString();

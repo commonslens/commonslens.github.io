@@ -4,6 +4,7 @@ import 'dart:ui_web' as ui_web;
 import 'dart:ui';
 import 'download_service.dart';
 import 'asset_reuse_guide.dart';
+import 'bookmark_service.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -437,6 +438,11 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
 
     final currentItem = items[_currentIndex];
     final currentOptimizedUrl = _optimizedImageUrl(currentItem);
+    final isBookmarked = ref.watch(
+      bookmarkStoreProvider.select(
+        (store) => store.isBookmarked(currentItem.url),
+      ),
+    );
     final hasPrevious = _currentIndex > 0;
     final hasNext = _currentIndex < items.length - 1;
 
@@ -463,6 +469,15 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark image',
+            icon: Icon(
+              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              color: isBookmarked ? const Color(0xFF3D7EFF) : Colors.white,
+            ),
+            onPressed: () =>
+                ref.read(bookmarkStoreProvider).toggle(currentItem.url),
+          ),
           LayoutBuilder(
             builder: (context, constraints) {
               if (MediaQuery.of(context).size.width < 800) {

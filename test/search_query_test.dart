@@ -13,6 +13,30 @@ void main() {
     expect(built.chips.map((chip) => chip.id), contains('tab'));
   });
 
+  test('combines multiple quality types with OR semantics', () {
+    final built = service.buildQuery(const SearchState(
+      qualityFilters: {
+        QualityFilter.qualityImage,
+        QualityFilter.featuredPicture,
+      },
+      allImages: false,
+    ));
+
+    expect(
+      built.srsearch,
+      contains(
+        '(hastemplate:"Quality image" OR incategory:"Featured pictures on Wikimedia Commons")',
+      ),
+    );
+    expect(
+      built.chips.map((chip) => chip.id),
+      containsAll(<String>[
+        'quality:qualityImage',
+        'quality:featuredPicture',
+      ]),
+    );
+  });
+
   test('compiles the complete filter surface into clauses and chips', () {
     final state = SearchState(
       queryText: 'historic building',

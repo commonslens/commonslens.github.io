@@ -82,6 +82,23 @@ void main() {
     expect(restored.licensePresets, {LicensePreset.ccBySa4});
   });
 
+  test('round-trips multiple quality selections', () {
+    const state = SearchState(
+      qualityFilters: {
+        QualityFilter.qualityImage,
+        QualityFilter.featuredPicture,
+      },
+      allImages: false,
+    );
+
+    final params = SearchUrlCodec.toQueryParams(state);
+    final restored =
+        SearchUrlCodec.fromQueryParams(params, const SearchState());
+
+    expect(params['quality'], 'qualityImage,featuredPicture');
+    expect(restored.selectedQualityFilters, state.selectedQualityFilters);
+  });
+
   test('continues to decode legacy delimiter-based links', () {
     final restored = SearchUrlCodec.fromQueryParams(
       {

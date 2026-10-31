@@ -13,6 +13,7 @@ part 'advanced_filter_pickers.dart';
 
 enum _FilterGroup {
   imageClassification,
+  quality,
   license,
   metadata,
   location,
@@ -243,6 +244,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     switch (group) {
       case _FilterGroup.imageClassification:
         return 'IMAGE CLASSIFICATION';
+      case _FilterGroup.quality:
+        return 'QUALITY';
       case _FilterGroup.license:
         return 'LICENSE';
       case _FilterGroup.metadata:
@@ -256,6 +259,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     switch (group) {
       case _FilterGroup.imageClassification:
         return Icons.image_search_outlined;
+      case _FilterGroup.quality:
+        return Icons.verified_outlined;
       case _FilterGroup.license:
         return Icons.copyright_outlined;
       case _FilterGroup.metadata:
@@ -285,9 +290,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             '${state.templates.length} template${state.templates.length == 1 ? '' : 's'}',
           if (state.excludeTemplates.isNotEmpty)
             '${state.excludeTemplates.length} excluded template${state.excludeTemplates.length == 1 ? '' : 's'}',
-          if (state.qualityFilter != QualityFilter.any)
-            qualityFilterLabel(state.qualityFilter),
         ];
+      case _FilterGroup.quality:
+        return state.allImagesMode
+            ? []
+            : state.selectedQualityFilters.map(qualityFilterLabel).toList();
       case _FilterGroup.license:
         return [
           ...state.licensePresets.map(licensePresetLabel),
@@ -359,6 +366,74 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     );
   }
 
+  Widget _buildMorePagesSection() {
+    Widget pageButton({
+      required IconData icon,
+      required String label,
+      required VoidCallback onTap,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF141414),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF2B4F99)),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 17, color: const Color(0xFF3D7EFF)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(4, 12, 0, 8),
+          child: Text(
+            'MORE PAGES',
+            style: TextStyle(
+              color: Color(0xFF777777),
+              fontSize: 10,
+              letterSpacing: 1.4,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        pageButton(
+          icon: Icons.account_tree_outlined,
+          label: 'Visual ETL pipelines',
+          onTap: () => context.push('/pipeline'),
+        ),
+        pageButton(
+          icon: Icons.bookmark_border,
+          label: 'Bookmarks',
+          onTap: () => context.push('/bookmarks'),
+        ),
+      ],
+    );
+  }
+
   Widget _buildOuterBar(SearchState state, {required double width}) {
     final groups = _FilterGroup.values;
 
@@ -387,8 +462,46 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: groups.length,
+                itemCount: groups.length + 3,
                 itemBuilder: (context, index) {
+                  if (index == groups.length) {
+                    return const Divider(
+                      color: Color(0xFF222222),
+                      height: 17,
+                    );
+                  }
+                  if (index == groups.length + 1) {
+                    return Tooltip(
+                      message: 'More Pages',
+                      child: InkWell(
+                        onTap: () => context.push('/pipeline'),
+                        child: const SizedBox(
+                          height: 48,
+                          child: Icon(
+                            Icons.account_tree_outlined,
+                            color: Color(0xFF3D7EFF),
+                            size: 19,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                  if (index == groups.length + 2) {
+                    return Tooltip(
+                      message: 'Bookmarks',
+                      child: InkWell(
+                        onTap: () => context.push('/bookmarks'),
+                        child: const SizedBox(
+                          height: 48,
+                          child: Icon(
+                            Icons.bookmark_border,
+                            color: Color(0xFF3D7EFF),
+                            size: 19,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
                   final group = groups[index];
                   final selected = _selectedFeatureLabels(group, state);
                   return Tooltip(
@@ -515,6 +628,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
               ),
             ),
           ),
+        _buildMorePagesSection(),
       ],
     );
 
@@ -739,6 +853,27 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   void _setStatementsUnion(bool union) =>
       _update((c) => c.copyWith(statementsUnion: union));
 
+  void _toggleQuality(QualityFilter quality) {
+    final current = ref.read(searchControllerProvider).filterState;
+    if (quality == QualityFilter.any) {
+      _update((c) => c.copyWith(
+            allImages: !c.allImagesMode,
+            qualityFilters: c.allImagesMode
+                ? c.selectedQualityFilters
+                : defaultQualityFilters,
+          ));
+      return;
+    }
+
+    final selected = Set<QualityFilter>.from(current.selectedQualityFilters);
+    if (selected.contains(quality)) {
+      selected.remove(quality);
+    } else {
+      selected.add(quality);
+    }
+    _update((c) => c.copyWith(qualityFilters: selected, allImages: false));
+  }
+
   // ---- License (instant, multi-select — a file only ever carries one
   // license, so this is always an OR/"matches any selected" filter) ----
 
@@ -819,6 +954,21 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 ),
                 const SizedBox(height: 12),
                 _sectionHeader('DEPICTS (SUBJECT)'),
+                _EntitySetPicker<DepictsEntity>(
+                  include: state.depictsInclude,
+                  exclude: state.depictsExclude,
+                  labelOf: (d) => d.label,
+                  descriptionOf: (d) => d.description,
+                  search: (text) => ref
+                      .read(commonsAutocompleteProvider)
+                      .wikidataEntities(text),
+                  addHint: 'e.g. Cat, Eiffel Tower...',
+                  excludeHint: 'Exclude subject...',
+                  onAdd: _addDepicts,
+                  onRemoveInclude: _removeDepictsInclude,
+                  onRemoveExclude: _removeDepictsExclude,
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -838,23 +988,16 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                _EntitySetPicker<DepictsEntity>(
-                  include: state.depictsInclude,
-                  exclude: state.depictsExclude,
-                  labelOf: (d) => d.label,
-                  descriptionOf: (d) => d.description,
-                  search: (text) => ref
-                      .read(commonsAutocompleteProvider)
-                      .wikidataEntities(text),
-                  addHint: 'e.g. Cat, Eiffel Tower...',
-                  excludeHint: 'Exclude subject...',
-                  onAdd: _addDepicts,
-                  onRemoveInclude: _removeDepictsInclude,
-                  onRemoveExclude: _removeDepictsExclude,
-                ),
                 const SizedBox(height: 24),
                 _sectionHeader('WIKIDATA PROPERTY SEARCH'),
+                _StatementsPicker(
+                  include: state.statementsInclude,
+                  exclude: state.statementsExclude,
+                  onAdd: _addStatement,
+                  onRemoveInclude: _removeStatementInclude,
+                  onRemoveExclude: _removeStatementExclude,
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -874,36 +1017,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                _StatementsPicker(
-                  include: state.statementsInclude,
-                  exclude: state.statementsExclude,
-                  onAdd: _addStatement,
-                  onRemoveInclude: _removeStatementInclude,
-                  onRemoveExclude: _removeStatementExclude,
-                ),
                 const SizedBox(height: 24),
                 _sectionHeader('CATEGORIES'),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _combineModeButton(
-                        label: 'Intersection',
-                        selected: !state.categoriesUnion,
-                        onTap: () => _setCategoriesUnion(false),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _combineModeButton(
-                        label: 'Union',
-                        selected: state.categoriesUnion,
-                        onTap: () => _setCategoriesUnion(true),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
                 _StringSetPicker(
                   include: state.categories,
                   exclude: state.excludeCategories,
@@ -966,6 +1081,26 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     ],
                   ),
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _combineModeButton(
+                        label: 'Intersection',
+                        selected: !state.categoriesUnion,
+                        onTap: () => _setCategoriesUnion(false),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _combineModeButton(
+                        label: 'Union',
+                        selected: state.categoriesUnion,
+                        onTap: () => _setCategoriesUnion(true),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 _sectionHeader('TEMPLATES'),
                 _StringSetPicker(
@@ -980,23 +1115,35 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   onRemoveExclude: _removeTemplateExclude,
                 ),
                 const SizedBox(height: 24),
-                _sectionHeader('QUALITY ASSESSMENT'),
-                DropdownButtonFormField<QualityFilter>(
-                  isExpanded: true,
-                  dropdownColor: const Color(0xFF1E1E1E),
-                  decoration: _fieldDecoration(),
-                  value: state.qualityFilter,
-                  items: QualityFilter.values
-                      .map((q) => DropdownMenuItem(
-                          value: q,
-                          child: Text(qualityFilterLabel(q),
-                              style: const TextStyle(color: Colors.white))))
-                      .toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      _update((c) => c.copyWith(qualityFilter: val));
-                    }
-                  },
+              ],
+              if (_innerGroup == _FilterGroup.quality) ...[
+                _sectionDivider('QUALITY'),
+                const SizedBox(height: 20),
+                _sectionHeader('QUALITY TYPES'),
+                const Text(
+                  'Select one or more. All types are selected by default.',
+                  style: TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _licenseToggleChip(
+                      label: 'All images',
+                      selected: state.allImagesMode,
+                      onTap: () => _toggleQuality(QualityFilter.any),
+                    ),
+                    ...defaultQualityFilters.map(
+                      (quality) => _licenseToggleChip(
+                        label: qualityFilterLabel(quality),
+                        selected:
+                            state.selectedQualityFilters.contains(quality),
+                        onTap: () => _toggleQuality(quality),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 24),
               ],

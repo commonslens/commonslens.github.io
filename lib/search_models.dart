@@ -24,6 +24,7 @@ export 'package:commonslens_core/commonslens_core.dart'
         StructuredDataStatement,
         WikidataStatement,
         configForTab,
+        defaultQualityFilters,
         fileFormatLabel,
         licensePresetLabel,
         mediaTabs,

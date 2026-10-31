@@ -68,6 +68,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    expect(find.text('MORE PAGES'), findsOneWidget);
+    expect(find.text('Visual ETL pipelines'), findsOneWidget);
+    expect(find.text('Bookmarks'), findsOneWidget);
+    expect(find.text('QUALITY'), findsOneWidget);
 
     final depictsField = find.byWidgetPredicate(
       (widget) =>
@@ -100,6 +104,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Expand filter groups'), findsOneWidget);
+    expect(find.byTooltip('More Pages'), findsOneWidget);
     expect(find.byTooltip('Expand feature panel'), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -135,5 +140,20 @@ void main() {
 
     expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('quality is a primary sidebar group with multi-select options',
+      (tester) async {
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('QUALITY'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('QUALITY TYPES'), findsOneWidget);
+    expect(find.text('All images'), findsOneWidget);
+    expect(find.text('Quality images'), findsOneWidget);
+    expect(find.text('Valued images'), findsOneWidget);
+    expect(find.text('Featured pictures'), findsOneWidget);
   });
 }

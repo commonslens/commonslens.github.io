@@ -10,6 +10,7 @@ import 'search_service.dart';
 import 'search_url_codec.dart';
 import 'backend_providers.dart';
 import 'download_service.dart';
+import 'bookmark_service.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -598,6 +599,41 @@ class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
   }
 }
 
+class _QuickBookmarkButton extends ConsumerWidget {
+  final SearchItem item;
+
+  const _QuickBookmarkButton({required this.item});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBookmarked = ref.watch(
+      bookmarkStoreProvider.select((store) => store.isBookmarked(item.url)),
+    );
+
+    return Tooltip(
+      message: isBookmarked ? 'Remove bookmark' : 'Bookmark image',
+      child: Material(
+        color: isBookmarked
+            ? const Color(0xFF3D7EFF).withValues(alpha: 0.9)
+            : Colors.black.withValues(alpha: 0.55),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => ref.read(bookmarkStoreProvider).toggle(item.url),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              size: 15,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Shared result grid used anywhere a collection of Commons media is shown.
 ///
 /// The caller owns loading and pagination state. This widget coordinates the
@@ -837,7 +873,14 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                       Positioned(
                         top: 8,
                         right: 8,
-                        child: _QuickDownloadButton(item: item),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _QuickBookmarkButton(item: item),
+                            const SizedBox(width: 6),
+                            _QuickDownloadButton(item: item),
+                          ],
+                        ),
                       ),
                     // Selection state is only shown while bulk selection is
                     // active, so the circle has a single, obvious meaning.

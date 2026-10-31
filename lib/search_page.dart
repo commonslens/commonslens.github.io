@@ -424,6 +424,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             ..removeWhere((l) => l.name == name));
     } else if (chip.id == 'attributionRequired') {
       next = current.copyWith(clearAttributionRequired: true);
+    } else if (chip.id.startsWith('quality:')) {
+      final qualityName = chip.id.substring('quality:'.length);
+      next = current.copyWith(
+          qualityFilters:
+              Set<QualityFilter>.from(current.selectedQualityFilters)
+                ..removeWhere((quality) => quality.name == qualityName));
     } else if (chip.id == 'quality') {
       next = current.copyWith(qualityFilter: QualityFilter.any);
     } else if (chip.id == 'minWidth') {
@@ -761,138 +767,109 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         ),
 
         // 3. The Scrollable Content
-        Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const WikiLogo(),
-                const SizedBox(height: 32),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const contentPadding = EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: 36,
+            );
+            final contentMinHeight =
+                constraints.maxHeight > contentPadding.vertical
+                    ? constraints.maxHeight - contentPadding.vertical
+                    : 0.0;
 
-                // Hero Copy
-                const Text('COMMONSLENS',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 42,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white,
-                        letterSpacing: 5,
-                        height: 1.1)),
-                const SizedBox(height: 16),
-                const Text(
-                    'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen source and free to use.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: Color(0xFFCCCCCC),
-                        fontSize: 18,
-                        height: 1.6,
-                        fontWeight: FontWeight.w400)),
+            return SingleChildScrollView(
+              padding: contentPadding,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: contentMinHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      const Spacer(),
+                      const WikiLogo(),
+                      const SizedBox(height: 32),
 
-                const SizedBox(height: 32),
+                      // Hero Copy
+                      const Text('COMMONSLENS',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              fontSize: 42,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                              letterSpacing: 5,
+                              height: 1.1)),
+                      const SizedBox(height: 16),
+                      const Text(
+                          'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen source and free to use.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Color(0xFFCCCCCC),
+                              fontSize: 18,
+                              height: 1.6,
+                              fontWeight: FontWeight.w400)),
 
-                _buildSearchSlot(
-                  visible: true,
-                  centered: true,
-                  filterState: filterState,
-                  isDesktop: isDesktop,
-                ),
+                      const SizedBox(height: 32),
 
-                const SizedBox(height: 18),
+                      _buildSearchSlot(
+                        visible: true,
+                        centered: true,
+                        filterState: filterState,
+                        isDesktop: isDesktop,
+                      ),
 
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 410),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton(
-                      onPressed: () => context.push('/pipeline'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.transparent,
-                        side: const BorderSide(
-                            color: Color(0xFF3D7EFF), width: 1.2),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                      const SizedBox(height: 14),
+
+                      // Search Examples
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        alignment: WrapAlignment.center,
+                        children: _examples
+                            .map((example) => ExampleChip(
+                                  category: example.category,
+                                  label: example.label,
+                                  tooltip: example.tooltip,
+                                  icon: example.icon,
+                                  onTap: () => _runExample(example),
+                                ))
+                            .toList(),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      TextButton.icon(
+                        onPressed: () => context.push('/features'),
+                        icon: const Icon(Icons.auto_awesome_mosaic_outlined,
+                            size: 17),
+                        label: const Text('Explore every CommonsLens feature'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF9AB9FF),
                         ),
                       ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.account_tree_outlined,
-                              size: 18, color: Color(0xFF3D7EFF)),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                'COMMONSLENS VISUAL ETL PIPELINES',
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 1.8,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+
+                      const Spacer(),
+                      const Text(
+                        'CommonsLens is an independent, non-commercial research interface.\nMedia and data are sourced directly from Wikimedia Commons.\nCommonsLens does not make, host, own, license, or claim copyright over displayed content.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                          height: 1.6,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 720),
+                        child: const SiteFooter(
+                          showDivider: false,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-
-                const SizedBox(height: 12),
-
-                TextButton.icon(
-                  onPressed: () => context.push('/features'),
-                  icon:
-                      const Icon(Icons.auto_awesome_mosaic_outlined, size: 17),
-                  label: const Text('Explore every CommonsLens feature'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF9AB9FF),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // Search Examples
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.center,
-                  children: _examples
-                      .map((example) => ExampleChip(
-                            category: example.category,
-                            label: example.label,
-                            tooltip: example.tooltip,
-                            icon: example.icon,
-                            onTap: () => _runExample(example),
-                          ))
-                      .toList(),
-                ),
-
-                const SizedBox(height: 40),
-                const Text(
-                  'CommonsLens is an independent, non-commercial research interface.\nMedia and data are sourced directly from Wikimedia Commons.\nCommonsLens does not make, host, own, license, or claim copyright over displayed content.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 14,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 720),
-                  child: const SiteFooter(
-                    showDivider: false,
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ],
     );

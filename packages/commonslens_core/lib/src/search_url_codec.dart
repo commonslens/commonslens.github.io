@@ -184,8 +184,15 @@ class SearchUrlCodec {
     if (state.attributionRequired != null) {
       params['attrReq'] = state.attributionRequired! ? '1' : '0';
     }
-    if (state.qualityFilter != QualityFilter.any) {
-      params['quality'] = state.qualityFilter.name;
+    final selectedQualities = state.selectedQualityFilters
+        .where((quality) => quality != QualityFilter.any)
+        .toList()
+      ..sort((left, right) => left.index.compareTo(right.index));
+    if (!state.allImagesMode &&
+        selectedQualities.isNotEmpty &&
+        selectedQualities.length < defaultQualityFilters.length) {
+      params['quality'] =
+          selectedQualities.map((quality) => quality.name).join(',');
     }
 
     void addPositiveInt(String key, int? value) {
@@ -239,6 +246,20 @@ class SearchUrlCodec {
         (value) => value.name == raw,
         orElse: () => fallback,
       );
+    }
+
+    Set<QualityFilter>? qualitySet(String? raw) {
+      if (raw == null) return null;
+      final parsed = raw
+          .split(',')
+          .map((value) => enumValue(
+                QualityFilter.values,
+                value,
+                QualityFilter.any,
+              ))
+          .where((quality) => quality != QualityFilter.any)
+          .toSet();
+      return parsed;
     }
 
     final tab = enumValue(MediaTabType.values, params['tab'], base.tab);
@@ -312,6 +333,12 @@ class SearchUrlCodec {
     final maxBytes = int.tryParse(params['maxBytes'] ?? '');
     final colorDepth = int.tryParse(params['bits'] ?? '');
 
+    final rawQuality = params['quality'];
+    final parsedQuality = qualitySet(rawQuality);
+    final allImages = rawQuality == null
+        ? base.allImagesMode
+        : parsedQuality == null || parsedQuality.isEmpty;
+
     return base.copyWith(
       queryText: params['q'] ?? base.queryText,
       tab: tab,
@@ -334,11 +361,8 @@ class SearchUrlCodec {
       editedDate: editedDate,
       sortMode: enumValue(SortMode.values, params['sort'], SortMode.relevance),
       licensePresets: licenses,
-      qualityFilter: enumValue(
-        QualityFilter.values,
-        params['quality'],
-        base.qualityFilter,
-      ),
+      qualityFilters: parsedQuality ?? base.selectedQualityFilters,
+      allImages: allImages,
       attributionRequired: attribution,
       clearAttributionRequired: attribution == null,
       minWidth: minWidth,

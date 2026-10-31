@@ -150,6 +150,14 @@ enum QualityFilter {
   featuredPicture,
 }
 
+/// Quality assessment types shown in the primary sidebar. Selecting all
+/// types is the default and means that no quality restriction is applied.
+const defaultQualityFilters = <QualityFilter>{
+  QualityFilter.qualityImage,
+  QualityFilter.valuedImage,
+  QualityFilter.featuredPicture,
+};
+
 String qualityFilterLabel(QualityFilter filter) {
   switch (filter) {
     case QualityFilter.any:
@@ -379,7 +387,30 @@ class SearchState {
   // carries one license, so there's no meaningful "AND" reading here, only
   // "match if it has any of these". Empty set = no license filter applied.
   final Set<LicensePreset> licensePresets;
+
+  /// Multiple quality types match with OR semantics. Selecting every type is
+  /// the default and is treated as no quality restriction.
+  final Set<QualityFilter> qualityFilters;
+
+  /// Compatibility field for older callers and serialized pipeline configs.
+  /// New code should use [selectedQualityFilters].
   final QualityFilter qualityFilter;
+
+  /// Explicitly keeps images without any quality assessment in the result.
+  final bool allImages;
+
+  bool get allImagesMode => allImages && qualityFilter == QualityFilter.any;
+
+  Set<QualityFilter> get selectedQualityFilters {
+    // Older callers pass only the singular field, which leaves the new set at
+    // its default. Resolve that legacy shape without changing its API.
+    if (qualityFilter != QualityFilter.any &&
+        _setEquals(qualityFilters, defaultQualityFilters)) {
+      return {qualityFilter};
+    }
+    return qualityFilters;
+  }
+
   // True = only files whose extmetadata AttributionRequired flag is set;
   // false = only files where it's explicitly not set; null = no filter.
   // There is no CirrusSearch keyword for this (it's a MediaWiki-computed
@@ -454,7 +485,9 @@ class SearchState {
     this.editedDate,
     this.sortMode = SortMode.relevance,
     this.licensePresets = const {},
+    this.qualityFilters = defaultQualityFilters,
     this.qualityFilter = QualityFilter.any,
+    this.allImages = true,
     this.attributionRequired,
     this.minWidth,
     this.minHeight,
@@ -495,7 +528,9 @@ class SearchState {
     DateFilter? editedDate,
     SortMode? sortMode,
     Set<LicensePreset>? licensePresets,
+    Set<QualityFilter>? qualityFilters,
     QualityFilter? qualityFilter,
+    bool? allImages,
     bool? attributionRequired,
     bool clearAttributionRequired = false,
     int? minWidth,
@@ -552,7 +587,15 @@ class SearchState {
       editedDate: clearEditedDate ? null : (editedDate ?? this.editedDate),
       sortMode: sortMode ?? this.sortMode,
       licensePresets: licensePresets ?? this.licensePresets,
-      qualityFilter: qualityFilter ?? this.qualityFilter,
+      qualityFilters: qualityFilters ??
+          (qualityFilter == null ? this.qualityFilters : defaultQualityFilters),
+      qualityFilter: qualityFilters != null
+          ? QualityFilter.any
+          : (qualityFilter ?? this.qualityFilter),
+      allImages: allImages ??
+          (qualityFilter == null
+              ? this.allImages
+              : qualityFilter == QualityFilter.any),
       attributionRequired: clearAttributionRequired
           ? null
           : (attributionRequired ?? this.attributionRequired),
@@ -607,7 +650,12 @@ class SearchState {
         'editedDate': editedDate?.toJson(),
         'sortMode': sortMode.name,
         'licensePresets': licensePresets.map((l) => l.name).toList(),
-        'qualityFilter': qualityFilter.name,
+        'qualityFilters': selectedQualityFilters.map((q) => q.name).toList(),
+        // Retain the singular key for older pipeline/state consumers.
+        'qualityFilter': selectedQualityFilters.length == 1
+            ? selectedQualityFilters.single.name
+            : QualityFilter.any.name,
+        'allImages': allImagesMode,
         'attributionRequired': attributionRequired,
         'minWidth': minWidth,
         'minHeight': minHeight,
@@ -673,10 +721,24 @@ class SearchState {
             .toSet()
         : const {};
 
+    Set<QualityFilter>? qualitySet(dynamic raw) => raw is List
+        ? raw
+            .map((q) => _enumFromJsonOrNull(QualityFilter.values, q))
+            .whereType<QualityFilter>()
+            .where((q) => q != QualityFilter.any)
+            .toSet()
+        : null;
+
     final createdDateRaw = _jsonObject(json['createdDate']);
     final editedDateRaw = _jsonObject(json['editedDate']);
     final nearCoordRaw = _jsonObject(json['nearCoord']);
     final nearTitleRaw = _jsonObject(json['nearTitle']);
+
+    final qualityFilters = qualitySet(json['qualityFilters']);
+    final legacyQuality = _enumFromJson(
+        QualityFilter.values, json['qualityFilter'], QualityFilter.any);
+    final allImages = _boolOrNull(json['allImages']) ??
+        (qualityFilters == null || legacyQuality == QualityFilter.any);
 
     return SearchState(
       queryText: _stringOrNull(json['queryText']) ?? '',
@@ -702,8 +764,9 @@ class SearchState {
               .whereType<LicensePreset>()
               .toSet()
           : const {},
-      qualityFilter: _enumFromJson(
-          QualityFilter.values, json['qualityFilter'], QualityFilter.any),
+      qualityFilters: qualityFilters ?? defaultQualityFilters,
+      qualityFilter: qualityFilters == null ? legacyQuality : QualityFilter.any,
+      allImages: allImages,
       attributionRequired: _boolOrNull(json['attributionRequired']),
       minWidth: _intOrNull(json['minWidth']),
       minHeight: _intOrNull(json['minHeight']),
@@ -750,7 +813,8 @@ class SearchState {
           other.editedDate == editedDate &&
           other.sortMode == sortMode &&
           _setEquals(other.licensePresets, licensePresets) &&
-          other.qualityFilter == qualityFilter &&
+          _setEquals(other.selectedQualityFilters, selectedQualityFilters) &&
+          other.allImagesMode == allImagesMode &&
           other.attributionRequired == attributionRequired &&
           other.minWidth == minWidth &&
           other.minHeight == minHeight &&
@@ -791,7 +855,8 @@ class SearchState {
         editedDate,
         sortMode,
         _setHash(licensePresets),
-        qualityFilter,
+        _setHash(selectedQualityFilters),
+        allImagesMode,
         attributionRequired,
         minWidth,
         minHeight,

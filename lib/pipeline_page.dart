@@ -36,7 +36,7 @@
 /// into a real per-node workspace — live status, an editable title, chip-
 /// based settings, and, on every node type (not just Preview sinks), a
 /// PREVIEW tab that renders that node's actual last-run output as a media
-/// grid with instant per-item downloads plus a "download all" action.
+/// grid with instant per-item downloads plus metadata-only CSV export.
 library;
 
 import 'dart:convert';
@@ -51,10 +51,7 @@ import 'package:go_router/go_router.dart';
 import 'pipeline_controller.dart';
 import 'pipeline_engine.dart';
 import 'pipeline_models.dart';
-import 'search_components.dart';
-import 'media_queue.dart';
 import 'search_models.dart';
-import 'bulk_download_tray.dart';
 import 'backend_providers.dart';
 import 'autocomplete_request_coordinator.dart';
 
@@ -239,15 +236,17 @@ String _nodeDescription(PipelineNodeType type) {
       return 'Reorders the incoming media set using the selected sort mode.';
     case PipelineNodeType.transformSample:
       return 'Optionally shuffles, then limits the number of incoming items.';
+    case PipelineNodeType.transformEnrich:
+      return 'Optional per-item enrichment. Adds Structured Data and/or Global Usage requests only when this node is connected.';
     case PipelineNodeType.sinkPreview:
       return 'Materializes the branch so its media can be browsed in the Preview tab.';
     case PipelineNodeType.sinkSendToSearch:
       return 'Sends this branch to the main search workspace.';
     case PipelineNodeType.sinkCsvExport:
-      return 'Exports the filtered dataset as metadata and direct media URLs. No image binaries are downloaded, so this output can page beyond the normal 1,000-item pipeline cap.';
+      return 'The final step: preview 100 records, or run the pipeline to download every match as one metadata CSV.';
     case PipelineNodeType.sinkJsonExport:
     case PipelineNodeType.sinkZipExport:
-      return 'Materializes this branch and exports its media or metadata.';
+      return 'Legacy export node. Use Dataset Manifest (CSV) for metadata and media URLs.';
     default:
       return type.category == PipelineNodeCategory.filter
           ? 'Narrows the incoming media set using this filter.'
@@ -358,16 +357,11 @@ String _nodeSummary(PipelineNode node) {
     case PipelineNodeType.transformSample:
       return 'Limit ${c['limit'] ?? 'not set'}${c['shuffle'] == true ? ' - shuffled' : ''}';
     case PipelineNodeType.sinkCsvExport:
-      final scope = c['resultScope'] as String? ?? 'all';
-      final count =
-          scope == 'all' ? 'All available' : 'Up to ${c['maxRecords'] ?? 1000}';
       final metadata = c['metadataLevel'] as String? ?? 'detailed';
-      return '$count · $metadata metadata';
+      return 'All returned · $metadata metadata';
     case PipelineNodeType.sinkJsonExport:
-      return (c['fileName'] ?? 'pipeline_export').toString();
     case PipelineNodeType.sinkZipExport:
-      return (c['zipName'] ?? 'pipeline_export.zip').toString() +
-          (c['fullRes'] == false ? ' - previews' : ' - full resolution');
+      return 'Legacy export — CSV only';
     case PipelineNodeType.setCombineAnd:
       return 'A + B before fetch';
     case PipelineNodeType.setUnion:
@@ -753,20 +747,6 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
     case PipelineNodeType.sinkCsvExport:
       return [
         cf(
-          key: 'resultScope',
-          label: 'Result count',
-          kind: ConfigFieldKind.dropdown,
-          options: ['all', 'custom'],
-          defaultValue: 'all',
-        ),
-        cf(
-          key: 'maxRecords',
-          label: 'Maximum records (Custom only)',
-          kind: ConfigFieldKind.int,
-          hint: '1000',
-          defaultValue: 1000,
-        ),
-        cf(
           key: 'metadataLevel',
           label: 'Metadata',
           kind: ConfigFieldKind.dropdown,
@@ -775,10 +755,10 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
         ),
         cf(
           key: 'imageLinks',
-          label: 'Image links',
+          label: 'Image URL',
           kind: ConfigFieldKind.dropdown,
-          options: ['both', 'original', 'thumbnail'],
-          defaultValue: 'both',
+          options: ['original', 'thumbnail'],
+          defaultValue: 'original',
         ),
         cf(
           key: 'fileName',
@@ -788,17 +768,8 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
         ),
       ];
     case PipelineNodeType.sinkJsonExport:
-      return [
-        cf(key: 'fileName', label: 'File name', kind: ConfigFieldKind.text)
-      ];
     case PipelineNodeType.sinkZipExport:
-      return [
-        cf(key: 'zipName', label: 'Zip file name', kind: ConfigFieldKind.text),
-        cf(
-            key: 'fullRes',
-            label: 'Full resolution',
-            kind: ConfigFieldKind.bool),
-      ];
+      return const [];
     default:
       // sourceDepicts / sourceStatement (bespoke entries editor below),
       // setUnion/setIntersect/setDifference (no config, just two inputs),
@@ -821,22 +792,12 @@ class PipelinePage extends ConsumerStatefulWidget {
 
 class _PipelinePageState extends ConsumerState<PipelinePage> {
   String? _selectedNodeId;
-  final _downloadTrayKey = GlobalKey<BulkDownloadTrayState>();
 
   void _leavePipeline() {
     if (context.canPop()) {
       context.pop();
     } else {
       context.go('/');
-    }
-  }
-
-  void _handleRun({required bool preview}) async {
-    await ref.read(pipelineControllerProvider.notifier).run(preview: preview);
-    final error = ref.read(pipelineControllerProvider).runError;
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
     }
   }
 
@@ -920,20 +881,6 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
         ],
       ),
     );
-  }
-
-  void _startPipelineDownload(List<SearchItem> items, String zipName) {
-    _downloadTrayKey.currentState?.startDownload(items, zipName: zipName);
-  }
-
-  void _handleSendToSearch(String nodeId) {
-    final error =
-        ref.read(pipelineControllerProvider.notifier).sendToSearch(nodeId);
-    if (error != null) {
-      _handleSinkResult(error);
-      return;
-    }
-    _leavePipeline();
   }
 
   void _showRenameDialog() {
@@ -1124,17 +1071,9 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
   Widget build(BuildContext context) {
     final state = ref.watch(pipelineControllerProvider);
     final controller = ref.read(pipelineControllerProvider.notifier);
-    final selectedOutput = _selectedNodeId == null
-        ? const <SearchItem>[]
-        : controller.materializedItemsFor(_selectedNodeId!) ??
-            const <SearchItem>[];
 
     return Scaffold(
       backgroundColor: _kBg,
-      bottomNavigationBar: BulkDownloadTray(
-        key: _downloadTrayKey,
-        availableItems: selectedOutput,
-      ),
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leading: IconButton(
@@ -1173,23 +1112,6 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Preview run (capped sample)',
-            icon: const Icon(Icons.visibility_outlined, color: Colors.white70),
-            onPressed: state.isRunning ? null : () => _handleRun(preview: true),
-          ),
-          IconButton(
-            tooltip: 'Run',
-            icon: state.isRunning
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: _kAccent))
-                : const Icon(Icons.play_arrow, color: _kAccent),
-            onPressed:
-                state.isRunning ? null : () => _handleRun(preview: false),
-          ),
           IconButton(
             tooltip: 'Saved pipelines',
             icon: const Icon(Icons.folder_open_rounded,
@@ -1274,8 +1196,6 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
                   child: _InspectorPanel(
                     nodeId: _selectedNodeId,
                     onSinkResult: _handleSinkResult,
-                    onSendToSearch: _handleSendToSearch,
-                    onDownloadItems: _startPipelineDownload,
                   ),
                 ),
               ],

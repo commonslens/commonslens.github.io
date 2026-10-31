@@ -25,6 +25,7 @@ class _DeferredPagingBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) {
     searchCalls++;
     if (continueToken != null) return nextPage.future;

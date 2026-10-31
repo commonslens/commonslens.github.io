@@ -24,6 +24,73 @@ class _FixtureTransport implements WikimediaTransport {
 }
 
 void main() {
+  test('drains imageinfo continuations into one logical generator page',
+      () async {
+    final transport = _FixtureTransport((uri) async {
+      if (uri.queryParameters.containsKey('iicontinue')) {
+        expect(uri.queryParameters['iicontinue'], 'image-page-2');
+        return http.Response('''
+          {
+            "continue": {"gsroffset": 200, "continue": "gsroffset||"},
+            "query": {
+              "pages": {
+                "1": {
+                  "title": "File:First.jpg"
+                },
+                "2": {
+                  "title": "File:Second.jpg",
+                  "imageinfo": [{
+                    "url": "https://upload.wikimedia.org/second.jpg",
+                    "mime": "image/jpeg"
+                  }]
+                }
+              }
+            }
+          }
+        ''', 200);
+      }
+
+      expect(uri.queryParameters['gsrlimit'], '200');
+      expect(uri.queryParameters['iilimit'], '200');
+      expect(uri.queryParameters['iiurlwidth'], '320');
+      return http.Response('''
+        {
+          "continue": {
+            "iicontinue": "image-page-2",
+            "continue": "||info"
+          },
+          "query": {
+            "searchinfo": {"totalhits": 2},
+            "pages": {
+              "1": {
+                "title": "File:First.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/first.jpg",
+                  "mime": "image/jpeg"
+                }]
+              },
+              "2": {
+                "title": "File:Second.jpg"
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(queryText: 'two files'),
+      continueParams: null,
+      includeThumbWidth: true,
+    );
+
+    expect(result, isNotNull);
+    expect(transport.requests, hasLength(2));
+    expect(
+        result!.items.map((item) => item.title), ['First.jpg', 'Second.jpg']);
+    expect(result.continueParams?['gsroffset'], 200);
+  });
+
   test('filters original media dates from Commons metadata client-side',
       () async {
     final transport = _FixtureTransport((uri) async {

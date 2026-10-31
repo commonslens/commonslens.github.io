@@ -11,6 +11,7 @@ class _RecordingBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async {
     searches.add(filters);
     return const MediaSearchResult(
@@ -29,7 +30,7 @@ void main() {
     final preview = PipelineExecutionContext(preview: true);
 
     expect(fullRun.effectiveMaxItems, 1000);
-    expect(preview.effectiveMaxItems, 20);
+    expect(preview.effectiveMaxItems, 100);
   });
 
   test('manifest runs can exhaust continuation beyond the normal cap',
@@ -304,6 +305,7 @@ class _PagedBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async {
     final page = (continueToken?['page'] as int?) ?? 0;
     calls++;
@@ -337,6 +339,7 @@ class _StaticBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async =>
       MediaSearchResult(
         items: [item],

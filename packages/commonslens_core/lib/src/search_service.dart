@@ -10,7 +10,11 @@ part 'search_autocomplete_operations.dart';
 part 'search_browse_operations.dart';
 
 class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
-  static const int pageSize = 50;
+  // Wikimedia permits larger generator/search pages than the old 50-row
+  // setting. 200 keeps a full manifest to a reasonable number of sequential
+  // requests without increasing request concurrency or bypassing the global
+  // WikimediaRequestGate.
+  static const int pageSize = 200;
 
   static final WikimediaTransport _defaultTransport = GatedWikimediaTransport();
 
@@ -212,6 +216,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   }) async {
     final streams = <String, List<SearchItem>>{};
     final newMultiContinue = <String, dynamic>{};
+    final warnings = <String>[];
     bool anySuccess = false;
 
     final branchTokens =
@@ -237,6 +242,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         if (result != null) {
           anySuccess = true;
           streams[key] = result.items;
+          if (result.warning != null) warnings.add(result.warning!);
           if (result.continueParams != null) {
             newMultiContinue[key] = result.continueParams;
           }
@@ -279,6 +285,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       continueParams: newMultiContinue.isNotEmpty
           ? {continueBucketKey: newMultiContinue}
           : null,
+      warning: warnings.isEmpty ? null : warnings.join(' '),
     );
   }
 
@@ -292,6 +299,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> fetchPage(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    bool includeThumbWidth = true,
   }) async {
     final queryText = state.queryText.trim();
     final segments = queryText
@@ -304,7 +312,11 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       // ignore: avoid_print
       print(
           '🔍 [FETCHPAGE] single-segment path, queryText="${state.queryText}" tab=${state.tab.name} formats=${state.formats}');
-      return _fetchPageForQuery(state, continueParams: continueParams);
+      return _fetchPageForQuery(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     // ignore: avoid_print
@@ -314,8 +326,11 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       branches: segments,
       keyOf: (segment) => segment,
       stateFor: (segment) => state.copyWith(queryText: segment),
-      nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForQuery(branchState, continueParams: branchContinue),
+      nextFetch: (_, branchState, branchContinue) => _fetchPageForQuery(
+        branchState,
+        continueParams: branchContinue,
+        includeThumbWidth: includeThumbWidth,
+      ),
       continueParams: continueParams,
       continueBucketKey: '_query',
       sortMode: state.sortMode,
@@ -325,6 +340,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> _fetchPageForQuery(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    required bool includeThumbWidth,
   }) async {
     // Union mode with 2+ include statements: Cirrus can't reliably OR a
     // statement clause together with the rest of the active filters in one
@@ -334,15 +350,22 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     final includeStatements = state.statementsInclude.toList();
 
     if (!state.statementsUnion || includeStatements.length <= 1) {
-      return _fetchPageForQuality(state, continueParams: continueParams);
+      return _fetchPageForQuality(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     return _fanOutFetch<WikidataStatement>(
       branches: includeStatements,
       keyOf: (stmt) => '${stmt.property.qid}=${stmt.value.qid}',
       stateFor: (stmt) => state.copyWith(statementsInclude: {stmt}),
-      nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForQuality(branchState, continueParams: branchContinue),
+      nextFetch: (_, branchState, branchContinue) => _fetchPageForQuality(
+        branchState,
+        continueParams: branchContinue,
+        includeThumbWidth: includeThumbWidth,
+      ),
       continueParams: continueParams,
       continueBucketKey: '_stmt',
       sortMode: state.sortMode,
@@ -357,15 +380,24 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> _fetchPageForQuality(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    required bool includeThumbWidth,
   }) async {
     if (state.allImagesMode) {
-      return _fetchPageForLicense(state, continueParams: continueParams);
+      return _fetchPageForLicense(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     final qualities = state.effectiveQualityFilters.toList()
       ..sort((left, right) => left.index.compareTo(right.index));
     if (qualities.length <= 1) {
-      return _fetchPageForLicense(state, continueParams: continueParams);
+      return _fetchPageForLicense(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     return _fanOutFetch<QualityFilter>(
@@ -375,8 +407,11 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         qualityFilters: {quality},
         qualityMatchMode: QualityMatchMode.individual,
       ),
-      nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForLicense(branchState, continueParams: branchContinue),
+      nextFetch: (_, branchState, branchContinue) => _fetchPageForLicense(
+        branchState,
+        continueParams: branchContinue,
+        includeThumbWidth: includeThumbWidth,
+      ),
       continueParams: continueParams,
       continueBucketKey: '_quality',
       sortMode: state.sortMode,
@@ -392,19 +427,27 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> _fetchPageForLicense(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    required bool includeThumbWidth,
   }) async {
     final licenses = state.licensePresets.toList();
 
     if (licenses.length <= 1) {
-      return _fetchPageForCategory(state, continueParams: continueParams);
+      return _fetchPageForCategory(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     return _fanOutFetch<LicensePreset>(
       branches: licenses,
       keyOf: (l) => l.name,
       stateFor: (l) => state.copyWith(licensePresets: {l}),
-      nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForCategory(branchState, continueParams: branchContinue),
+      nextFetch: (_, branchState, branchContinue) => _fetchPageForCategory(
+        branchState,
+        continueParams: branchContinue,
+        includeThumbWidth: includeThumbWidth,
+      ),
       continueParams: continueParams,
       continueBucketKey: '_license',
       sortMode: state.sortMode,
@@ -414,6 +457,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> _fetchPageForCategory(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    required bool includeThumbWidth,
   }) async {
     // Same fan-out pattern for category union mode — deepCategoryMode,
     // excludeCategories, and everything else carry over unchanged onto
@@ -424,15 +468,22 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         .toList();
 
     if (!state.categoriesUnion || includeCategories.length <= 1) {
-      return _fetchPageForDepicts(state, continueParams: continueParams);
+      return _fetchPageForDepicts(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     return _fanOutFetch<String>(
       branches: includeCategories,
       keyOf: (cat) => cat,
       stateFor: (cat) => state.copyWith(categories: {cat}),
-      nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForDepicts(branchState, continueParams: branchContinue),
+      nextFetch: (_, branchState, branchContinue) => _fetchPageForDepicts(
+        branchState,
+        continueParams: branchContinue,
+        includeThumbWidth: includeThumbWidth,
+      ),
       continueParams: continueParams,
       continueBucketKey: '_cat',
       sortMode: state.sortMode,
@@ -442,6 +493,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> _fetchPageForDepicts(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    required bool includeThumbWidth,
   }) async {
     // Same fan-out pattern again for depicts union mode — depictsExclude
     // and everything else carry over unchanged onto each single-entity
@@ -449,15 +501,22 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     final includeDepicts = state.depictsInclude.toList();
 
     if (!state.depictsUnion || includeDepicts.length <= 1) {
-      return _fetchPageForFormat(state, continueParams: continueParams);
+      return _fetchPageForFormat(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+      );
     }
 
     return _fanOutFetch<DepictsEntity>(
       branches: includeDepicts,
       keyOf: (entity) => entity.qid,
       stateFor: (entity) => state.copyWith(depictsInclude: {entity}),
-      nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForFormat(branchState, continueParams: branchContinue),
+      nextFetch: (_, branchState, branchContinue) => _fetchPageForFormat(
+        branchState,
+        continueParams: branchContinue,
+        includeThumbWidth: includeThumbWidth,
+      ),
       continueParams: continueParams,
       continueBucketKey: '_depicts',
       sortMode: state.sortMode,
@@ -467,10 +526,13 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> _fetchPageForFormat(
     SearchState state, {
     required Map<String, dynamic>? continueParams,
+    required bool includeThumbWidth,
   }) async {
     if (state.formats.isEmpty) {
       return _fetchSingle(state,
-          continueParams: continueParams, overrideFormat: null);
+          continueParams: continueParams,
+          overrideFormat: null,
+          includeThumbWidth: includeThumbWidth);
     }
 
     // Same fan-out pattern once more, this time branching on selected file
@@ -485,7 +547,8 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       nextFetch: (format, branchState, branchContinue) => _fetchSingle(
           branchState,
           continueParams: branchContinue,
-          overrideFormat: format),
+          overrideFormat: format,
+          includeThumbWidth: includeThumbWidth),
       continueParams: continueParams,
       continueBucketKey: '_multi',
       sortMode: state.sortMode,
@@ -496,12 +559,48 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
+    required bool includeThumbWidth,
   }) {
     return _fetchSingleAttempt(
       state,
       continueParams: continueParams,
       overrideFormat: overrideFormat,
-      includeThumbWidth: true,
+      includeThumbWidth: includeThumbWidth,
+    );
+  }
+
+  /// Advances a generator/search continuation past one failed page. Commons
+  /// returns `gsroffset` alongside its opaque `continue` marker, so a failed
+  /// 200-row page can be skipped without replaying it forever. This is only
+  /// used after the transient retry budget is exhausted; successful pages
+  /// always use Wikimedia's continuation unchanged.
+  Map<String, dynamic>? _advanceFailedPage(
+      Map<String, dynamic>? continueParams) {
+    final rawOffset = continueParams?['gsroffset'];
+    final offset = rawOffset == null
+        ? 0
+        : rawOffset is num
+            ? rawOffset.toInt()
+            : int.tryParse(rawOffset.toString());
+    if (offset == null) return null;
+    return {
+      ...?continueParams,
+      'gsroffset': offset + pageSize,
+    };
+  }
+
+  SearchResponse? _skipFailedPage({
+    required Map<String, dynamic>? continueParams,
+    required String reason,
+  }) {
+    final nextContinue = _advanceFailedPage(continueParams);
+    if (nextContinue == null) return null;
+    final offset = continueParams?['gsroffset'] ?? 0;
+    return SearchResponse(
+      items: const [],
+      continueParams: nextContinue,
+      warning:
+          'Skipped the $pageSize-result batch at offset $offset after retries were exhausted: $reason',
     );
   }
 
@@ -550,6 +649,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         'inprop': 'url',
         'gsrnamespace': '6',
         'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
+        'iilimit': '$pageSize',
         if (includeThumbWidth) 'iiurlwidth': '320',
       };
 
@@ -571,77 +671,148 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           break;
       }
 
-      if (continueParams != null) {
-        for (final entry in continueParams.entries) {
-          params[entry.key] = entry.value.toString();
+      // Wikimedia may split `prop=imageinfo` into several `iicontinue`
+      // responses when thumbnail scaling is requested. Keep those requests
+      // inside this logical page so callers see 200-record pages, not fake
+      // 50-record pages. The continuation returned below is therefore always
+      // the generator continuation for the next logical page.
+      Map<String, dynamic>? propertyContinue = continueParams;
+      final pagesByKey = <String, Map<String, dynamic>>{};
+      Map<String, dynamic>? nextContinue;
+      int? totalHits;
+      String? suggestion;
+
+      for (var propertyPage = 0;; propertyPage++) {
+        final requestParams = <String, String>{...params};
+        if (propertyContinue != null) {
+          for (final entry in propertyContinue.entries) {
+            requestParams[entry.key] = entry.value.toString();
+          }
         }
-      }
 
-      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
+        final uri =
+            Uri.https('commons.wikimedia.org', '/w/api.php', requestParams);
 
-      // The shared gate owns retries, backoff, throttling, and maxlag so
-      // callers cannot multiply traffic with their own retry loops.
-      late final http.Response response;
-      try {
-        response = await _transport.get(
-          uri,
-          headers: {
-            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-          },
-          timeout: const Duration(seconds: 15),
-        );
-      } catch (e) {
-        // ignore: avoid_print
-        print('🔍 [GIVE UP] request gate exhausted retries: $e');
-        return null;
-      }
-
-      if (response.statusCode != 200) return null;
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-
-      final apiError = data['error'] as Map<String, dynamic>?;
-      if (apiError != null) {
-        final errorCode = apiError['code'] as String?;
-
-        // ignore: avoid_print
-        print(
-            '🔍 [API ERROR] code=$errorCode info=${apiError['info']} includeThumbWidth=$includeThumbWidth');
-
-        // The one specific, recoverable case: retry once with thumbnail
-        // scaling turned off entirely, so nothing can fail to normalize.
-        if (errorCode == 'urlparamnormal' && includeThumbWidth) {
+        // The shared gate owns retries, backoff, throttling, and maxlag so
+        // callers cannot multiply traffic with their own retry loops.
+        late final http.Response response;
+        try {
+          response = await _transport.get(
+            uri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 15),
+            // One initial request plus three retries. If all four attempts
+            // fail, this logical page is skipped and pagination continues.
+            maxAttempts: 4,
+          );
+        } catch (e) {
           // ignore: avoid_print
-          print('🔍 [RETRY] retrying without iiurlwidth');
-          return _fetchSingleAttempt(
-            state,
+          print('🔍 [GIVE UP] request gate exhausted retries: $e');
+          return _skipFailedPage(
             continueParams: continueParams,
-            overrideFormat: overrideFormat,
-            includeThumbWidth: false,
-            originalDateScanPages: originalDateScanPages,
+            reason: 'request retries exhausted',
           );
         }
 
-        // Any other API-level error (or a repeat failure even without
-        // thumbnails) is a genuine failure, not an empty result — return
-        // null so the caller surfaces a real error instead of a false
-        // "no media found".
-        return null;
+        if (response.statusCode != 200) {
+          if (response.statusCode >= 500 ||
+              response.statusCode == 408 ||
+              response.statusCode == 429) {
+            return _skipFailedPage(
+              continueParams: continueParams,
+              reason: 'HTTP ${response.statusCode}',
+            );
+          }
+          return null;
+        }
+
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final apiError = data['error'] as Map<String, dynamic>?;
+        if (apiError != null) {
+          final errorCode = apiError['code'] as String?;
+
+          // ignore: avoid_print
+          print(
+              '🔍 [API ERROR] code=$errorCode info=${apiError['info']} includeThumbWidth=$includeThumbWidth');
+
+          // A bad thumbnail is recoverable for the whole logical page: retry
+          // without scaling rather than returning an empty partial page.
+          if (errorCode == 'urlparamnormal' && includeThumbWidth) {
+            // ignore: avoid_print
+            print('🔍 [RETRY] retrying without iiurlwidth');
+            return _fetchSingleAttempt(
+              state,
+              continueParams: continueParams,
+              overrideFormat: overrideFormat,
+              includeThumbWidth: false,
+              originalDateScanPages: originalDateScanPages,
+            );
+          }
+
+          if (const {
+            'cirrussearch-too-busy-error',
+            'maxlag',
+            'ratelimited',
+            'urlparamnormal',
+          }.contains(errorCode)) {
+            return _skipFailedPage(
+              continueParams: continueParams,
+              reason: errorCode ?? 'Wikimedia API error',
+            );
+          }
+
+          // Permanent query errors remain fatal; they are not safe to skip.
+          return null;
+        }
+
+        final responseContinue = data['continue'] as Map<String, dynamic>?;
+        final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
+        for (final entry in pages.entries) {
+          final page = entry.value;
+          if (page is! Map) continue;
+          final key = entry.key.toString();
+          final merged = <String, dynamic>{
+            ...?pagesByKey[key],
+            ...Map<String, dynamic>.from(page),
+          };
+          final previousInfo = pagesByKey[key]?['imageinfo'];
+          final currentInfo = page['imageinfo'];
+          if (currentInfo is! List || currentInfo.isEmpty) {
+            if (previousInfo is List && previousInfo.isNotEmpty) {
+              merged['imageinfo'] = previousInfo;
+            }
+          }
+          pagesByKey[key] = merged;
+        }
+
+        // Search metadata is normally present only on the first response.
+        final searchInfo =
+            data['query']?['searchinfo'] as Map<String, dynamic>?;
+        totalHits ??= (searchInfo?['totalhits'] as num?)?.toInt();
+        suggestion ??= searchInfo?['suggestion'] as String?;
+
+        if (responseContinue?['iicontinue'] != null) {
+          // A 200-record page normally needs at most four thumbnail property
+          // responses. This guard prevents a malformed continuation from
+          // creating an accidental infinite request loop.
+          if (propertyPage >= 10) {
+            return _skipFailedPage(
+              continueParams: continueParams,
+              reason: 'image metadata continuation did not converge',
+            );
+          }
+          propertyContinue = responseContinue;
+          continue;
+        }
+
+        nextContinue = responseContinue;
+        break;
       }
 
-      final nextContinue = data['continue'] as Map<String, dynamic>?;
-      final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
-
-      // Requested via gsrinfo above; was previously fetched and silently
-      // discarded. Only meaningful here, at the leaf request — see the
-      // note on SearchResponse.totalHits for why fan-out doesn't try to
-      // combine these across branches.
-      final searchInfo = data['query']?['searchinfo'] as Map<String, dynamic>?;
-      final totalHits = searchInfo?['totalhits'] as int?;
-      final suggestion = searchInfo?['suggestion'] as String?;
-
       final items = <SearchItem>[];
-      for (final page in pages.values) {
+      for (final page in pagesByKey.values) {
         final infoList = page['imageinfo'] as List?;
         if (infoList == null || infoList.isEmpty) {
           // ignore: avoid_print
@@ -722,7 +893,10 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     } catch (e, st) {
       // ignore: avoid_print
       print('🔍 [EXCEPTION] $e\n$st');
-      return null;
+      return _skipFailedPage(
+        continueParams: continueParams,
+        reason: 'request exception',
+      );
     }
   }
 

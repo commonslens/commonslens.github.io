@@ -50,6 +50,7 @@ class _ScriptedBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async {
     return searchPages[searchCalls++];
   }
@@ -86,6 +87,7 @@ class _DeferredBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) {
     return (requests[filters.queryText] = Completer<MediaSearchResult>())
         .future;

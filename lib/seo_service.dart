@@ -75,7 +75,7 @@ abstract final class SeoService {
       return const _SeoMetadata(
         title: 'CommonsLens Features — Wikimedia Search, Map & Export',
         description:
-            'Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, bulk downloads, and visual data pipelines.',
+            'Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, metadata CSV export, and visual data pipelines.',
         canonical: '$_origin/features/',
       );
     }

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:commonslens/bulk_download_tray.dart';
+import 'package:commonslens/csv_export_tray.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -677,7 +677,10 @@ class MediaResultsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final source = queueSource ??
         MediaQueueSource.session(
-          GoRouter.maybeOf(context)?.routeInformationProvider.value.uri
+          GoRouter.maybeOf(context)
+                  ?.routeInformationProvider
+                  .value
+                  .uri
                   .toString() ??
               '/',
         );
@@ -897,7 +900,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                           ],
                         ),
                       ),
-                    // Selection state is only shown while bulk selection is
+                    // Selection state is only shown while CSV selection is
                     // active, so the circle has a single, obvious meaning.
                     if (isSelectionMode)
                       Positioned(

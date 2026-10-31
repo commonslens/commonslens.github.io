@@ -1443,6 +1443,11 @@ class SearchResponse {
   final List<SearchItem> items;
   final Map<String, dynamic>? continueParams;
 
+  /// Non-fatal issues encountered while fetching this page. A pipeline export
+  /// may continue after a page is skipped, but the caller must surface this
+  /// warning and must not cache the incomplete result as a clean dataset.
+  final String? warning;
+
   /// Wikimedia's own estimate of total matches for this query. Only ever
   /// set by the leaf request that actually hits the search API — a
   /// "+"-query or a union-mode filter fans out into several independent
@@ -1458,6 +1463,7 @@ class SearchResponse {
   const SearchResponse({
     required this.items,
     required this.continueParams,
+    this.warning,
     this.totalHits,
     this.suggestion,
   });

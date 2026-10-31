@@ -325,8 +325,21 @@ class PipelineController extends Notifier<PipelineViewState> {
   // Run / Preview
   // ---------------------------------------------------------------------
 
-  Future<void> run({bool preview = false}) async {
+  Future<void> run({
+    bool preview = false,
+    bool unlimitedCsvExport = false,
+    bool includeThumbnailUrls = true,
+  }) async {
     if (state.isRunning) return;
+
+    if (!state.graph.nodes
+        .any((node) => node.type == PipelineNodeType.sinkCsvExport)) {
+      state = state.copyWith(
+        runError:
+            'Add a Dataset Manifest (CSV) sink before running the pipeline.',
+      );
+      return;
+    }
 
     // Cycle-check up front rather than letting PipelineEngine.run throw
     // past this method — same check, just surfaced as a single top-level
@@ -356,7 +369,9 @@ class PipelineController extends Notifier<PipelineViewState> {
     final ctx = PipelineExecutionContext(
       backend: ref.read(commonsBackendProvider),
       cache: _cache,
-      maxItemsPerSource: _maxItemsPerSourceForRun(),
+      maxItemsPerSource: unlimitedCsvExport ? null : _maxItemsPerSourceForRun(),
+      unlimitedCsvExport: unlimitedCsvExport,
+      includeThumbnailUrls: includeThumbnailUrls,
       preview: preview,
       beforeFetchPage: _waitForFetchPermission,
       onFetchProgress: (fetched, totalHits) {
@@ -388,25 +403,10 @@ class PipelineController extends Notifier<PipelineViewState> {
     }
   }
 
-  /// Dataset manifests can deliberately exhaust Wikimedia continuation;
-  /// every other pipeline keeps the normal 1,000-record browser safety cap.
-  /// A custom manifest limit is also used as the source cap, then applied
-  /// once more at its sink after unions or other multi-branch operations.
-  int? _maxItemsPerSourceForRun() {
-    final manifests = state.graph.nodes.where((node) =>
-        node.type == PipelineNodeType.sinkCsvExport &&
-        state.graph.incomingEdges(node.id).isNotEmpty);
-    if (manifests.isEmpty) return 1000;
-
-    var largestCustomLimit = 0;
-    for (final node in manifests) {
-      final scope = node.config['resultScope'] as String? ?? 'all';
-      if (scope == 'all') return null;
-      final limit = (node.config['maxRecords'] as num?)?.toInt() ?? 1000;
-      if (limit > largestCustomLimit) largestCustomLimit = limit;
-    }
-    return largestCustomLimit > 0 ? largestCustomLimit : 1000;
-  }
+  /// Keep media-oriented browser runs bounded. CSV generation opts into its
+  /// own unlimited continuation mode and never sends all those records to an
+  /// image grid or the main Search page.
+  int _maxItemsPerSourceForRun() => 1000;
 
   Future<bool> _waitForFetchPermission() async {
     while (_pauseRequested && !_cancelRequested) {
@@ -444,7 +444,20 @@ class PipelineController extends Notifier<PipelineViewState> {
 
   List<SearchItem>? materializedItemsFor(String nodeId) {
     final output = _lastOutputs[nodeId];
-    return (output != null && output.isMaterialized) ? output.items : null;
+    if (output == null || !output.isMaterialized) return null;
+    // CSV export reads the raw sink output directly. Every media-oriented
+    // consumer gets an audit-sized window even when the preceding CSV run
+    // fetched every continuation page.
+    return output.items!.take(1000).toList();
+  }
+
+  /// Raw count for export confirmations. Unlike [materializedItemsFor], this
+  /// is not capped because a CSV generation run may have fetched every page.
+  int? materializedItemCountFor(String nodeId) {
+    final output = _lastOutputs[nodeId];
+    return (output != null && output.isMaterialized)
+        ? output.items!.length
+        : null;
   }
 
   // ---------------------------------------------------------------------
@@ -479,7 +492,8 @@ class PipelineController extends Notifier<PipelineViewState> {
     );
     try {
       await DownloadService.downloadCsvRecords(records, fileName);
-      return null;
+      final warning = output.warning;
+      return warning == null ? null : 'CSV downloaded with warning: $warning';
     } on DownloadSecurityException catch (error) {
       return error.message;
     }
@@ -491,23 +505,20 @@ class PipelineController extends Notifier<PipelineViewState> {
   Future<String?> generateManifest(String nodeId,
       {String fileName = 'commonslens_manifest'}) async {
     if (state.isRunning) return 'A pipeline run is already in progress.';
-    await run(preview: false);
+    final node = state.graph.nodeById(nodeId);
+    if (node == null) return 'That manifest node no longer exists.';
+    final links =
+        manifestImageLinksFromName(node.config['imageLinks'] as String?);
+    await run(
+      preview: false,
+      unlimitedCsvExport: true,
+      includeThumbnailUrls: links != ManifestImageLinks.original,
+    );
     if (state.runCancelled) {
       return 'Manifest generation was cancelled; no file was downloaded.';
     }
     if (state.runError != null) return state.runError;
     return exportSinkCsv(nodeId, fileName: fileName);
-  }
-
-  void downloadManifestHelper(String nodeId) {
-    final node = state.graph.nodeById(nodeId);
-    final configured = node?.config['fileName'] as String?;
-    final csvName = (configured == null || configured.trim().isEmpty)
-        ? 'commonslens_manifest.csv'
-        : configured.toLowerCase().endsWith('.csv')
-            ? configured
-            : '$configured.csv';
-    DownloadService.downloadManifestPythonHelper(csvName);
   }
 
   bool _hasUpstreamType(String nodeId, PipelineNodeType type) {
@@ -526,34 +537,6 @@ class PipelineController extends Notifier<PipelineViewState> {
     return false;
   }
 
-  Future<String?> exportSinkJson(String nodeId,
-      {String fileName = 'pipeline_export'}) async {
-    final output = _lastOutputs[nodeId];
-    if (output == null || !output.isMaterialized) {
-      return 'Run the pipeline before exporting.';
-    }
-    final records =
-        output.records ?? output.items!.map((item) => item.toJson()).toList();
-    try {
-      await DownloadService.downloadJsonRecords(records, fileName);
-      return null;
-    } on DownloadSecurityException catch (error) {
-      return error.message;
-    }
-  }
-
-  Future<String?> exportSinkZip(
-    String nodeId, {
-    String zipName = 'pipeline_export.zip',
-    bool fullRes = true,
-  }) async {
-    final items = materializedItemsFor(nodeId);
-    if (items == null) return 'Run the pipeline before exporting.';
-    await DownloadService.downloadBulkZip(items,
-        zipName: zipName, maxWidth: fullRes ? null : 1280);
-    return null;
-  }
-
   /// Pipes a Sink node's result into the main SearchPage's results grid —
   /// see SearchController.loadExternalResults for why this is a
   /// non-paginated, filter-chip-clearing display rather than a real
@@ -561,7 +544,8 @@ class PipelineController extends Notifier<PipelineViewState> {
   String? sendToSearch(String nodeId) {
     final items = materializedItemsFor(nodeId);
     if (items == null) return 'Run the pipeline before sending to Search.';
-    ref.read(searchControllerProvider.notifier)
+    ref
+        .read(searchControllerProvider.notifier)
         .loadExternalResults(items, sourceNodeId: nodeId);
     return null;
   }

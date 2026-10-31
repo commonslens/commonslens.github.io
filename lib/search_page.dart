@@ -8,7 +8,7 @@ import 'search_url_codec.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
 import 'search_map_view.dart';
-import 'bulk_download_tray.dart';
+import 'csv_export_tray.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
 
@@ -629,7 +629,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 ),
         ),
         Expanded(child: resultSurface),
-        BulkDownloadTray(availableItems: session.items),
+        CsvExportTray(availableItems: session.items),
       ],
     );
 

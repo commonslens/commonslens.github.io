@@ -5,7 +5,7 @@
 
   **Search, map, inspect, reuse, and export media from Wikimedia Commons.**
 
-  CommonsLens is a free browser-based research interface for finding reusable images, SVGs, audio, video, and documents through advanced metadata filters, geographic discovery, rights guidance, bulk downloads, and visual data pipelines.
+  CommonsLens is a free browser-based research interface for finding reusable images, SVGs, audio, video, and documents through advanced metadata filters, geographic discovery, rights guidance, metadata CSV export, and visual data pipelines.
 
   [Open CommonsLens](https://commonslens.github.io/) · [Explore all features](https://commonslens.github.io/features/) · [Terms](https://commonslens.github.io/terms/) · [Privacy](https://commonslens.github.io/privacy/) · [View the source](https://github.com/commonslens/commonslens.github.io)
 
@@ -44,7 +44,7 @@ CommonsLens brings those systems into one visual application. It is designed for
 - [Media viewer and metadata](#media-viewer-and-metadata)
 - [Reuse and attribution guidance](#reuse-and-attribution-guidance)
 - [Author portfolios](#author-portfolios)
-- [Downloads and bulk export](#downloads-and-bulk-export)
+- [Downloads and metadata export](#downloads-and-metadata-export)
 - [Visual data pipelines](#visual-data-pipelines)
 - [Sharing, responsive design, and PWA support](#sharing-responsive-design-and-pwa-support)
 - [Architecture and reliability](#architecture-and-reliability)
@@ -104,7 +104,7 @@ CommonsLens provides a visual frontend for Wikimedia Commons and CirrusSearch.
 - Creation, upload, or revision date fallback.
 - Licence summary.
 - One-click original-file download.
-- Long-press selection for bulk export.
+- Long-press selection for metadata CSV export.
 - Full asset viewer on click.
 
 <!--
@@ -339,11 +339,10 @@ The reuse panel is an aid, not legal advice. Users should verify the file page, 
 - Search for another uploader by username.
 - View upload counts.
 - Open portfolio files in the full gallery viewer.
-- Select and bulk-download portfolio media.
-- Export to a contributor-named ZIP archive.
+- Select portfolio media and download a contributor-named metadata CSV.
 - Reset selection cleanly when changing authors.
 
-## Downloads and bulk export
+## Downloads and metadata export
 
 ### Individual files
 
@@ -354,25 +353,20 @@ The reuse panel is an aid, not legal advice. Users should verify the file page, 
 - Sanitised filenames.
 - External-open fallback when direct browser downloading is unavailable.
 
-### Bulk collections
+### Result collections
 
 - Long-press a media card to enter selection mode.
 - Select individual files or all currently loaded files.
-- Export original-resolution media.
-- Export web-optimised 1280px media.
-- Track several simultaneous download jobs independently.
-- Cancel active downloads.
-- Report failed files and errors.
-- Split selections larger than 25 items into sequential ZIP parts.
-- Request a browser wake lock during long, visible downloads when supported.
-- Use a small rolling worker pool to limit UI and Wikimedia API pressure.
+- Download one comprehensive CSV for the selected results.
+- Choose a full-size or web-optimized image URL for each row.
+- No image bytes are fetched, zipped, or downloaded for a collection export.
 
 ### Metadata manifest
 
-Each ZIP includes `data.csv` with fields covering:
+Each CSV includes fields covering:
 
-- Archive filename and Commons title.
-- Original, thumbnail, Commons, and description URLs.
+- Commons title and source page.
+- The selected full-size or web-optimized image URL, plus Commons and description URLs.
 - Description, object name, and search snippet.
 - MIME type, dimensions, and SVG status.
 - Creator and uploader.
@@ -386,7 +380,7 @@ Each ZIP includes `data.csv` with fields covering:
 
 The `/pipeline` workspace is a no-code visual ETL and research environment for Wikimedia Commons.
 
-### The 31 node types
+### The 29 available node types
 
 | Category | Nodes |
 | --- | --- |
@@ -394,7 +388,7 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 | Filters | Licence, Quality, Format, Resolution, File Size, Colour Depth, Date Range, Language, Exclude Terms |
 | Set operations | Combine Constraints, Union, Intersect, Difference A−B |
 | Transforms | Dedupe by URL, Sort, Sample/Limit, Field Select, Enrich |
-| Outputs | Dataset Manifest (CSV), JSON Export, ZIP Export, Preview, Send to Search |
+| Outputs | Dataset Manifest (CSV), Preview, Send to Search |
 
 ### Graph editor
 
@@ -426,8 +420,10 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 - Show idle, running, successful, warning, and error states per node.
 - Use 20 items per source for preview runs.
 - Use up to 1,000 items per source for ordinary full runs.
-- Let Dataset Manifest runs exhaust paginated Commons results, or stop at a custom record maximum.
-- Report manifest progress and allow long runs to be paused or cancelled.
+- Generate CSV manifests by following every available continuation page; only
+  Preview and Send to Search use the 1,000-record browser audit window.
+- Keep media-oriented browser outputs at the 1,000-record audit window.
+- Report run progress and allow runs to be paused or cancelled.
 - Preserve typed media records alongside projected or enriched export fields.
 - Avoid silently rerunning the graph when exporting the last result.
 
@@ -439,17 +435,13 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 - Deduplicate by URL.
 - Sort results.
 - Limit or randomly sample results.
-- Select specific CSV/JSON fields.
+- Select specific CSV fields.
 - Enrich results with Structured Data on Commons.
 - Enrich results with global Wikimedia usage and usage counts.
 
 ### Pipeline outputs
 
-- CSV dataset manifests with original/thumbnail URLs and Essential, Detailed, or Full metadata presets.
-- Optional dependency-free Python helper for downloading files from a manifest.
-- Pretty-printed JSON records.
-- Original-resolution ZIP.
-- Web-optimised 1280px ZIP.
+- CSV dataset manifests with one selected image URL and Essential, Detailed, or Full metadata presets.
 - Browsable preview grid.
 - Transfer the final collection into the main Search result grid.
 
@@ -518,9 +510,7 @@ All application-managed Wikimedia requests share one coordination layer:
 - Search thumbnails use staggered loading.
 - Browser image-cache size is bounded.
 - Pipeline query results are cached separately from saved graphs.
-- Bulk downloads use a rolling worker pool.
-- ZIP files are written incrementally without recompressing already compressed media.
-- Large collections are split to reduce peak browser memory use.
+- CSV construction is chunked to keep browser memory predictable.
 
 ## SEO and static rendering
 
@@ -619,7 +609,7 @@ commonslens/
 │   ├── map_page.dart                 # Interactive geographic interface
 │   ├── pipeline_page.dart            # Visual pipeline editor
 │   ├── features_page.dart            # Public feature catalogue
-│   ├── download_service.dart         # Individual, ZIP, CSV, and JSON export
+│   ├── download_service.dart         # Individual downloads and metadata CSV export
 │   ├── seo_service.dart              # Route-aware document metadata
 │   └── router.dart                   # Application routes and SEO metadata sync
 ├── packages/commonslens_core/

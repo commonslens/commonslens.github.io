@@ -44,6 +44,7 @@ class _PagedBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async {
     searchCalls++;
     final isNextPage = continueToken != null;
@@ -118,7 +119,8 @@ void main() {
 
     expect(store.get(queueId, source)!.items.map((item) => item.title),
         [...items, _item(4)].map((item) => item.title));
-    expect(MediaQueueStore().get(queueId, source)!.items.map((item) => item.title),
+    expect(
+        MediaQueueStore().get(queueId, source)!.items.map((item) => item.title),
         [...items, _item(4)].map((item) => item.title));
     expect(store.get(queueId, MediaQueueSource.pipeline('node-2')), isNull);
   });

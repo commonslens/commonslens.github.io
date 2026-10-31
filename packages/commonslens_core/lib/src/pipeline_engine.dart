@@ -26,7 +26,7 @@
 ///
 /// This file is pure execution logic — no UI, no fl_nodes dependency, no
 /// side-effecting exports. A Sink node here only validates/materializes
-/// its input; actually writing a CSV/JSON/zip file or pushing into
+/// its input; actually writing a metadata CSV or pushing into
 /// searchControllerProvider is a UI-layer action performed by
 /// PipelineController against this engine's result, the same separation
 /// CommonsBackend already keeps from DownloadService.
@@ -58,7 +58,7 @@ class NodeOutput {
 
   /// Export-oriented records aligned with [items]. Transforms may add
   /// enrichment fields or project columns without replacing SearchItem,
-  /// which preview, ZIP download, and Send to Search still require.
+  /// which preview and Send to Search still require.
   final List<Map<String, dynamic>>? records;
 
   const NodeOutput._({
@@ -126,11 +126,21 @@ class PipelineExecutionContext {
   final CommonsBackend backend;
   final PipelineCache? cache;
 
-  /// Hard cap on items fetched per materialized branch. Null means follow
-  /// Wikimedia continuation tokens until the result set is exhausted. The
-  /// Dataset Manifest sink uses that mode because it exports URLs and
-  /// metadata rather than downloading every media binary.
+  /// Hard cap on items fetched per materialized branch. Null remains available
+  /// to non-UI callers that explicitly need continuation exhaustion; the
+  /// browser controller always supplies the 1,000-record safety cap.
   final int? maxItemsPerSource;
+
+  /// Dataset CSV generation deliberately exhausts continuation pages. The
+  /// controller still caps media-oriented views separately before they reach
+  /// Preview or Send to Search.
+  final bool unlimitedCsvExport;
+
+  /// Whether the source request needs Wikimedia-scaled image URLs. Full-size
+  /// CSV manifests do not need them; omitting thumbnail scaling lets Commons
+  /// return the complete 200-row imageinfo batch instead of applying its
+  /// 50-scaled-image performance limit.
+  final bool includeThumbnailUrls;
 
   /// Preview mode swaps [maxItemsPerSource] for [previewCap] everywhere —
   /// the fast, cheap "see roughly what this looks like" run, as opposed to
@@ -156,8 +166,10 @@ class PipelineExecutionContext {
     CommonsBackend? backend,
     this.cache,
     this.maxItemsPerSource = 1000,
+    this.unlimitedCsvExport = false,
+    this.includeThumbnailUrls = true,
     this.preview = false,
-    this.previewCap = 20,
+    this.previewCap = 100,
     this.onFetchProgress,
     this.beforeFetchPage,
     this.onNodeStatus,

@@ -27,6 +27,7 @@ class _FakeBackend extends CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async {
     return const MediaSearchResult(
       items: [],

@@ -61,4 +61,33 @@ void main() {
     expect(calls, 2);
     client.close();
   });
+
+  test('retries a transient CirrusSearch busy response', () async {
+    var calls = 0;
+    final client = MockClient((request) async {
+      calls++;
+      if (calls == 1) {
+        return http.Response(
+          '{"error":{"code":"cirrussearch-too-busy-error"}}',
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
+      return http.Response('{"query":{}}', 200);
+    });
+
+    final response = await WikimediaRequestGate.get(
+      client,
+      Uri.https('commons.wikimedia.org', '/w/api.php', {
+        'action': 'query',
+        'format': 'json',
+      }),
+      maxAttempts: 2,
+      deduplicate: false,
+    );
+
+    expect(response.statusCode, 200);
+    expect(calls, 2);
+    client.close();
+  });
 }

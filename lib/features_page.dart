@@ -56,12 +56,12 @@ class FeaturesPage extends StatelessWidget {
     _FeatureGroup(
       title: 'DOWNLOADS & DATA EXPORT',
       description:
-          'Move from discovery to a reusable media collection entirely in the browser.',
+          'Move from discovery to a reusable metadata manifest without mass media transfers.',
       features: [
         'Download originals or 640px, 1280px, and 1920px derivatives when available.',
-        'Long-press result cards, select any subset or all loaded files, and export originals or 1280px web-optimized media as ZIP files.',
-        'Track, cancel, and run multiple downloads while large selections are split into manageable archive parts.',
-        'Receive a data.csv manifest with every bulk ZIP, including source URLs, descriptions, dimensions, rights, attribution, dates, categories, assessments, and coordinates.',
+        'Long-press result cards, select any subset or all loaded files, and download one comprehensive CSV.',
+        'Choose whether each CSV row contains a full-size or web-optimized image URL.',
+        'CSV exports include the requested metadata, rights, attribution, dates, categories, assessments, coordinates, and image URL without downloading image files.',
       ],
     ),
     _FeatureGroup(
@@ -72,8 +72,8 @@ class FeaturesPage extends StatelessWidget {
         'Start from text, categories, depicted subjects, Wikidata statements, templates, geosearch, author uploads, or a related file.',
         'Filter license, quality, format, resolution, size, color depth, dates, language, and excluded terms.',
         'Combine branches with query constraints, union, intersection, or difference; then deduplicate, sort, sample, select fields, or enrich metadata.',
-        'Export large filtered datasets as CSV manifests containing metadata and direct media URLs, with optional Python download helper.',
-        'Preview intermediate results and send smaller outputs to JSON, ZIP, a media preview, or the main Search grid.',
+        'Export filtered datasets as CSV manifests containing metadata and one direct media URL per row.',
+        'Preview intermediate results, download metadata-only CSV output, or send results to the main Search grid.',
         'Autosave pipelines in IndexedDB, reopen saved graphs, import or export portable JSON, preview capped runs, cache queries, and clear cached results.',
       ],
     ),
@@ -132,7 +132,7 @@ class FeaturesPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Advanced search, semantic metadata, geographic discovery, responsible reuse, bulk export, and visual data pipelines for Wikimedia Commons.',
+                    'Advanced search, semantic metadata, geographic discovery, responsible reuse, metadata CSV export, and visual data pipelines for Wikimedia Commons.',
                     style: TextStyle(
                       color: Color(0xFFAAAAAA),
                       fontSize: 16,

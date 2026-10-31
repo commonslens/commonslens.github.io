@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 
 /// One global clearance layer for every app-managed request this browser tab
 /// sends to Wikimedia. It prevents independent features (search, previews, metadata,
-/// and bulk downloads) from creating overlapping request bursts.
+/// and collection CSV exports) from creating overlapping request bursts.
 ///
 /// Wikimedia currently recommends no more than three concurrent requests.
 /// Commons Lens deliberately stays below that at two, spaces request starts,
@@ -200,8 +200,11 @@ class WikimediaRequestGate {
       final data = jsonDecode(response.body);
       return data is Map &&
           data['error'] is Map &&
-          const {'maxlag', 'ratelimited'}
-              .contains((data['error'] as Map)['code']?.toString());
+          const {
+            'maxlag',
+            'ratelimited',
+            'cirrussearch-too-busy-error',
+          }.contains((data['error'] as Map)['code']?.toString());
     } catch (_) {
       return false;
     }

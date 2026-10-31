@@ -20,6 +20,16 @@ class _PaletteState extends State<_Palette> {
   Widget build(BuildContext context) {
     final byCategory = <PipelineNodeCategory, List<PipelineNodeType>>{};
     for (final type in PipelineNodeType.values) {
+      // Dataset Manifest (CSV) is the only sink. Preview and Send to Search
+      // are top-level actions, not pipeline nodes; the old sink enum values
+      // remain parseable only so an already-saved graph does not crash while
+      // it is being migrated.
+      if (type == PipelineNodeType.sinkJsonExport ||
+          type == PipelineNodeType.sinkZipExport ||
+          type == PipelineNodeType.sinkPreview ||
+          type == PipelineNodeType.sinkSendToSearch) {
+        continue;
+      }
       if (_query.isNotEmpty &&
           !type.label.toLowerCase().contains(_query.toLowerCase())) {
         continue;

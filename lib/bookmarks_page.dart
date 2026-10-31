@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'bookmark_service.dart';
-import 'bulk_download_tray.dart';
+import 'csv_export_tray.dart';
 import 'media_queue.dart';
 import 'search_components.dart';
 import 'search_models.dart';
@@ -206,9 +206,9 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
           Expanded(
               child:
                   _buildBody(visibleItems, bookmarkUrls, bookmarkState, query)),
-          BulkDownloadTray(
+          CsvExportTray(
             availableItems: visibleItems,
-            zipName: 'commonslens_bookmarks.zip',
+            fileName: 'commonslens_bookmarks',
           ),
         ],
       ),

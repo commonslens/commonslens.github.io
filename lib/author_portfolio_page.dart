@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
-import 'bulk_download_tray.dart';
+import 'csv_export_tray.dart';
 import 'media_queue.dart';
 
 class AuthorPortfolioPage extends ConsumerStatefulWidget {
@@ -34,7 +34,7 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.username != widget.username) {
       _authorCtrl.text = widget.username;
-      // Switching authors — a bulk selection from the previous grid
+      // Switching authors — a CSV selection from the previous grid
       // shouldn't silently carry over into the new one.
       ref.read(selectionModeProvider.notifier).state = false;
       ref.read(selectedItemsProvider.notifier).state = {};
@@ -139,9 +139,9 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
         children: [
           _buildAuthorSearchBar(),
           Expanded(child: _buildBody(session)),
-          BulkDownloadTray(
+          CsvExportTray(
             availableItems: session.items,
-            zipName: '${widget.username}_portfolio.zip',
+            fileName: '${widget.username}_portfolio',
           ),
         ],
       ),

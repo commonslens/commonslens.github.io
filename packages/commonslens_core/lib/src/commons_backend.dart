@@ -11,6 +11,10 @@ class MediaSearchResult {
   final bool hasMore;
   final String? error;
 
+  /// Non-fatal page-level warning, such as a skipped batch after its retry
+  /// budget was exhausted.
+  final String? warning;
+
   /// Opaque, JSON-serializable. Hand it back as [CommonsBackend.search]'s
   /// `continueToken` argument to get the next page. Null when there is no
   /// next page.
@@ -37,6 +41,7 @@ class MediaSearchResult {
     required this.continueToken,
     required this.queryUsed,
     this.error,
+    this.warning,
     this.totalHits,
     this.suggestion,
   });
@@ -49,6 +54,7 @@ class MediaSearchResult {
         'items': items.map((i) => i.toJson()).toList(),
         'hasMore': hasMore,
         'error': error,
+        'warning': warning,
         'continueToken': continueToken,
         'queryUsed': queryUsed,
         'totalHits': totalHits,
@@ -74,6 +80,7 @@ class MediaSearchResult {
           : null,
       queryUsed: json['queryUsed'] as String? ?? '',
       error: json['error'] as String?,
+      warning: json['warning'] as String?,
       totalHits: (json['totalHits'] as num?)?.toInt(),
       suggestion: json['suggestion'] as String?,
     );
@@ -127,6 +134,7 @@ class CommonsBackend {
   Future<MediaSearchResult> search(
     SearchState filters, {
     Map<String, dynamic>? continueToken,
+    bool includeThumbnailUrls = true,
   }) async {
     final built = _service.buildQuery(filters);
 
@@ -140,8 +148,11 @@ class CommonsBackend {
       );
     }
 
-    final result =
-        await _service.fetchPage(filters, continueParams: continueToken);
+    final result = await _service.fetchPage(
+      filters,
+      continueParams: continueToken,
+      includeThumbWidth: includeThumbnailUrls,
+    );
 
     if (result == null) {
       return MediaSearchResult(
@@ -164,6 +175,7 @@ class CommonsBackend {
       queryUsed: built.srsearch,
       totalHits: result.totalHits,
       suggestion: result.suggestion,
+      warning: result.warning,
     );
   }
 

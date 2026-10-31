@@ -3,8 +3,7 @@ part of 'pipeline_page.dart';
 // -----------------------------------------------------------------------------
 // Inspector panel — a tabbed per-node workspace: SETTINGS (the generic
 // field-spec form + bespoke Depicts/Statement editor + sink actions),
-// PREVIEW (this node's actual last-run output as a downloadable media
-// grid — works for every node type, not just Preview sinks), and NOTES
+// PREVIEW (this node's actual last-run output as a browsable media grid), and NOTES
 // (a freeform per-node scratchpad, stored in node.config['_note']).
 // -----------------------------------------------------------------------------
 
@@ -13,14 +12,10 @@ enum _InspectorTab { settings, preview, notes }
 class _InspectorPanel extends ConsumerStatefulWidget {
   final String? nodeId;
   final void Function(String? error, [String? success]) onSinkResult;
-  final void Function(String nodeId) onSendToSearch;
-  final void Function(List<SearchItem> items, String zipName) onDownloadItems;
 
   const _InspectorPanel({
     required this.nodeId,
     required this.onSinkResult,
-    required this.onSendToSearch,
-    required this.onDownloadItems,
   });
 
   @override
@@ -231,6 +226,8 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     final graph = ref.watch(pipelineControllerProvider.select((s) => s.graph));
     final inbound = graph.edges.where((e) => e.toNodeId == node.id).length;
     final outbound = graph.edges.where((e) => e.fromNodeId == node.id).length;
+    final isRunning =
+        ref.watch(pipelineControllerProvider.select((s) => s.isRunning));
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -244,17 +241,18 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           const SizedBox(height: 14),
           _exportGuidanceCard(
             icon: Icons.dataset_outlined,
-            title: 'Large dataset output',
+            title: 'One-way export',
             text:
-                'Exports metadata and direct media URLs—not the image files. Choose All available to follow every Commons result page. An upstream Field Select overrides the metadata preset.',
+                'Preview checks 100 records. Run fetches every match and downloads one metadata CSV. No image files are downloaded.',
           ),
-        ] else if (node.type == PipelineNodeType.sinkZipExport) ...[
+        ],
+        if (node.type == PipelineNodeType.transformEnrich) ...[
           const SizedBox(height: 14),
           _exportGuidanceCard(
-            icon: Icons.folder_zip_outlined,
-            title: 'Best for small collections',
+            icon: Icons.info_outline_rounded,
+            title: 'Optional enrichment',
             text:
-                'ZIP downloads the actual media into this browser. For thousands of files, use Dataset Manifest (CSV) and download from its URLs later.',
+                'This node is opt-in. It adds extra Wikimedia requests for Structured Data and Global Usage. Leave it out when you only need normal result metadata and image URLs.',
           ),
         ],
         const SizedBox(height: 20),
@@ -282,7 +280,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           ]
         else
           _buildNoConfigHint(node.type),
-        if (node.type.isSink) ...[
+        if (node.type == PipelineNodeType.sinkCsvExport) ...[
           const SizedBox(height: 8),
           const Divider(color: _kBorder),
           const SizedBox(height: 12),
@@ -293,7 +291,15 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.2)),
           const SizedBox(height: 10),
-          ..._sinkActions(node, controller),
+          ..._sinkActions(node, controller, enabled: inbound > 0 && !isRunning),
+          if (inbound == 0)
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Text(
+                'Connect an upstream node to enable these actions.',
+                style: TextStyle(color: _kMuted, fontSize: 11),
+              ),
+            ),
         ],
       ],
     );
@@ -363,67 +369,65 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     );
   }
 
-  List<Widget> _sinkActions(PipelineNode node, PipelineController controller) {
+  List<Widget> _sinkActions(PipelineNode node, PipelineController controller,
+      {required bool enabled}) {
     switch (node.type) {
       case PipelineNodeType.sinkCsvExport:
         return [
           _actionButton(
-            Icons.dataset_outlined,
-            'Generate CSV manifest',
-            () async {
-              final error = await controller.generateManifest(
-                node.id,
-                fileName: node.config['fileName'] as String? ??
-                    'commonslens_manifest',
-              );
-              final count = controller.materializedItemsFor(node.id)?.length;
-              widget.onSinkResult(
-                error,
-                count == null
-                    ? null
-                    : '$count filtered records exported; no image files were downloaded.',
-              );
-            },
+            Icons.visibility_outlined,
+            'Preview 100 Images (Recommended)',
+            enabled
+                ? () async {
+                    await controller.run(
+                      preview: true,
+                      includeThumbnailUrls: true,
+                    );
+                    final error = ref.read(pipelineControllerProvider).runError;
+                    if (!mounted) return;
+                    if (error == null) {
+                      setState(() => _tab = _InspectorTab.preview);
+                    }
+                    widget.onSinkResult(
+                      error,
+                      error == null
+                          ? 'Preview ready: up to 100 records shown below.'
+                          : null,
+                    );
+                  }
+                : null,
+            primary: true,
           ),
           _actionButton(
-            Icons.code_rounded,
-            'Download Python helper',
-            () => controller.downloadManifestHelper(node.id),
+            Icons.play_arrow_rounded,
+            'Run pipeline',
+            enabled
+                ? () async {
+                    final error = await controller.generateManifest(
+                      node.id,
+                      fileName: node.config['fileName'] as String? ??
+                          'commonslens_manifest',
+                    );
+                    final count = controller.materializedItemCountFor(node.id);
+                    widget.onSinkResult(
+                      error,
+                      count == null ? null : '$count records exported as CSV.',
+                    );
+                  }
+                : null,
           ),
         ];
       case PipelineNodeType.sinkJsonExport:
-        return [
-          _actionButton(
-              Icons.data_object_rounded,
-              'Export JSON',
-              () async => widget.onSinkResult(await controller.exportSinkJson(
-                  node.id,
-                  fileName:
-                      node.config['fileName'] as String? ?? 'pipeline_export')))
-        ];
       case PipelineNodeType.sinkZipExport:
-        return [
-          _actionButton(
-              Icons.folder_zip_outlined,
-              'Export Zip',
-              () async => widget.onSinkResult(await controller.exportSinkZip(
-                  node.id,
-                  zipName: node.config['zipName'] as String? ??
-                      'pipeline_export.zip',
-                  fullRes: node.config['fullRes'] as bool? ?? true)))
-        ];
       case PipelineNodeType.sinkSendToSearch:
-        return [
-          _actionButton(Icons.send_rounded, 'Send to Search',
-              () => widget.onSendToSearch(node.id))
-        ];
       case PipelineNodeType.sinkPreview:
         return [
           const Padding(
-            padding: EdgeInsets.only(bottom: 4),
+            padding: EdgeInsets.symmetric(vertical: 4),
             child: Text(
-                'This sink has no export of its own — open the PREVIEW tab above to browse and download its items.',
-                style: TextStyle(color: _kMuted, fontSize: 11.5, height: 1.5)),
+              'This legacy sink is read-only. Use the top-level Preview or Send to Search controls, or add a Dataset Manifest (CSV) node for export.',
+              style: TextStyle(color: _kMuted, fontSize: 12, height: 1.5),
+            ),
           ),
         ];
       default:
@@ -431,25 +435,44 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     }
   }
 
-  Widget _actionButton(IconData icon, String label, VoidCallback onTap) =>
+  Widget _actionButton(IconData icon, String label, VoidCallback? onTap,
+          {bool primary = false}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: onTap,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _kAccent,
-              side: const BorderSide(color: Color(0xFF2A4A8A)),
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            icon: Icon(icon, size: 16),
-            label: Text(label,
-                style: const TextStyle(
-                    fontSize: 12.5, fontWeight: FontWeight.w700)),
-          ),
+          child: primary
+              ? ElevatedButton.icon(
+                  onPressed: onTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kAccent,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: _kAccent.withValues(alpha: 0.25),
+                    disabledForegroundColor: Colors.white38,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: Icon(icon, size: 16),
+                  label: Text(label,
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w700)),
+                )
+              : OutlinedButton.icon(
+                  onPressed: onTap,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _kAccent,
+                    disabledForegroundColor: Colors.white38,
+                    side: const BorderSide(color: Color(0xFF2A4A8A)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
+                  icon: Icon(icon, size: 16),
+                  label: Text(label,
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w700)),
+                ),
         ),
       );
 
@@ -460,7 +483,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
 
     if (output == null) {
       return _centeredHint(
-          'Run the pipeline (▶ or the preview eye icon up top) to see this node\'s output here.',
+          'Choose Preview 100 Images on the Dataset Manifest sink to inspect the CSV-shaped output here.',
           icon: Icons.play_circle_outline);
     }
     if (output.hasError) {
@@ -475,7 +498,8 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     }
 
     final items = output.items ?? const [];
-    const renderCap = 60;
+    const renderCap = 100;
+    final visibleItems = items.take(renderCap).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -484,7 +508,10 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           padding: const EdgeInsets.fromLTRB(16, 14, 12, 8),
           child: Row(
             children: [
-              Text('${items.length} item${items.length == 1 ? '' : 's'}',
+              Text(
+                  items.length > renderCap
+                      ? '${visibleItems.length} of ${items.length} records'
+                      : '${items.length} record${items.length == 1 ? '' : 's'}',
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 12.5,
@@ -494,20 +521,6 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                 Text('of ~${output.totalHits}',
                     style: const TextStyle(color: _kMuted, fontSize: 11)),
               ],
-              const Spacer(),
-              if (items.isNotEmpty)
-                TextButton.icon(
-                  onPressed: () => widget.onDownloadItems(
-                    items,
-                    '${node.title.replaceAll(RegExp(r"[^\w\-]+"), "_")}.zip',
-                  ),
-                  icon: const Icon(Icons.archive_outlined, size: 15),
-                  label: const Text('Download all',
-                      style: TextStyle(fontSize: 11.5)),
-                  style: TextButton.styleFrom(
-                      foregroundColor: _kAccent,
-                      padding: const EdgeInsets.symmetric(horizontal: 8)),
-                ),
             ],
           ),
         ),
@@ -526,7 +539,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
             ),
           ),
         Expanded(
-          child: items.isEmpty
+          child: visibleItems.isEmpty
               ? _centeredHint('No items matched at this stage.',
                   icon: Icons.filter_alt_off_outlined)
               : Column(
@@ -535,24 +548,12 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                         child: Text(
-                            'Showing the first $renderCap of ${items.length} — "Download all" still grabs every item.',
+                            'Preview is capped at $renderCap records. Run pipeline to fetch every match and download the CSV.',
                             style: const TextStyle(
                                 color: _kMuted, fontSize: 10.5)),
                       ),
                     Expanded(
-                      child: MediaResultsGrid(
-                        items: items,
-                        itemLimit: renderCap,
-                        queueSource: MediaQueueSource.pipeline(node.id),
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: 0.72,
-                        ),
-                      ),
+                      child: _buildPreviewRecordTable(visibleItems),
                     ),
                   ],
                 ),
@@ -578,6 +579,103 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
         ),
       ),
     );
+  }
+
+  // A deliberately compact CSV-shaped viewer: every row is one record, with
+  // the image preview beside the same title, metadata, and URL fields that
+  // the manifest export exposes. It keeps the audit step honest without
+  // creating a second image-only browsing workflow.
+  Widget _buildPreviewRecordTable(List<SearchItem> items) {
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        final previewUrl = item.thumb.isNotEmpty ? item.thumb : item.url;
+        final dimensions = item.width > 0 && item.height > 0
+            ? '${item.width} × ${item.height}'
+            : 'Dimensions unavailable';
+        final fileSize = item.fileSizeBytes > 0
+            ? _formatPreviewBytes(item.fileSizeBytes)
+            : 'Size unavailable';
+
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _kFieldBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: SizedBox(
+                  width: 58,
+                  height: 58,
+                  child: item.isSvg
+                      ? const ColoredBox(
+                          color: Color(0xFF252525),
+                          child: Icon(Icons.broken_image_outlined,
+                              color: Colors.white54, size: 22),
+                        )
+                      : Image.network(
+                          previewUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const ColoredBox(
+                            color: Color(0xFF252525),
+                            child: Icon(Icons.broken_image_outlined,
+                                color: Colors.white54, size: 22),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.mime.isEmpty ? 'Unknown type' : item.mime}  ·  $dimensions  ·  $fileSize',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(color: _kMuted, fontSize: 9.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.url,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: _kAccent, fontSize: 9.5, height: 1.2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatPreviewBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   // ---- NOTES ----
@@ -840,14 +938,13 @@ class _ConfigFieldWidget extends StatelessWidget {
       'created': 'Date created',
       'edited': 'Date edited',
       'originalDate': 'Originally made / photographed',
-      'all': 'All available',
+      'all': 'Capped at 1,000',
       'custom': 'Custom maximum',
       'essential': 'Essential',
       'detailed': 'Detailed',
-      'full': 'Full + enrichment',
-      'both': 'Original + thumbnail',
-      'original': 'Original only',
-      'thumbnail': 'Thumbnail only',
+      'full': 'Full metadata',
+      'original': 'Full-size URL',
+      'thumbnail': 'Web-optimized URL',
     };
     return labels[value] ?? value;
   }

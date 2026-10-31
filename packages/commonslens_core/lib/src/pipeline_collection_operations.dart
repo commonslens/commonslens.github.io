@@ -703,7 +703,8 @@ mixin _PipelineCollectionOperations {
     final output = await _ensureMaterialized(inputs.first.value, ctx);
     if (output.hasError || !output.isMaterialized) return output;
 
-    if (node.type == PipelineNodeType.sinkCsvExport &&
+    if (!ctx.unlimitedCsvExport &&
+        node.type == PipelineNodeType.sinkCsvExport &&
         _cfgString(node.config, 'resultScope', 'all') == 'custom') {
       final limit =
           (_cfgInt(node.config, 'maxRecords') ?? 1000).clamp(1, 1000000);

@@ -239,7 +239,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             'Local storage: whether the asset viewer should preview web-optimised or full-resolution images.',
             'IndexedDB: saved visual pipeline graphs, node settings, positions, names and notes, plus cached Wikimedia query results and their public file metadata.',
             'Browser and service-worker caches: application files, images, media, and map/API responses as managed by your browser and the providers’ cache rules.',
-            'Downloads and exports: files, ZIP archives, CSV/JSON data, and exported pipeline definitions go to the location you choose on your device.',
+            'Downloads and exports: individual files, metadata-only CSV data, and exported pipeline definitions go to the location you choose on your device.',
           ],
           paragraphs: [
             'This local data is not synced to a CommonsLens account or uploaded to a CommonsLens server. Pipeline query results are treated as fresh for one hour, but a local record can remain until it is overwritten, cleared inside the pipeline tools, evicted by the browser, or removed when you clear site data. Saved graphs remain until you delete them or clear site data.',

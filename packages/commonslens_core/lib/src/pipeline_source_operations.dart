@@ -1,5 +1,11 @@
 part of 'pipeline_engine.dart';
 
+// Bump this whenever a previous pipeline execution could have stored a
+// partial result. The old implementation cached a truncated result after a
+// later continuation page failed; those entries must never satisfy an
+// unlimited CSV run.
+const _pipelineQueryCacheVersion = 'pipeline-query-v2';
+
 mixin _PipelineSourceOperations {
   Future<NodeOutput> _executeSource(
       PipelineNode node, PipelineExecutionContext ctx) async {
@@ -180,7 +186,8 @@ mixin _PipelineSourceOperations {
     // (see PipelineCache) also cover author portfolios, which otherwise
     // wouldn't cache at all despite being just as re-run-heavy as any
     // other source during pipeline iteration.
-    final signature = 'author:$username|pipelineCap=${cap ?? "all"}';
+    final signature =
+        '$_pipelineQueryCacheVersion|author:$username|pipelineCap=${cap ?? "all"}';
 
     if (ctx.cache != null) {
       final cached = await ctx.cache!.getQueryResult(signature);
@@ -212,7 +219,9 @@ mixin _PipelineSourceOperations {
       if (!result.hasMore) break;
       continueToken = result.continueToken;
     }
-    if (error != null && items.isEmpty) return NodeOutput.errorResult(error);
+    // Permanent failures must not turn a partial author result into a
+    // successful export.
+    if (error != null) return NodeOutput.errorResult(error);
     final capped = ctx.applyItemLimit(items);
 
     if (ctx.cache != null && !cancelled) {
@@ -238,7 +247,8 @@ Future<NodeOutput> _materializeState(
     SearchState state, PipelineExecutionContext ctx) async {
   final baseSignature = ctx.backend.buildQuerySignature(state);
   final cap = ctx.effectiveMaxItems;
-  final signature = '$baseSignature|pipelineCap=${cap ?? "all"}';
+  final signature =
+      '$_pipelineQueryCacheVersion|$baseSignature|pipelineCap=${cap ?? "all"}';
 
   if (ctx.cache != null) {
     final cached = await ctx.cache!.getQueryResult(signature);
@@ -254,18 +264,23 @@ Future<NodeOutput> _materializeState(
   int? totalHits;
   String? error;
   var cancelled = false;
+  final warnings = <String>[];
 
   while (ctx.shouldFetchMore(items.length)) {
     if (ctx.beforeFetchPage != null && !await ctx.beforeFetchPage!.call()) {
       cancelled = true;
       break;
     }
-    final result =
-        await ctx.backend.search(state, continueToken: continueToken);
+    final result = await ctx.backend.search(
+      state,
+      continueToken: continueToken,
+      includeThumbnailUrls: ctx.includeThumbnailUrls,
+    );
     if (!result.ok) {
       error = result.error;
       break;
     }
+    if (result.warning != null) warnings.add(result.warning!);
     items.addAll(result.items);
     totalHits = result.totalHits ?? totalHits;
     ctx.onFetchProgress?.call(ctx.applyItemLimit(items).length, totalHits);
@@ -273,19 +288,28 @@ Future<NodeOutput> _materializeState(
     continueToken = result.continueToken;
   }
 
-  if (error != null && items.isEmpty) return NodeOutput.errorResult(error);
+  // Never turn a failed continuation page into a successful partial result.
+  if (error != null) return NodeOutput.errorResult(error);
 
   final capped = ctx.applyItemLimit(items);
 
-  if (ctx.cache != null && !cancelled) {
+  if (ctx.cache != null && !cancelled && warnings.isEmpty) {
     await ctx.cache!.putQueryResult(signature, capped);
   }
 
   return NodeOutput.materialized(
     capped,
     totalHits: totalHits,
-    warning: cancelled
-        ? 'Run cancelled after ${capped.length} records were loaded.'
-        : null,
+    warning: [
+      ...warnings,
+      if (cancelled)
+        'Run cancelled after ${capped.length} records were loaded.',
+    ].join(' ').trim().isEmpty
+        ? null
+        : [
+            ...warnings,
+            if (cancelled)
+              'Run cancelled after ${capped.length} records were loaded.',
+          ].join(' '),
   );
 }

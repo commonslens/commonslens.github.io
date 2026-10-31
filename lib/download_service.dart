@@ -81,49 +81,52 @@ class DownloadCancelToken {
   }
 }
 
-/// Minimal RFC 4180 field escaping: wrap in quotes and double any internal
-/// quotes whenever the field contains a comma, quote, or newline — which
-/// covers titles/descriptions/author strings that can contain any of those.
-String _csvField(String value) {
-  if (value.contains(',') ||
-      value.contains('"') ||
-      value.contains('\n') ||
-      value.contains('\r')) {
-    return '"${value.replaceAll('"', '""')}"';
-  }
-  return value;
-}
+String _csvField(String value) => DownloadSecurityPolicy.safeCsvField(value);
 
 class DownloadService {
   static final WikimediaDownloadClient _singleDownloadClient =
       WikimediaDownloadClient();
-  static Future<void> downloadSingleFile(
-      String url, String title, String extension) async {
+
+  /// Downloads one fully verified media object. A non-null return value is a
+  /// user-facing failure reason; rejected URLs are never opened as a fallback.
+  static Future<String?> downloadSingleFile(
+    SearchItem item, {
+    String? url,
+  }) async {
+    final downloadUrl = url ?? item.url;
+    final isOriginal = downloadUrl == item.url;
     try {
       final payload = await _singleDownloadClient.fetchMedia(
-        url,
+        downloadUrl,
         timeout: const Duration(seconds: 30),
+        expectedMime: isOriginal ? item.mime : null,
+        expectedSha1: isOriginal ? item.sha1 : null,
+        expectedLength: isOriginal ? item.fileSizeBytes : null,
       );
 
-      if (payload != null) {
-        final cleanTitle = title
-            .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
-            .replaceAll('File:', '')
-            .trim();
-        final fileName = '$cleanTitle.${extension.toLowerCase()}';
-
-        final blob = html.Blob([payload.bytes], payload.contentType);
-        final objectUrl = html.Url.createObjectUrlFromBlob(blob);
-
-        html.AnchorElement(href: objectUrl)
-          ..setAttribute("download", fileName)
-          ..click();
-
-        html.Url.revokeObjectUrl(objectUrl);
+      if (payload == null) {
+        return 'Download failed: Wikimedia did not return a valid media response.';
       }
-    } catch (e) {
-      debugPrint('Download failed: $e');
-      html.window.open(url, '_blank');
+
+      final fileName = DownloadSecurityPolicy.safeFileName(
+        item.title,
+        extension: payload.extension,
+      );
+      final blob = html.Blob([payload.bytes], payload.contentType);
+      final objectUrl = html.Url.createObjectUrlFromBlob(blob);
+
+      html.AnchorElement(href: objectUrl)
+        ..setAttribute('download', fileName)
+        ..click();
+
+      html.Url.revokeObjectUrl(objectUrl);
+      return null;
+    } on DownloadSecurityException catch (error) {
+      debugPrint('Download blocked: ${error.code}');
+      return error.message;
+    } catch (error) {
+      debugPrint('Download failed: $error');
+      return 'Download failed before the file could be verified.';
     }
   }
 
@@ -132,12 +135,56 @@ class DownloadService {
   /// in-archive filenames, its data.csv `filename` column, and a
   /// standalone CSV export (which has no zip entries to derive it from)
   /// always agree with each other.
-  static String _sanitizedFileName(SearchItem item) {
-    final cleanTitle = item.title
-        .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_')
-        .replaceAll('File:', '')
-        .trim();
-    return '$cleanTitle.${item.extension.toLowerCase()}';
+  static String _sanitizedFileName(
+    SearchItem item, {
+    String? extension,
+  }) {
+    return DownloadSecurityPolicy.safeFileName(
+      item.title,
+      extension: extension ?? item.extension,
+    );
+  }
+
+  static String _safeExportName(
+    String requested,
+    String extension, {
+    required String fallback,
+  }) =>
+      DownloadSecurityPolicy.safeFileName(
+        requested,
+        extension: extension,
+        fallback: fallback,
+      );
+
+  static void _validateManifestItem(SearchItem item) {
+    DownloadSecurityPolicy.requireTrustedMediaUri(item.url);
+    if (item.thumb.isNotEmpty) {
+      DownloadSecurityPolicy.requireTrustedMediaUri(item.thumb);
+    }
+  }
+
+  static void _validateRecordMediaUrls(List<Map<String, dynamic>> records) {
+    const mediaUrlKeys = {
+      'url',
+      'thumb',
+      'originalurl',
+      'thumbnailurl',
+      'mediaurl',
+    };
+    for (final record in records) {
+      for (final entry in record.entries) {
+        if (!mediaUrlKeys.contains(entry.key.toLowerCase())) continue;
+        final value = entry.value;
+        if (value == null || value == '') continue;
+        if (value is! String) {
+          throw const DownloadSecurityException(
+            'invalid_manifest_url',
+            'Export blocked: a media URL field is not valid text.',
+          );
+        }
+        DownloadSecurityPolicy.requireTrustedMediaUri(value);
+      }
+    }
   }
 
   static String _plainText(String html) =>
@@ -163,6 +210,8 @@ class DownloadService {
         'is_svg',
         'width',
         'height',
+        'file_size_bytes',
+        'sha1',
         'author',
         'uploader',
         'license',
@@ -185,6 +234,7 @@ class DownloadService {
       ].join(','));
 
     for (final item in items) {
+      _validateManifestItem(item);
       csvBuffer.writeln([
         _csvField(_sanitizedFileName(item)),
         _csvField(item.title),
@@ -197,6 +247,8 @@ class DownloadService {
         item.isSvg.toString(),
         item.width.toString(),
         item.height.toString(),
+        item.fileSizeBytes.toString(),
+        _csvField(item.sha1),
         _csvField(_plainText(item.artistHtml)),
         _csvField(item.uploader),
         _csvField(item.licenseShortName),
@@ -223,15 +275,14 @@ class DownloadService {
   }
 
   /// Standalone CSV export — no zip, no file bytes fetched, just the
-  /// manifest. Used by the pipeline's CSV Export sink, and equally usable
+  /// manifest. Used by dataset exports and equally usable
   /// anywhere a plain CSV of results is wanted without a bulk download.
   static Future<void> downloadCsv(
       List<SearchItem> items, String fileName) async {
     final csvBytes = utf8.encode(buildManifestCsv(items));
     final blob = html.Blob([csvBytes], 'text/csv');
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final name =
-        fileName.toLowerCase().endsWith('.csv') ? fileName : '$fileName.csv';
+    final name = _safeExportName(fileName, 'csv', fallback: 'commons_export');
 
     html.AnchorElement(href: url)
       ..setAttribute('download', name)
@@ -245,17 +296,20 @@ class DownloadService {
   /// [buildManifestCsv]. Used by the pipeline's JSON Export sink.
   static Future<void> downloadJson(
       List<SearchItem> items, String fileName) async {
+    for (final item in items) {
+      _validateManifestItem(item);
+    }
     await downloadJsonRecords(
         items.map((item) => item.toJson()).toList(), fileName);
   }
 
   static Future<void> downloadJsonRecords(
       List<Map<String, dynamic>> records, String fileName) async {
+    _validateRecordMediaUrls(records);
     final jsonStr = const JsonEncoder.withIndent('  ').convert(records);
     final blob = html.Blob([utf8.encode(jsonStr)], 'application/json');
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final name =
-        fileName.toLowerCase().endsWith('.json') ? fileName : '$fileName.json';
+    final name = _safeExportName(fileName, 'json', fallback: 'commons_export');
 
     html.AnchorElement(href: url)
       ..setAttribute('download', name)
@@ -266,14 +320,20 @@ class DownloadService {
 
   static Future<void> downloadCsvRecords(
       List<Map<String, dynamic>> records, String fileName) async {
+    _validateRecordMediaUrls(records);
     final columns = <String>[];
     for (final record in records) {
       for (final key in record.keys) {
         if (!columns.contains(key)) columns.add(key);
       }
     }
-    final buffer = StringBuffer()..writeln(columns.map(_csvField).join(','));
-    for (final record in records) {
+    // Keep CSV construction chunked. The pipeline still owns its metadata
+    // rows, but this avoids creating one additional giant Dart String before
+    // handing the manifest to the browser's Blob implementation.
+    final chunks = <Object>["${columns.map(_csvField).join(',')}\n"];
+    var buffer = StringBuffer();
+    for (var index = 0; index < records.length; index++) {
+      final record = records[index];
       buffer.writeln(columns.map((column) {
         final value = record[column];
         final text = value is Map || value is List
@@ -281,13 +341,258 @@ class DownloadService {
             : value?.toString() ?? '';
         return _csvField(text);
       }).join(','));
+      if ((index + 1) % 1000 == 0) {
+        chunks.add(buffer.toString());
+        buffer = StringBuffer();
+      }
     }
-    final blob = html.Blob([utf8.encode(buffer.toString())], 'text/csv');
+    if (buffer.isNotEmpty) chunks.add(buffer.toString());
+    final blob = html.Blob(chunks, 'text/csv;charset=utf-8');
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final name =
-        fileName.toLowerCase().endsWith('.csv') ? fileName : '$fileName.csv';
+    final name = _safeExportName(fileName, 'csv', fallback: 'commons_export');
     html.AnchorElement(href: url)
       ..setAttribute('download', name)
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  }
+
+  /// Downloads a dependency-free, sequential downloader for a CommonsLens
+  /// manifest. Users may ignore it and consume the CSV with their own tools;
+  /// it is provided so the URL-manifest workflow is useful out of the box.
+  static void downloadManifestPythonHelper(String csvFileName) {
+    final safeManifestName =
+        _safeExportName(csvFileName, 'csv', fallback: 'commonslens_manifest');
+    final defaultManifest = jsonEncode(safeManifestName);
+    final script = '''#!/usr/bin/env python3
+"""Strictly verify and download media from a CommonsLens manifest."""
+
+import argparse
+import csv
+import hashlib
+import pathlib
+import re
+import time
+import urllib.request
+from urllib.parse import unquote, urlparse
+
+DEFAULT_MANIFEST = $defaultManifest
+USER_AGENT = "CommonsLensManifestDownloader/1.0 (personal dataset download)"
+MAX_BYTES = 256 * 1024 * 1024
+TRUSTED_HOST = "upload.wikimedia.org"
+ALLOWED_EXTENSIONS = {
+    "jpg", "jpeg", "png", "gif", "webp", "tif", "tiff",
+    "mp3", "wav", "ogg", "oga", "ogv", "webm", "mp4",
+}
+ACTIVE_EXTENSIONS = {"svg", "pdf", "djvu"}
+
+
+def require_trusted_url(value):
+    parsed = urlparse(value)
+    if parsed.scheme.lower() != "https":
+        raise ValueError("media URL is not HTTPS")
+    if parsed.hostname != TRUSTED_HOST or parsed.username or parsed.password:
+        raise ValueError("media URL is not from Wikimedia Commons")
+    try:
+        if parsed.port not in (None, 443):
+            raise ValueError("media URL uses an untrusted port")
+    except ValueError as error:
+        raise ValueError("media URL has an invalid port") from error
+    if not parsed.path.startswith("/wikipedia/commons/"):
+        raise ValueError("media URL is outside Commons media storage")
+    extension = pathlib.PurePosixPath(unquote(parsed.path)).suffix.lower()[1:]
+    if extension in ACTIVE_EXTENSIONS:
+        raise ValueError(
+            f".{extension} is active content; use the manifest URL manually"
+        )
+    if extension not in ALLOWED_EXTENSIONS:
+        raise ValueError(f".{extension or 'unknown'} is not on the allowlist")
+    return extension
+
+
+class StrictRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        require_trusted_url(newurl)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+OPENER = urllib.request.build_opener(StrictRedirectHandler())
+
+
+def safe_name(value):
+    value = unquote(value).replace("File:", "")
+    value = re.sub(r'[\\\\/:*?"<>|\\x00-\\x1f\\x7f]+', "_", value)
+    value = re.sub(r'[\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u206f\\ufeff]', "", value)
+    value = re.sub(r"\\.[A-Za-z0-9]{1,8}\$", "", value).strip(" .")
+    value = re.sub(
+        r"\\.(exe|com|bat|cmd|scr|pif|msi|msp|ps1|js|jse|vbs|vbe|wsf|wsh|jar|class|apk|app|dmg|sh|bash|zsh|html?|xhtml)\$",
+        "_blocked_suffix",
+        value,
+        flags=re.IGNORECASE,
+    )
+    return value[:160] or "download"
+
+
+def sniff_type(data):
+    blocked = (
+        b"MZ", b"\\x7fELF", b"\\x00asm", b"#!", b"PK\\x03\\x04",
+        b"Rar!", b"7z\\xbc\\xaf\\x27\\x1c", b"\\x1f\\x8b",
+        b"\\xca\\xfe\\xba\\xbe",
+    )
+    if data.startswith(blocked):
+        raise ValueError("executable or archive signature detected")
+    if data.startswith(b"\\xff\\xd8\\xff"):
+        return "jpeg"
+    if data.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+        return "png"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "gif"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "webp"
+    if data.startswith((b"II*\\x00", b"MM\\x00*")):
+        return "tiff"
+    if data.startswith(b"ID3") or (
+        len(data) >= 2 and data[0] == 0xff and data[1] & 0xe0 == 0xe0
+    ):
+        return "mp3"
+    if len(data) >= 12 and data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return "wav"
+    if data.startswith(b"OggS"):
+        return "ogg"
+    if data.startswith(b"\\x1aE\\xdf\\xa3"):
+        return "webm"
+    if len(data) >= 12 and data[4:8] == b"ftyp":
+        return "mp4"
+    raise ValueError("unknown or unsupported file signature")
+
+
+def expected_type(extension):
+    if extension in ("jpg", "jpeg"):
+        return "jpeg"
+    if extension in ("tif", "tiff"):
+        return "tiff"
+    if extension in ("ogg", "oga", "ogv"):
+        return "ogg"
+    return extension
+
+
+def mime_matches(mime, media_type):
+    accepted = {
+        "jpeg": {"image/jpeg", "image/jpg"},
+        "png": {"image/png"},
+        "gif": {"image/gif"},
+        "webp": {"image/webp"},
+        "tiff": {"image/tiff"},
+        "mp3": {"audio/mpeg", "audio/mp3"},
+        "wav": {"audio/wav", "audio/x-wav"},
+        "ogg": {"audio/ogg", "video/ogg", "application/ogg"},
+        "webm": {"video/webm", "audio/webm"},
+        "mp4": {"video/mp4", "audio/mp4", "application/mp4"},
+    }
+    return mime.split(";", 1)[0].strip().lower() in accepted[media_type]
+
+
+def base36(number):
+    alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+    if number == 0:
+        return "0"
+    output = ""
+    while number:
+        number, remainder = divmod(number, 36)
+        output = alphabet[remainder] + output
+    return output
+
+
+def verify_hash(data, expected):
+    expected = expected.strip().lower()
+    if not expected:
+        return
+    digest = hashlib.sha1(data).hexdigest()
+    actual = (digest if re.fullmatch(r"[0-9a-f]{40}", expected)
+              else base36(int(digest, 16)))
+    if expected.lstrip("0") != actual.lstrip("0"):
+        raise ValueError("SHA-1 integrity check failed")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("manifest", nargs="?", default=DEFAULT_MANIFEST)
+    parser.add_argument("--output", default="commonslens_dataset")
+    parser.add_argument("--delay", type=float, default=0.25)
+    args = parser.parse_args()
+
+    output = pathlib.Path(args.output)
+    output.mkdir(parents=True, exist_ok=True)
+
+    with open(args.manifest, newline="", encoding="utf-8-sig") as handle:
+        rows = csv.DictReader(handle)
+        for number, row in enumerate(rows, start=1):
+            original = row.get("originalUrl") or row.get("url")
+            url = original or row.get("thumbnailUrl") or row.get("thumb")
+            if not url:
+                print(f"[{number}] skipped: no media URL")
+                continue
+
+            try:
+                extension = require_trusted_url(url)
+                request = urllib.request.Request(
+                    url, headers={"User-Agent": USER_AGENT}
+                )
+                with OPENER.open(request, timeout=60) as response:
+                    if response.status != 200:
+                        raise ValueError(f"unexpected HTTP status {response.status}")
+                    final_extension = require_trusted_url(response.geturl())
+                    if final_extension != extension:
+                        raise ValueError("redirect changed the expected file type")
+                    content_encoding = response.headers.get(
+                        "Content-Encoding", "identity"
+                    ).lower()
+                    if content_encoding not in ("", "identity"):
+                        raise ValueError("encoded responses are not accepted")
+                    declared = response.headers.get("Content-Length")
+                    if declared and int(declared) > MAX_BYTES:
+                        raise ValueError("file exceeds the 256 MiB safety limit")
+                    content_type = response.headers.get_content_type()
+                    data = response.read(MAX_BYTES + 1)
+
+                if len(data) > MAX_BYTES:
+                    raise ValueError("file exceeds the 256 MiB safety limit")
+                if declared and int(declared) != len(data):
+                    raise ValueError("received byte count does not match headers")
+                media_type = sniff_type(data)
+                if media_type != expected_type(extension):
+                    raise ValueError("file bytes do not match the URL extension")
+                if not mime_matches(content_type, media_type):
+                    raise ValueError("Content-Type does not match the file bytes")
+
+                if original:
+                    expected_size = (row.get("fileSizeBytes") or
+                                     row.get("file_size_bytes"))
+                    if expected_size and int(expected_size) != len(data):
+                        raise ValueError("byte count does not match manifest metadata")
+                    verify_hash(data, row.get("sha1") or "")
+
+                fallback = pathlib.PurePosixPath(urlparse(url).path).name
+                base = safe_name(row.get("title") or fallback)
+                target = output / f"{base}.{extension}"
+                if target.exists() or target.is_symlink():
+                    print(f"[{number}] exists: {target.name}")
+                    continue
+                with target.open("xb") as output_file:
+                    output_file.write(data)
+                print(f"[{number}] downloaded: {target.name}")
+            except Exception as error:
+                print(f"[{number}] blocked/failed: {error}")
+            time.sleep(max(0, args.delay))
+
+
+if __name__ == "__main__":
+    main()
+''';
+
+    final blob = html.Blob([script], 'text/x-python;charset=utf-8');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    html.AnchorElement(href: url)
+      ..setAttribute('download', 'download_commonslens_manifest.py')
       ..click();
     html.Url.revokeObjectUrl(url);
   }
@@ -346,9 +651,10 @@ class DownloadService {
       final failedTitles = <String>[];
       var completed = 0;
 
-      final baseName = zipName.toLowerCase().endsWith('.zip')
-          ? zipName.substring(0, zipName.length - 4)
-          : zipName;
+      final safeZipName =
+          _safeExportName(zipName, 'zip', fallback: 'commons_export');
+      final baseName =
+          safeZipName.substring(0, safeZipName.length - '.zip'.length);
 
       final chunks = <List<SearchItem>>[];
       for (var i = 0; i < items.length; i += chunkSize) {
@@ -375,6 +681,7 @@ class DownloadService {
         final output = OutputMemoryStream(byteOrder: ByteOrder.littleEndian);
         final encoder = ZipEncoder()..startEncode(output, level: 0);
         var filesWritten = 0;
+        var mediaBytesWritten = 0;
         // (in-zip filename, source item) for every file that actually made
         // it into this chunk's zip — this is what data.csv is built from,
         // so a failed file never shows up describing bytes that aren't
@@ -382,23 +689,43 @@ class DownloadService {
         final manifestEntries = <MapEntry<String, SearchItem>>[];
 
         Future<void> fetchOne(SearchItem item) async {
-          var downloadUrl = item.url;
-          if (maxWidth != null) {
-            final scaled = await client.fetchScaledUrl(
-              item.title,
-              maxWidth,
+          try {
+            DownloadSecurityPolicy.requireTrustedMediaUri(item.url);
+            var downloadUrl = item.url;
+            if (maxWidth != null) {
+              final scaled = await client.fetchScaledUrl(
+                item.title,
+                maxWidth,
+                cancelled: () => cancelToken?.isCancelled == true,
+              );
+              if (scaled != null) downloadUrl = scaled;
+            }
+
+            final isOriginal = downloadUrl == item.url;
+            final response = await client.fetchMedia(
+              downloadUrl,
               cancelled: () => cancelToken?.isCancelled == true,
+              expectedMime: isOriginal ? item.mime : null,
+              expectedSha1: isOriginal ? item.sha1 : null,
+              expectedLength: isOriginal ? item.fileSizeBytes : null,
             );
-            if (scaled != null) downloadUrl = scaled;
-          }
 
-          final response = await client.fetchMedia(
-            downloadUrl,
-            cancelled: () => cancelToken?.isCancelled == true,
-          );
+            if (response == null) {
+              failedTitles.add(item.title);
+              return;
+            }
+            if (mediaBytesWritten + response.bytes.length >
+                DownloadSecurityPolicy.maxZipBytes) {
+              throw const DownloadSecurityException(
+                'archive_too_large',
+                'Download blocked: this ZIP chunk exceeds the 1 GiB safety limit.',
+              );
+            }
 
-          if (response != null) {
-            final fileName = _sanitizedFileName(item);
+            final fileName = _sanitizedFileName(
+              item,
+              extension: response.extension,
+            );
 
             // level: 0 makes this a plain store (memcpy + CRC32), skipping
             // Deflate entirely for this entry — there's no compression
@@ -412,6 +739,7 @@ class DownloadService {
                 ArchiveFile(fileName, response.bytes.length, response.bytes);
             encoder.add(archiveFile, level: 0);
             filesWritten++;
+            mediaBytesWritten += response.bytes.length;
             manifestEntries.add(MapEntry(fileName, item));
 
             // Explicit yield. encoder.add() just did synchronous CPU work
@@ -425,12 +753,16 @@ class DownloadService {
             // frame and process input here, unlike Future.microtask/
             // scheduleMicrotask, which run before rendering gets a turn.
             await Future.delayed(Duration.zero);
-          } else {
+          } on DownloadSecurityException catch (error) {
+            debugPrint('${item.title}: ${error.message}');
+            failedTitles.add('${item.title} (security blocked)');
+          } catch (error) {
+            debugPrint('${item.title}: download failed: $error');
             failedTitles.add(item.title);
+          } finally {
+            completed++;
+            onProgress?.call(completed, items.length, failedTitles);
           }
-
-          completed++;
-          onProgress?.call(completed, items.length, failedTitles);
         }
 
         // Rolling worker pool, not lockstep batching. The previous version
@@ -489,7 +821,7 @@ class DownloadService {
 
         final thisZipName = chunks.length > 1
             ? '${baseName}_part${chunkIndex + 1}of${chunks.length}.zip'
-            : zipName;
+            : safeZipName;
 
         final blob = html.Blob([zipData], 'application/zip');
         final url = html.Url.createObjectUrlFromBlob(blob);

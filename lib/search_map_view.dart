@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'search_models.dart';
 import 'search_components.dart';
-import 'search_url_codec.dart';
+import 'media_queue.dart';
 
 const _mapBackground = Color(0xFF0B0B0B);
 const _mapPanel = Color(0xFF141414);
@@ -172,12 +173,10 @@ class _SearchMapViewState extends State<SearchMapView> {
   }
 
   void _openItem(SearchItem item) {
-    final params = <String, String>{
-      'id': item.title,
-      ...SearchUrlCodec.toQueryParams(widget.filterState),
-      'view': 'map',
-    };
-    context.push(Uri(path: '/view', queryParameters: params).toString());
+    final source = MediaQueueSource.search(widget.filterState, map: true);
+    final queueId = ProviderScope.containerOf(context).read(mediaQueueStoreProvider)
+        .capture(source, widget.session.items, hasMore: widget.session.hasMore);
+    context.push(source.urlFor(item.title, queueId: queueId));
   }
 
   void _showCluster(_MapCluster cluster) {
@@ -811,8 +810,8 @@ class MapResultsPreview extends StatelessWidget {
                 : MediaResultsGrid(
                     items: session.items,
                     loadingMore: session.loadingMore,
-                    searchState: searchState,
-                    extraParams: const {'view': 'map'},
+                    queueSource: MediaQueueSource.search(searchState, map: true),
+                    queueHasMore: session.hasMore,
                     onNearEnd: onLoadMore,
                     padding: const EdgeInsets.fromLTRB(10, 10, 10, 18),
                     gridDelegate:

@@ -12,6 +12,8 @@ void main() {
         'mime': 'IMAGE/JPEG',
         'width': 1200.0,
         'height': 800,
+        'size': 123456,
+        'sha1': 'abc123',
         'user': 'Example user',
         'extmetadata': {
           'Artist': {'value': '<b>Example artist</b>'},
@@ -30,6 +32,8 @@ void main() {
     expect(item.mime, 'image/jpeg');
     expect(item.width, 1200);
     expect(item.height, 800);
+    expect(item.fileSizeBytes, 123456);
+    expect(item.sha1, 'abc123');
     expect(item.artistHtml, '<b>Example artist</b>');
     expect(item.licenseShortName, 'CC BY-SA 4.0');
     expect(item.attributionRequired, 'true');

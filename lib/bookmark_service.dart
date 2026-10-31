@@ -5,6 +5,9 @@ import 'dart:html' as html;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'backend_providers.dart';
+import 'search_models.dart';
+
 const _bookmarkStorageKey = 'commonslens.bookmarks.v1';
 
 /// Keeps the user's bookmarks in this browser only.
@@ -63,3 +66,89 @@ class BookmarkStore extends ChangeNotifier {
 
 final bookmarkStoreProvider =
     ChangeNotifierProvider<BookmarkStore>((ref) => BookmarkStore());
+
+class BookmarkItemsState {
+  final List<SearchItem> items;
+  final bool loading;
+  final int failedCount;
+
+  const BookmarkItemsState({
+    this.items = const [],
+    this.loading = false,
+    this.failedCount = 0,
+  });
+}
+
+/// Shared by the bookmarks grid and viewer so a filtered bookmark queue can
+/// be reconstructed after navigating away from the page or reloading a URL.
+final bookmarkItemsProvider =
+    StateNotifierProvider<BookmarkItemsController, BookmarkItemsState>((ref) {
+  final controller = BookmarkItemsController(ref);
+  ref.listen<Set<String>>(
+    bookmarkStoreProvider.select((store) => store.urls),
+    (_, urls) => controller.load(urls),
+  );
+  controller.load(ref.read(bookmarkStoreProvider).urls);
+  return controller;
+});
+
+class BookmarkItemsController extends StateNotifier<BookmarkItemsState> {
+  BookmarkItemsController(this.ref) : super(const BookmarkItemsState());
+
+  final Ref ref;
+  int _generation = 0;
+
+  Future<void> reload() => load(ref.read(bookmarkStoreProvider).urls);
+
+  Future<void> load(Set<String> urls) async {
+    final generation = ++_generation;
+    if (urls.isEmpty) {
+      state = const BookmarkItemsState();
+      return;
+    }
+    state = BookmarkItemsState(items: state.items, loading: true);
+    final loaded = await Future.wait(urls.map((url) async {
+      try {
+        return await ref.read(commonsBackendProvider).fetchItem(
+              fileTitleFromBookmarkUrl(url),
+            );
+      } catch (_) {
+        return null;
+      }
+    }));
+    if (!mounted || generation != _generation) return;
+    if (!setEquals(ref.read(bookmarkStoreProvider).urls, urls)) return;
+    state = BookmarkItemsState(
+      items: loaded.whereType<SearchItem>().toList(growable: false),
+      failedCount: loaded.where((item) => item == null).length,
+    );
+  }
+}
+
+String fileTitleFromBookmarkUrl(String url) {
+  try {
+    final uri = Uri.parse(url);
+    if (uri.pathSegments.isNotEmpty) {
+      final filename = Uri.decodeComponent(uri.pathSegments.last);
+      if (filename.isNotEmpty) {
+        return filename.startsWith('File:') ? filename : 'File:$filename';
+      }
+    }
+  } catch (_) {
+    // The backend will report a missing file for an invalid bookmark.
+  }
+  return url.startsWith('File:') ? url : 'File:$url';
+}
+
+bool bookmarkMatchesSearch(SearchItem item, String query) {
+  if (query.isEmpty) return true;
+  final haystack = [
+    item.title,
+    item.url,
+    item.snippet,
+    item.objectName,
+    item.uploader,
+    item.categories,
+  ].join(' ').toLowerCase();
+  return haystack.contains(query.trim().toLowerCase());
+}

@@ -43,6 +43,7 @@ void main() {
     var calls = 0;
     final client = MockClient((request) async {
       calls++;
+      expect(request.followRedirects, isFalse);
       return calls == 1
           ? http.Response.bytes(const [], 200)
           : http.Response.bytes(const [1, 2, 3], 200);

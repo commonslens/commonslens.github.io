@@ -260,7 +260,7 @@ Save as docs/images/map-search.png and uncomment:
 
 ## Media viewer and metadata
 
-The asset viewer preserves the gallery that opened it, whether the file came from Search, Map, an author portfolio, a pipeline preview, or a direct URL.
+The asset viewer preserves the gallery that opened it, whether the file came from Search, Map, an author portfolio, filtered bookmarks, a pipeline preview, or related media. Viewer URLs identify the selected file and its list context; same-tab queue snapshots also preserve runtime lists across reloads.
 
 ### Navigation
 
@@ -394,7 +394,7 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 | Filters | Licence, Quality, Format, Resolution, File Size, Colour Depth, Date Range, Language, Exclude Terms |
 | Set operations | Combine Constraints, Union, Intersect, Difference A−B |
 | Transforms | Dedupe by URL, Sort, Sample/Limit, Field Select, Enrich |
-| Outputs | CSV Export, JSON Export, ZIP Export, Preview, Send to Search |
+| Outputs | Dataset Manifest (CSV), JSON Export, ZIP Export, Preview, Send to Search |
 
 ### Graph editor
 
@@ -425,7 +425,9 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 - Run safe topological execution.
 - Show idle, running, successful, warning, and error states per node.
 - Use 20 items per source for preview runs.
-- Use up to 1,000 items per source for full runs.
+- Use up to 1,000 items per source for ordinary full runs.
+- Let Dataset Manifest runs exhaust paginated Commons results, or stop at a custom record maximum.
+- Report manifest progress and allow long runs to be paused or cancelled.
 - Preserve typed media records alongside projected or enriched export fields.
 - Avoid silently rerunning the graph when exporting the last result.
 
@@ -443,7 +445,8 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 
 ### Pipeline outputs
 
-- CSV metadata.
+- CSV dataset manifests with original/thumbnail URLs and Essential, Detailed, or Full metadata presets.
+- Optional dependency-free Python helper for downloading files from a manifest.
 - Pretty-printed JSON records.
 - Original-resolution ZIP.
 - Web-optimised 1280px ZIP.

@@ -150,6 +150,16 @@ enum QualityFilter {
   featuredPicture,
 }
 
+/// Controls how a selected quality assessment is interpreted.
+///
+/// Commons does not store these assessments as one server-side numeric grade,
+/// so the "and above" mode is a CommonsLens convenience that expands the
+/// selected assessment into a union of assessment searches.
+enum QualityMatchMode {
+  individual,
+  andAbove,
+}
+
 /// Quality assessment types shown in the primary sidebar. Selecting all
 /// types is the default and means that no quality restriction is applied.
 const defaultQualityFilters = <QualityFilter>{
@@ -169,6 +179,29 @@ String qualityFilterLabel(QualityFilter filter) {
     case QualityFilter.featuredPicture:
       return 'Featured pictures';
   }
+}
+
+String qualityMatchModeLabel(QualityMatchMode mode) {
+  switch (mode) {
+    case QualityMatchMode.individual:
+      return 'Individual assessments';
+    case QualityMatchMode.andAbove:
+      return 'This tier and above';
+  }
+}
+
+/// The product's convenience ordering for the quality picker. These are
+/// separate Wikimedia assessments rather than a native Commons hierarchy.
+const _qualityTierOrder = <QualityFilter>[
+  QualityFilter.valuedImage,
+  QualityFilter.qualityImage,
+  QualityFilter.featuredPicture,
+];
+
+Set<QualityFilter> qualityFiltersAtOrAbove(QualityFilter selected) {
+  final index = _qualityTierOrder.indexOf(selected);
+  if (index < 0) return const {};
+  return _qualityTierOrder.sublist(index).toSet();
 }
 
 enum MediaKind {
@@ -396,6 +429,10 @@ class SearchState {
   /// New code should use [selectedQualityFilters].
   final QualityFilter qualityFilter;
 
+  /// Whether the selected assessment is exact or expands to the product's
+  /// "this tier and above" union.
+  final QualityMatchMode qualityMatchMode;
+
   /// Explicitly keeps images without any quality assessment in the result.
   final bool allImages;
 
@@ -409,6 +446,14 @@ class SearchState {
       return {qualityFilter};
     }
     return qualityFilters;
+  }
+
+  Set<QualityFilter> get effectiveQualityFilters {
+    if (allImagesMode) return const {};
+    if (qualityMatchMode == QualityMatchMode.individual) {
+      return selectedQualityFilters;
+    }
+    return selectedQualityFilters.expand(qualityFiltersAtOrAbove).toSet();
   }
 
   // True = only files whose extmetadata AttributionRequired flag is set;
@@ -487,6 +532,7 @@ class SearchState {
     this.licensePresets = const {},
     this.qualityFilters = defaultQualityFilters,
     this.qualityFilter = QualityFilter.any,
+    this.qualityMatchMode = QualityMatchMode.individual,
     this.allImages = true,
     this.attributionRequired,
     this.minWidth,
@@ -530,6 +576,7 @@ class SearchState {
     Set<LicensePreset>? licensePresets,
     Set<QualityFilter>? qualityFilters,
     QualityFilter? qualityFilter,
+    QualityMatchMode? qualityMatchMode,
     bool? allImages,
     bool? attributionRequired,
     bool clearAttributionRequired = false,
@@ -592,6 +639,7 @@ class SearchState {
       qualityFilter: qualityFilters != null
           ? QualityFilter.any
           : (qualityFilter ?? this.qualityFilter),
+      qualityMatchMode: qualityMatchMode ?? this.qualityMatchMode,
       allImages: allImages ??
           (qualityFilter == null
               ? this.allImages
@@ -655,6 +703,7 @@ class SearchState {
         'qualityFilter': selectedQualityFilters.length == 1
             ? selectedQualityFilters.single.name
             : QualityFilter.any.name,
+        'qualityMatchMode': qualityMatchMode.name,
         'allImages': allImagesMode,
         'attributionRequired': attributionRequired,
         'minWidth': minWidth,
@@ -737,6 +786,8 @@ class SearchState {
     final qualityFilters = qualitySet(json['qualityFilters']);
     final legacyQuality = _enumFromJson(
         QualityFilter.values, json['qualityFilter'], QualityFilter.any);
+    final qualityMatchMode = _enumFromJson(QualityMatchMode.values,
+        json['qualityMatchMode'], QualityMatchMode.individual);
     final allImages = _boolOrNull(json['allImages']) ??
         (qualityFilters == null || legacyQuality == QualityFilter.any);
 
@@ -766,6 +817,7 @@ class SearchState {
           : const {},
       qualityFilters: qualityFilters ?? defaultQualityFilters,
       qualityFilter: qualityFilters == null ? legacyQuality : QualityFilter.any,
+      qualityMatchMode: qualityMatchMode,
       allImages: allImages,
       attributionRequired: _boolOrNull(json['attributionRequired']),
       minWidth: _intOrNull(json['minWidth']),
@@ -814,6 +866,7 @@ class SearchState {
           other.sortMode == sortMode &&
           _setEquals(other.licensePresets, licensePresets) &&
           _setEquals(other.selectedQualityFilters, selectedQualityFilters) &&
+          other.qualityMatchMode == qualityMatchMode &&
           other.allImagesMode == allImagesMode &&
           other.attributionRequired == attributionRequired &&
           other.minWidth == minWidth &&
@@ -856,6 +909,7 @@ class SearchState {
         sortMode,
         _setHash(licensePresets),
         _setHash(selectedQualityFilters),
+        qualityMatchMode,
         allImagesMode,
         attributionRequired,
         minWidth,
@@ -1094,6 +1148,8 @@ class SearchItem {
   final String uploader;
   final int width;
   final int height;
+  final int fileSizeBytes;
+  final String sha1;
 
   // Everything below comes from the same extmetadata block the fields
   // above are already pulled from — same iiprop=extmetadata request, no
@@ -1145,6 +1201,8 @@ class SearchItem {
     this.uploader = '',
     this.width = 0,
     this.height = 0,
+    this.fileSizeBytes = 0,
+    this.sha1 = '',
     this.categories = '',
     this.assessments = '',
     this.imageDescriptionHtml = '',
@@ -1215,6 +1273,8 @@ class SearchItem {
         'uploader': uploader,
         'width': width,
         'height': height,
+        'fileSizeBytes': fileSizeBytes,
+        'sha1': sha1,
         'categories': categories,
         'assessments': assessments,
         'imageDescriptionHtml': imageDescriptionHtml,
@@ -1249,6 +1309,8 @@ class SearchItem {
         uploader: json['uploader'] as String? ?? '',
         width: (json['width'] as num?)?.toInt() ?? 0,
         height: (json['height'] as num?)?.toInt() ?? 0,
+        fileSizeBytes: (json['fileSizeBytes'] as num?)?.toInt() ?? 0,
+        sha1: json['sha1'] as String? ?? '',
         categories: json['categories'] as String? ?? '',
         assessments: json['assessments'] as String? ?? '',
         imageDescriptionHtml: json['imageDescriptionHtml'] as String? ?? '',

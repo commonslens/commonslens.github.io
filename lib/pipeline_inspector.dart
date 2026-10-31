@@ -12,7 +12,7 @@ enum _InspectorTab { settings, preview, notes }
 
 class _InspectorPanel extends ConsumerStatefulWidget {
   final String? nodeId;
-  final void Function(String? error) onSinkResult;
+  final void Function(String? error, [String? success]) onSinkResult;
   final void Function(String nodeId) onSendToSearch;
   final void Function(List<SearchItem> items, String zipName) onDownloadItems;
 
@@ -240,6 +240,23 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           inbound: inbound,
           outbound: outbound,
         ),
+        if (node.type == PipelineNodeType.sinkCsvExport) ...[
+          const SizedBox(height: 14),
+          _exportGuidanceCard(
+            icon: Icons.dataset_outlined,
+            title: 'Large dataset output',
+            text:
+                'Exports metadata and direct media URLs—not the image files. Choose All available to follow every Commons result page. An upstream Field Select overrides the metadata preset.',
+          ),
+        ] else if (node.type == PipelineNodeType.sinkZipExport) ...[
+          const SizedBox(height: 14),
+          _exportGuidanceCard(
+            icon: Icons.folder_zip_outlined,
+            title: 'Best for small collections',
+            text:
+                'ZIP downloads the actual media into this browser. For thousands of files, use Dataset Manifest (CSV) and download from its URLs later.',
+          ),
+        ],
         const SizedBox(height: 20),
         const Text(
           'CONFIGURATION',
@@ -282,6 +299,44 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     );
   }
 
+  Widget _exportGuidanceCard({
+    required IconData icon,
+    required String title,
+    required String text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _kAccent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: _kAccent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 17, color: _kAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(text,
+                    style: const TextStyle(
+                        color: Colors.white60, fontSize: 11, height: 1.45)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildNoConfigHint(PipelineNodeType type) {
     String text;
     switch (type.category) {
@@ -313,12 +368,28 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
       case PipelineNodeType.sinkCsvExport:
         return [
           _actionButton(
-              Icons.table_chart_outlined,
-              'Export CSV',
-              () async => widget.onSinkResult(await controller.exportSinkCsv(
-                  node.id,
-                  fileName:
-                      node.config['fileName'] as String? ?? 'pipeline_export')))
+            Icons.dataset_outlined,
+            'Generate CSV manifest',
+            () async {
+              final error = await controller.generateManifest(
+                node.id,
+                fileName: node.config['fileName'] as String? ??
+                    'commonslens_manifest',
+              );
+              final count = controller.materializedItemsFor(node.id)?.length;
+              widget.onSinkResult(
+                error,
+                count == null
+                    ? null
+                    : '$count filtered records exported; no image files were downloaded.',
+              );
+            },
+          ),
+          _actionButton(
+            Icons.code_rounded,
+            'Download Python helper',
+            () => controller.downloadManifestHelper(node.id),
+          ),
         ];
       case PipelineNodeType.sinkJsonExport:
         return [
@@ -472,11 +543,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                       child: MediaResultsGrid(
                         items: items,
                         itemLimit: renderCap,
-                        searchState: const SearchState(),
-                        extraParams: {
-                          'from': 'pipeline',
-                          'pipelineNode': node.id,
-                        },
+                        queueSource: MediaQueueSource.pipeline(node.id),
                         padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
@@ -762,6 +829,8 @@ class _ConfigFieldWidget extends StatelessWidget {
       'qualityImage': 'Quality images',
       'valuedImage': 'Valued images',
       'featuredPicture': 'Featured pictures',
+      'individual': 'Individual assessment',
+      'andAbove': 'This tier and above',
       'relevance': 'Relevance',
       'titleMatch': 'Title match',
       'newestEdited': 'Recently edited',
@@ -770,6 +839,14 @@ class _ConfigFieldWidget extends StatelessWidget {
       'oldestCreated': 'Oldest created',
       'created': 'Date created',
       'edited': 'Date edited',
+      'all': 'All available',
+      'custom': 'Custom maximum',
+      'essential': 'Essential',
+      'detailed': 'Detailed',
+      'full': 'Full + enrichment',
+      'both': 'Original + thumbnail',
+      'original': 'Original only',
+      'thumbnail': 'Thumbnail only',
     };
     return labels[value] ?? value;
   }
@@ -807,8 +884,9 @@ class _ConfigFieldWidget extends StatelessWidget {
 
       case ConfigFieldKind.dropdown:
         final options = spec.options ?? const [];
-        final value =
-            current as String? ?? (options.isNotEmpty ? options.first : '');
+        final value = current as String? ??
+            spec.defaultValue as String? ??
+            (options.isNotEmpty ? options.first : '');
         if (options.length <= 4) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -910,7 +988,7 @@ class _ConfigFieldWidget extends StatelessWidget {
           children: [
             _labelText(spec.label),
             _BufferedConfigTextField(
-              value: current?.toString() ?? '',
+              value: (current ?? spec.defaultValue)?.toString() ?? '',
               keyboardType: TextInputType.number,
               decoration: _decoration(hint: spec.hint),
               parse: int.tryParse,

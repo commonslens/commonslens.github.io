@@ -121,7 +121,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         'origin': '*',
         'titles': orderedTitles.join('|'),
         'prop': 'imageinfo',
-        'iiprop': 'url|size|mime|extmetadata|user|dimensions',
+        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
         'iiurlwidth': '320',
       };
 
@@ -334,7 +334,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     final includeStatements = state.statementsInclude.toList();
 
     if (!state.statementsUnion || includeStatements.length <= 1) {
-      return _fetchPageForLicense(state, continueParams: continueParams);
+      return _fetchPageForQuality(state, continueParams: continueParams);
     }
 
     return _fanOutFetch<WikidataStatement>(
@@ -342,9 +342,43 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       keyOf: (stmt) => '${stmt.property.qid}=${stmt.value.qid}',
       stateFor: (stmt) => state.copyWith(statementsInclude: {stmt}),
       nextFetch: (_, branchState, branchContinue) =>
-          _fetchPageForLicense(branchState, continueParams: branchContinue),
+          _fetchPageForQuality(branchState, continueParams: branchContinue),
       continueParams: continueParams,
       continueBucketKey: '_stmt',
+      sortMode: state.sortMode,
+    );
+  }
+
+  /// CirrusSearch documents that boolean operators do not interact
+  /// predictably with special keywords such as `hastemplate:`. Quality
+  /// assessments use those keywords, so a multi-assessment selection is
+  /// executed as independent searches and merged here instead of relying on
+  /// one `(... OR ...)` expression.
+  Future<SearchResponse?> _fetchPageForQuality(
+    SearchState state, {
+    required Map<String, dynamic>? continueParams,
+  }) async {
+    if (state.allImagesMode) {
+      return _fetchPageForLicense(state, continueParams: continueParams);
+    }
+
+    final qualities = state.effectiveQualityFilters.toList()
+      ..sort((left, right) => left.index.compareTo(right.index));
+    if (qualities.length <= 1) {
+      return _fetchPageForLicense(state, continueParams: continueParams);
+    }
+
+    return _fanOutFetch<QualityFilter>(
+      branches: qualities,
+      keyOf: (quality) => quality.name,
+      stateFor: (quality) => state.copyWith(
+        qualityFilters: {quality},
+        qualityMatchMode: QualityMatchMode.individual,
+      ),
+      nextFetch: (_, branchState, branchContinue) =>
+          _fetchPageForLicense(branchState, continueParams: branchContinue),
+      continueParams: continueParams,
+      continueBucketKey: '_quality',
       sortMode: state.sortMode,
     );
   }
@@ -514,7 +548,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         'prop': 'info|imageinfo',
         'inprop': 'url',
         'gsrnamespace': '6',
-        'iiprop': 'url|size|mime|extmetadata|user|dimensions',
+        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
         if (includeThumbWidth) 'iiurlwidth': '320',
       };
 

@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
 import 'search_models.dart';
 import 'search_service.dart';
-import 'search_url_codec.dart';
+import 'media_queue.dart';
 import 'backend_providers.dart';
 import 'download_service.dart';
 import 'bookmark_service.dart';
@@ -564,8 +564,15 @@ class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
     if (_busy) return;
     setState(() => _busy = true);
     try {
-      await DownloadService.downloadSingleFile(
-          widget.item.url, widget.item.title, widget.item.extension);
+      final failure = await DownloadService.downloadSingleFile(widget.item);
+      if (failure != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure),
+            backgroundColor: const Color(0xFF7A1F1F),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -640,8 +647,8 @@ class _QuickBookmarkButton extends ConsumerWidget {
 /// visual grid, card navigation context, and an optional near-end callback.
 class MediaResultsGrid extends StatelessWidget {
   final List<SearchItem> items;
-  final SearchState searchState;
-  final Map<String, String> extraParams;
+  final MediaQueueSource? queueSource;
+  final bool queueHasMore;
   final SliverGridDelegate gridDelegate;
   final EdgeInsetsGeometry padding;
   final ScrollController? controller;
@@ -654,9 +661,9 @@ class MediaResultsGrid extends StatelessWidget {
   const MediaResultsGrid({
     super.key,
     required this.items,
-    required this.searchState,
     required this.gridDelegate,
-    this.extraParams = const {},
+    this.queueSource,
+    this.queueHasMore = false,
     this.padding = const EdgeInsets.fromLTRB(12, 12, 12, 20),
     this.controller,
     this.loadingMore = false,
@@ -668,6 +675,12 @@ class MediaResultsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final source = queueSource ??
+        MediaQueueSource.session(
+          GoRouter.maybeOf(context)?.routeInformationProvider.value.uri
+                  .toString() ??
+              '/',
+        );
     final visibleCount = itemLimit == null
         ? items.length
         : itemLimit!.clamp(0, items.length).toInt();
@@ -697,8 +710,9 @@ class MediaResultsGrid extends StatelessWidget {
           child: MediaCard(
             item: item,
             index: index,
-            searchState: searchState,
-            extraParams: extraParams,
+            queueSource: source,
+            queueItems: items,
+            queueHasMore: queueHasMore,
           ),
         );
       },
@@ -721,15 +735,17 @@ class MediaResultsGrid extends StatelessWidget {
 class MediaCard extends ConsumerStatefulWidget {
   final SearchItem item;
   final int index;
-  final SearchState searchState;
-  final Map<String, String> extraParams;
+  final MediaQueueSource queueSource;
+  final List<SearchItem> queueItems;
+  final bool queueHasMore;
 
   const MediaCard({
     super.key,
     required this.item,
     required this.index,
-    required this.searchState,
-    this.extraParams = const {},
+    required this.queueSource,
+    required this.queueItems,
+    this.queueHasMore = false,
   });
 
   @override
@@ -757,14 +773,13 @@ class _MediaCardState extends ConsumerState<MediaCard> {
     }
 
     // 2. Otherwise, normal navigation
-    final params = <String, String>{
-      'id': widget.item.title,
-      ...SearchUrlCodec.toQueryParams(widget.searchState),
-      ...widget.extraParams,
-    };
-    final uniqueUrl = Uri(path: '/view', queryParameters: params).toString();
-
-    context.push(uniqueUrl, extra: widget.index);
+    final source = widget.queueSource;
+    final queueId = ref.read(mediaQueueStoreProvider).capture(
+          source,
+          widget.queueItems,
+          hasMore: widget.queueHasMore,
+        );
+    context.push(source.urlFor(widget.item.title, queueId: queueId));
   }
 
   void _handleLongPress() {

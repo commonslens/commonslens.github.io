@@ -6,6 +6,7 @@ import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
 import 'bulk_download_tray.dart';
+import 'media_queue.dart';
 
 class AuthorPortfolioPage extends ConsumerStatefulWidget {
   final String username;
@@ -191,8 +192,8 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
             controller: _scrollController,
             items: session.items,
             loadingMore: session.loadingMore,
-            searchState: const SearchState(),
-            extraParams: {'author': widget.username},
+            queueSource: MediaQueueSource.author(widget.username),
+            queueHasMore: session.hasMore,
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 280,

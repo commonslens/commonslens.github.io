@@ -37,6 +37,23 @@ void main() {
     );
   });
 
+  test('expands a tier-and-above quality selection', () {
+    final built = service.buildQuery(const SearchState(
+      qualityFilters: {QualityFilter.valuedImage},
+      qualityMatchMode: QualityMatchMode.andAbove,
+      allImages: false,
+    ));
+
+    expect(built.srsearch, contains('hastemplate:"Valued image"'));
+    expect(built.srsearch, contains('hastemplate:"Quality image"'));
+    expect(built.srsearch,
+        contains('incategory:"Featured pictures on Wikimedia Commons"'));
+    expect(
+      built.chips.map((chip) => chip.label),
+      contains('Valued images and above'),
+    );
+  });
+
   test('compiles the complete filter surface into clauses and chips', () {
     final state = SearchState(
       queryText: 'historic building',

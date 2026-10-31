@@ -9,6 +9,7 @@ import 'search_controller.dart';
 import 'search_components.dart';
 import 'search_map_view.dart';
 import 'bulk_download_tray.dart';
+import 'media_queue.dart';
 import 'legal_pages.dart';
 
 class _FeatureCard extends StatefulWidget {
@@ -896,7 +897,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       controller: _scrollController,
       items: session.items,
       loadingMore: session.loadingMore,
-      searchState: filterState,
+      queueSource: ref.read(searchControllerProvider).externalQueueNodeId == null
+          ? MediaQueueSource.search(filterState)
+          : MediaQueueSource.pipeline(
+              ref.read(searchControllerProvider).externalQueueNodeId!,
+              returnUrl: '/',
+            ),
+      queueHasMore: session.hasMore,
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 280,
         crossAxisSpacing: 12,

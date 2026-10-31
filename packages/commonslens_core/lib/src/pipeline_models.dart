@@ -187,7 +187,7 @@ extension PipelineNodeTypeX on PipelineNodeType {
       case PipelineNodeType.transformEnrich:
         return 'Enrich (SDC / Usage)';
       case PipelineNodeType.sinkCsvExport:
-        return 'Export CSV';
+        return 'Dataset Manifest (CSV)';
       case PipelineNodeType.sinkJsonExport:
         return 'Export JSON';
       case PipelineNodeType.sinkZipExport:

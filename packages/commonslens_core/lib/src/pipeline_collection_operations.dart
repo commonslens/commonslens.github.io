@@ -60,7 +60,15 @@ mixin _PipelineCollectionOperations {
         final name = _cfgString(c, 'quality');
         final q =
             _firstWhereOrNull(QualityFilter.values, (v) => v.name == name);
-        return q == null ? state : state.copyWith(qualityFilter: q);
+        if (q == null) return state;
+        final mode = _firstWhereOrNull(
+          QualityMatchMode.values,
+          (value) => value.name == _cfgString(c, 'qualityMode', 'individual'),
+        );
+        return state.copyWith(
+          qualityFilter: q,
+          qualityMatchMode: mode ?? QualityMatchMode.individual,
+        );
 
       case PipelineNodeType.filterFormat:
         final formats = _cfgStringList(c, 'formats')
@@ -620,6 +628,8 @@ mixin _PipelineCollectionOperations {
     final records = input.records;
     return NodeOutput.materialized(
       indexes.map((index) => items[index]).toList(),
+      totalHits: input.totalHits,
+      warning: input.warning,
       records: records == null
           ? null
           : indexes.map((index) => records[index]).toList(),
@@ -681,6 +691,21 @@ mixin _PipelineCollectionOperations {
     if (inputs.isEmpty) {
       return NodeOutput.errorResult('${node.title} has no input connected.');
     }
-    return _ensureMaterialized(inputs.first.value, ctx);
+    final output = await _ensureMaterialized(inputs.first.value, ctx);
+    if (output.hasError || !output.isMaterialized) return output;
+
+    if (node.type == PipelineNodeType.sinkCsvExport &&
+        _cfgString(node.config, 'resultScope', 'all') == 'custom') {
+      final limit =
+          (_cfgInt(node.config, 'maxRecords') ?? 1000).clamp(1, 1000000);
+      if (output.items!.length > limit) {
+        return _selectIndexes(
+          output,
+          List<int>.generate(limit, (index) => index),
+        );
+      }
+    }
+
+    return output;
   }
 }

@@ -12,6 +12,7 @@ export 'package:commonslens_core/commonslens_core.dart'
         NearCoordFilter,
         NearTitleFilter,
         QualityFilter,
+        QualityMatchMode,
         QueryBuildResult,
         QueryChipData,
         SearchItem,
@@ -28,4 +29,5 @@ export 'package:commonslens_core/commonslens_core.dart'
         fileFormatLabel,
         licensePresetLabel,
         mediaTabs,
-        qualityFilterLabel;
+        qualityFilterLabel,
+        qualityMatchModeLabel;

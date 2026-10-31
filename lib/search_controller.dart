@@ -87,6 +87,7 @@ class SearchController extends Notifier<SearchViewState> {
       filterState: _engine.filterState,
       activeSession: _engine.activeSession,
       lastBuiltQuery: _engine.lastBuiltQuery,
+      clearExternalQueueNodeId: !_showingExternalResults,
     );
   }
 
@@ -181,13 +182,14 @@ class SearchController extends Notifier<SearchViewState> {
   /// `_syncFromEngine()` then clears the visible filter chips/query bar to
   /// match that reset, since pipeline results don't correspond to a
   /// single filterState the UI could otherwise misleadingly keep showing.
-  void loadExternalResults(List<SearchItem> items) {
+  void loadExternalResults(List<SearchItem> items, {String? sourceNodeId}) {
     _showingExternalResults = true;
     _engine.search(const SearchState());
     _syncFromEngine();
     state = state.copyWith(
       activeSession:
           SearchSession(items: items, hasSearched: true, hasMore: false),
+      externalQueueNodeId: sourceNodeId,
     );
   }
 }

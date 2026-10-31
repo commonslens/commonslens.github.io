@@ -142,6 +142,9 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
   Widget _jobProgressRow(_DownloadJob job) {
     final fraction = job.total == 0 ? null : job.completed / job.total;
     final hasFailed = job.failed.isNotEmpty || job.error != null;
+    final securityBlocked = job.failed
+        .where((title) => title.contains('(security blocked)'))
+        .length;
     final isActive = !job.done && !job.cancelled;
 
     final String status;
@@ -152,7 +155,10 @@ class BulkDownloadTrayState extends ConsumerState<BulkDownloadTray> {
     } else if (job.done) {
       status = job.failed.isEmpty
           ? 'Done - ${job.total} files'
-          : 'Done - ${job.failed.length} of ${job.total} failed; the rest were saved';
+          : securityBlocked > 0
+              ? 'Done - $securityBlocked security-blocked, '
+                  '${job.failed.length - securityBlocked} failed; the rest were saved'
+              : 'Done - ${job.failed.length} of ${job.total} failed; the rest were saved';
     } else {
       status = 'Downloading ${job.completed} / ${job.total}'
           '${job.failed.isEmpty ? '' : ' - ${job.failed.length} failed'}...';

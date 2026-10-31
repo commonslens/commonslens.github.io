@@ -3,16 +3,19 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import 'download_security.dart';
 import 'wikimedia_request_gate.dart';
 import 'wikimedia_transport.dart';
 
 class DownloadPayload {
   final Uint8List bytes;
   final String contentType;
+  final String extension;
 
   const DownloadPayload({
     required this.bytes,
     required this.contentType,
+    required this.extension,
   });
 }
 
@@ -72,7 +75,11 @@ class WikimediaDownloadClient {
         final first = imageInfo.first;
         if (first is! Map) continue;
         final thumbnail = first['thumburl'];
-        if (thumbnail is String && thumbnail.isNotEmpty) return thumbnail;
+        if (thumbnail is String && thumbnail.isNotEmpty) {
+          final uri = DownloadSecurityPolicy.requireTrustedMediaUri(thumbnail);
+          DownloadSecurityPolicy.requireSafeDownloadExtension(uri);
+          return uri.toString();
+        }
       }
       return null;
     } catch (_) {
@@ -85,29 +92,72 @@ class WikimediaDownloadClient {
     bool Function()? cancelled,
     int maxAttempts = 4,
     Duration timeout = const Duration(seconds: 45),
+    String? expectedMime,
+    String? expectedSha1,
+    int? expectedLength,
+    int maxBytes = DownloadSecurityPolicy.maxFileBytes,
   }) async {
     if (_closed) return null;
     try {
+      final requestedUri = DownloadSecurityPolicy.requireTrustedMediaUri(url);
+      final requestedExtension =
+          DownloadSecurityPolicy.requireSafeDownloadExtension(requestedUri);
+      if (expectedLength != null && expectedLength > maxBytes) {
+        throw DownloadSecurityException(
+          'file_too_large',
+          'Download blocked: the file exceeds the '
+              '${maxBytes ~/ (1024 * 1024)} MiB safety limit.',
+        );
+      }
       final response = await _transport.get(
-        Uri.parse(url),
+        requestedUri,
         timeout: timeout,
         maxAttempts: maxAttempts,
         deduplicate: false,
         cancelled: () => _closed || (cancelled?.call() ?? false),
-        acceptResponse: _isUsableMediaResponse,
+        acceptResponse: (response) => _isUsableMediaResponse(
+          response,
+          maxBytes: maxBytes,
+        ),
       );
-      if (!_isUsableMediaResponse(response)) return null;
+      if (!_isUsableMediaResponse(response, maxBytes: maxBytes)) return null;
+
+      final finalUri = response.request?.url ?? requestedUri;
+      DownloadSecurityPolicy.requireTrustedMediaUri(finalUri.toString());
+      final finalExtension =
+          DownloadSecurityPolicy.requireSafeDownloadExtension(finalUri);
+      if (finalExtension != requestedExtension) {
+        throw const DownloadSecurityException(
+          'redirect_type_change',
+          'Download blocked: a redirect changed the expected file type.',
+        );
+      }
+
+      final verified = DownloadSecurityPolicy.verifyMedia(
+        bytes: response.bodyBytes,
+        declaredContentType: response.headers['content-type'] ?? '',
+        expectedExtension: finalExtension,
+        expectedMime: expectedMime,
+        expectedSha1: expectedSha1,
+        expectedLength: expectedLength,
+        maxBytes: maxBytes,
+      );
       return DownloadPayload(
         bytes: response.bodyBytes,
-        contentType:
-            response.headers['content-type'] ?? 'application/octet-stream',
+        contentType: verified.contentType,
+        extension: verified.extension,
       );
+    } on DownloadSecurityException {
+      rethrow;
     } catch (_) {
       return null;
     }
   }
 
-  bool _isUsableMediaResponse(http.Response response) {
+  bool _isUsableMediaResponse(
+    http.Response response, {
+    required int maxBytes,
+  }) {
     if (response.statusCode != 200 || response.bodyBytes.isEmpty) return false;
 
     final contentType = (response.headers['content-type'] ?? '').toLowerCase();
@@ -118,13 +168,17 @@ class WikimediaDownloadClient {
 
     final contentEncoding =
         (response.headers['content-encoding'] ?? '').toLowerCase();
-    final declaredLength =
-        int.tryParse(response.headers['content-length'] ?? '');
-    if ((contentEncoding.isEmpty || contentEncoding == 'identity') &&
-        declaredLength != null &&
-        declaredLength != response.bodyBytes.length) {
+    if (contentEncoding.isNotEmpty && contentEncoding != 'identity') {
       return false;
     }
+    final declaredLength =
+        int.tryParse(response.headers['content-length'] ?? '');
+    if (declaredLength != null &&
+        (declaredLength > maxBytes ||
+            declaredLength != response.bodyBytes.length)) {
+      return false;
+    }
+    if (response.bodyBytes.length > maxBytes) return false;
     return true;
   }
 

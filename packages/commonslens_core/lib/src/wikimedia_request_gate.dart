@@ -134,7 +134,7 @@ class WikimediaRequestGate {
 
       http.Response? response;
       try {
-        response = await client.get(uri, headers: headers).timeout(timeout);
+        response = await _strictGet(client, uri, headers).timeout(timeout);
       } catch (error) {
         lastError = error;
       } finally {
@@ -168,6 +168,22 @@ class WikimediaRequestGate {
 
     if (lastError != null) throw lastError;
     throw http.ClientException('Wikimedia request failed', uri);
+  }
+
+  /// Browser fetch follows redirects by default and a buffered [Response]
+  /// does not retain fetch's final URL. Media requests therefore disable
+  /// redirects entirely: a Commons URL either serves bytes directly or the
+  /// request fails without ever following a stream to another origin.
+  static Future<http.Response> _strictGet(
+    http.Client client,
+    Uri uri,
+    Map<String, String>? headers,
+  ) async {
+    final request = http.Request('GET', uri)
+      ..followRedirects = uri.host.toLowerCase() != 'upload.wikimedia.org';
+    if (headers != null) request.headers.addAll(headers);
+    final streamed = await client.send(request);
+    return http.Response.fromStream(streamed);
   }
 
   static bool _isThrottleResponse(

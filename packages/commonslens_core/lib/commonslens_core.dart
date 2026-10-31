@@ -7,7 +7,9 @@ library;
 
 export 'src/commons_backend.dart';
 export 'src/commons_engine.dart';
+export 'src/download_security.dart';
 export 'src/pipeline_engine.dart';
+export 'src/pipeline_manifest.dart';
 export 'src/pipeline_models.dart';
 export 'src/search_models.dart';
 export 'src/search_query_compiler.dart';

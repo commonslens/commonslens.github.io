@@ -146,15 +146,20 @@ mixin _PipelineSourceOperations {
       );
     }
 
+    // MediaWiki's geosearch module has no continuation support and returns
+    // at most 500 rows. "All available" therefore means the module maximum
+    // for browse mode; filtered location searches use normal paginated
+    // CirrusSearch and are not subject to this special case.
+    final requestedLimit = ctx.effectiveMaxItems;
+    final geosearchLimit = (requestedLimit ?? 500).clamp(1, 500);
     final result = box != null
-        ? await ctx.backend
-            .geosearch(boundingBox: box, limit: ctx.effectiveMaxItems)
+        ? await ctx.backend.geosearch(boundingBox: box, limit: geosearchLimit)
         : (lat != null && lng != null)
             ? await ctx.backend.geosearch(
                 lat: lat,
                 lng: lng,
                 radiusMeters: radiusKm * 1000,
-                limit: ctx.effectiveMaxItems)
+                limit: geosearchLimit)
             : null;
 
     if (result == null) {
@@ -162,10 +167,9 @@ mixin _PipelineSourceOperations {
           '${node.title} (browse) needs either lat/lng or a bounding box.');
     }
     if (!result.ok) return NodeOutput.errorResult(result.error!);
-    return NodeOutput.materialized(
-      result.items.take(ctx.effectiveMaxItems).toList(),
-      totalHits: result.totalHits,
-    );
+    final items = ctx.applyItemLimit(result.items);
+    ctx.onFetchProgress?.call(items.length, result.totalHits);
+    return NodeOutput.materialized(items, totalHits: result.totalHits);
   }
 
   Future<NodeOutput> _materializeAuthor(
@@ -176,19 +180,26 @@ mixin _PipelineSourceOperations {
     // (see PipelineCache) also cover author portfolios, which otherwise
     // wouldn't cache at all despite being just as re-run-heavy as any
     // other source during pipeline iteration.
-    final signature = 'author:$username|pipelineCap=$cap';
+    final signature = 'author:$username|pipelineCap=${cap ?? "all"}';
 
     if (ctx.cache != null) {
       final cached = await ctx.cache!.getQueryResult(signature);
       if (cached != null) {
-        return NodeOutput.materialized(cached.take(cap).toList());
+        final items = ctx.applyItemLimit(cached);
+        ctx.onFetchProgress?.call(items.length, null);
+        return NodeOutput.materialized(items);
       }
     }
 
     final items = <SearchItem>[];
     Map<String, dynamic>? continueToken;
     String? error;
-    while (items.length < cap) {
+    var cancelled = false;
+    while (ctx.shouldFetchMore(items.length)) {
+      if (ctx.beforeFetchPage != null && !await ctx.beforeFetchPage!.call()) {
+        cancelled = true;
+        break;
+      }
       final result = await ctx.backend
           .authorUploads(username, continueToken: continueToken);
       if (!result.ok) {
@@ -196,14 +207,23 @@ mixin _PipelineSourceOperations {
         break;
       }
       items.addAll(result.items);
+      ctx.onFetchProgress
+          ?.call(ctx.applyItemLimit(items).length, result.totalHits);
       if (!result.hasMore) break;
       continueToken = result.continueToken;
     }
     if (error != null && items.isEmpty) return NodeOutput.errorResult(error);
-    final capped = items.length > cap ? items.sublist(0, cap) : items;
+    final capped = ctx.applyItemLimit(items);
 
-    if (ctx.cache != null) await ctx.cache!.putQueryResult(signature, capped);
-    return NodeOutput.materialized(capped);
+    if (ctx.cache != null && !cancelled) {
+      await ctx.cache!.putQueryResult(signature, capped);
+    }
+    return NodeOutput.materialized(
+      capped,
+      warning: cancelled
+          ? 'Run cancelled after ${capped.length} records were loaded.'
+          : null,
+    );
   }
 }
 
@@ -218,12 +238,14 @@ Future<NodeOutput> _materializeState(
     SearchState state, PipelineExecutionContext ctx) async {
   final baseSignature = ctx.backend.buildQuerySignature(state);
   final cap = ctx.effectiveMaxItems;
-  final signature = '$baseSignature|pipelineCap=$cap';
+  final signature = '$baseSignature|pipelineCap=${cap ?? "all"}';
 
   if (ctx.cache != null) {
     final cached = await ctx.cache!.getQueryResult(signature);
     if (cached != null) {
-      return NodeOutput.materialized(cached.take(cap).toList());
+      final items = ctx.applyItemLimit(cached);
+      ctx.onFetchProgress?.call(items.length, null);
+      return NodeOutput.materialized(items);
     }
   }
 
@@ -231,8 +253,13 @@ Future<NodeOutput> _materializeState(
   Map<String, dynamic>? continueToken;
   int? totalHits;
   String? error;
+  var cancelled = false;
 
-  while (items.length < cap) {
+  while (ctx.shouldFetchMore(items.length)) {
+    if (ctx.beforeFetchPage != null && !await ctx.beforeFetchPage!.call()) {
+      cancelled = true;
+      break;
+    }
     final result =
         await ctx.backend.search(state, continueToken: continueToken);
     if (!result.ok) {
@@ -241,17 +268,24 @@ Future<NodeOutput> _materializeState(
     }
     items.addAll(result.items);
     totalHits = result.totalHits ?? totalHits;
+    ctx.onFetchProgress?.call(ctx.applyItemLimit(items).length, totalHits);
     if (!result.hasMore) break;
     continueToken = result.continueToken;
   }
 
   if (error != null && items.isEmpty) return NodeOutput.errorResult(error);
 
-  final capped = items.length > cap ? items.sublist(0, cap) : items;
+  final capped = ctx.applyItemLimit(items);
 
-  if (ctx.cache != null) {
+  if (ctx.cache != null && !cancelled) {
     await ctx.cache!.putQueryResult(signature, capped);
   }
 
-  return NodeOutput.materialized(capped, totalHits: totalHits);
+  return NodeOutput.materialized(
+    capped,
+    totalHits: totalHits,
+    warning: cancelled
+        ? 'Run cancelled after ${capped.length} records were loaded.'
+        : null,
+  );
 }

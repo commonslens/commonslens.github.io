@@ -141,6 +141,8 @@ void main() {
         uploader: 'Example user',
         width: 1920,
         height: 1080,
+        fileSizeBytes: 123456,
+        sha1: 'abc123',
         latitude: 12.5,
         longitude: 77.5,
       );
@@ -152,6 +154,8 @@ void main() {
       expect(restored.fileTypeLabel, 'WEBM');
       expect(restored.mediaKind, MediaKind.video);
       expect(restored.hasCoordinates, isTrue);
+      expect(restored.fileSizeBytes, 123456);
+      expect(restored.sha1, 'abc123');
     });
 
     test('falls back to metadata coordinates when resolved values are absent',

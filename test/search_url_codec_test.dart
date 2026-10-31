@@ -99,6 +99,27 @@ void main() {
     expect(restored.selectedQualityFilters, state.selectedQualityFilters);
   });
 
+  test('round-trips tier-and-above quality mode', () {
+    const state = SearchState(
+      qualityFilters: {QualityFilter.valuedImage},
+      qualityMatchMode: QualityMatchMode.andAbove,
+      allImages: false,
+    );
+
+    final params = SearchUrlCodec.toQueryParams(state);
+    final restored =
+        SearchUrlCodec.fromQueryParams(params, const SearchState());
+
+    expect(params['quality'], 'valuedImage');
+    expect(params['qualityMode'], 'andAbove');
+    expect(restored.qualityMatchMode, QualityMatchMode.andAbove);
+    expect(restored.effectiveQualityFilters, {
+      QualityFilter.valuedImage,
+      QualityFilter.qualityImage,
+      QualityFilter.featuredPicture,
+    });
+  });
+
   test('continues to decode legacy delimiter-based links', () {
     final restored = SearchUrlCodec.fromQueryParams(
       {

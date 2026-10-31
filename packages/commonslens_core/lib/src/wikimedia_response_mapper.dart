@@ -60,6 +60,8 @@ class WikimediaResponseMapper {
       uploader: info['user']?.toString() ?? (uploaderFallback ?? ''),
       width: info['width'] is num ? (info['width'] as num).toInt() : 0,
       height: info['height'] is num ? (info['height'] as num).toInt() : 0,
+      fileSizeBytes: info['size'] is num ? (info['size'] as num).toInt() : 0,
+      sha1: info['sha1']?.toString() ?? '',
       categories: _metadataValue(metadata, 'Categories'),
       assessments: _metadataValue(metadata, 'Assessments'),
       imageDescriptionHtml: _metadataValue(metadata, 'ImageDescription'),

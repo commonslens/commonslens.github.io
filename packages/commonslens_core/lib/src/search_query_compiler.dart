@@ -252,13 +252,14 @@ class SearchQueryCompiler {
       ));
     }
 
-    final selectedQualities = state.selectedQualityFilters
+    final selectedQualities = state.effectiveQualityFilters
         .where((quality) => _qualityClauses.containsKey(quality))
         .toList()
       ..sort((left, right) => left.index.compareTo(right.index));
     if (!state.allImagesMode &&
         selectedQualities.isNotEmpty &&
-        selectedQualities.length < defaultQualityFilters.length) {
+        (state.qualityMatchMode == QualityMatchMode.andAbove ||
+            selectedQualities.length < defaultQualityFilters.length)) {
       final clauses = selectedQualities
           .map((quality) => _qualityClauses[quality])
           .whereType<String>()
@@ -266,13 +267,22 @@ class SearchQueryCompiler {
       if (clauses.isNotEmpty) {
         parts.add(
             clauses.length == 1 ? clauses.single : '(${clauses.join(' OR ')})');
-        for (final quality in selectedQualities) {
+        if (state.qualityMatchMode == QualityMatchMode.andAbove &&
+            state.selectedQualityFilters.length == 1) {
+          final selected = state.selectedQualityFilters.single;
           chips.add(QueryChipData(
-            id: selectedQualities.length == 1
-                ? 'quality'
-                : 'quality:${quality.name}',
-            label: qualityFilterLabel(quality),
+            id: 'quality',
+            label: '${qualityFilterLabel(selected)} and above',
           ));
+        } else {
+          for (final quality in selectedQualities) {
+            chips.add(QueryChipData(
+              id: selectedQualities.length == 1
+                  ? 'quality'
+                  : 'quality:${quality.name}',
+              label: qualityFilterLabel(quality),
+            ));
+          }
         }
       }
     }

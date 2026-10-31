@@ -190,9 +190,13 @@ class SearchUrlCodec {
       ..sort((left, right) => left.index.compareTo(right.index));
     if (!state.allImagesMode &&
         selectedQualities.isNotEmpty &&
-        selectedQualities.length < defaultQualityFilters.length) {
+        (state.qualityMatchMode == QualityMatchMode.andAbove ||
+            selectedQualities.length < defaultQualityFilters.length)) {
       params['quality'] =
           selectedQualities.map((quality) => quality.name).join(',');
+      if (state.qualityMatchMode == QualityMatchMode.andAbove) {
+        params['qualityMode'] = QualityMatchMode.andAbove.name;
+      }
     }
 
     void addPositiveInt(String key, int? value) {
@@ -335,6 +339,11 @@ class SearchUrlCodec {
 
     final rawQuality = params['quality'];
     final parsedQuality = qualitySet(rawQuality);
+    final qualityMode = enumValue(
+      QualityMatchMode.values,
+      params['qualityMode'],
+      base.qualityMatchMode,
+    );
     final allImages = rawQuality == null
         ? base.allImagesMode
         : parsedQuality == null || parsedQuality.isEmpty;
@@ -362,6 +371,7 @@ class SearchUrlCodec {
       sortMode: enumValue(SortMode.values, params['sort'], SortMode.relevance),
       licensePresets: licenses,
       qualityFilters: parsedQuality ?? base.selectedQualityFilters,
+      qualityMatchMode: qualityMode,
       allImages: allImages,
       attributionRequired: attribution,
       clearAttributionRequired: attribution == null,

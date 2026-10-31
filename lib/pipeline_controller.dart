@@ -14,10 +14,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'download_service.dart';
 import 'pipeline_cache.dart';
 import 'pipeline_engine.dart';
+import 'pipeline_manifest.dart';
 import 'pipeline_models.dart';
 import 'search_controller.dart';
 import 'search_models.dart';
 import 'backend_providers.dart';
+import 'wikimedia_download_client.dart';
 
 // -----------------------------------------------------------------------------
 // View state
@@ -36,7 +38,11 @@ class PipelineViewState {
   final PipelineGraph graph;
   final Map<String, PipelineNodeStatus> nodeStatus;
   final bool isRunning;
+  final bool isPaused;
   final bool preview;
+  final int fetchedRecords;
+  final int? totalRecords;
+  final bool runCancelled;
 
   /// Top-level failure that isn't any single node's fault — currently
   /// only a detected cycle, surfaced before [PipelineEngine.run] is even
@@ -50,7 +56,11 @@ class PipelineViewState {
     required this.graph,
     this.nodeStatus = const {},
     this.isRunning = false,
+    this.isPaused = false,
     this.preview = false,
+    this.fetchedRecords = 0,
+    this.totalRecords,
+    this.runCancelled = false,
     this.runError,
     this.savedGraphs = const [],
     this.loadingSavedGraphs = false,
@@ -60,7 +70,12 @@ class PipelineViewState {
     PipelineGraph? graph,
     Map<String, PipelineNodeStatus>? nodeStatus,
     bool? isRunning,
+    bool? isPaused,
     bool? preview,
+    int? fetchedRecords,
+    int? totalRecords,
+    bool clearTotalRecords = false,
+    bool? runCancelled,
     String? runError,
     bool clearRunError = false,
     List<PipelineGraph>? savedGraphs,
@@ -70,7 +85,12 @@ class PipelineViewState {
       graph: graph ?? this.graph,
       nodeStatus: nodeStatus ?? this.nodeStatus,
       isRunning: isRunning ?? this.isRunning,
+      isPaused: isPaused ?? this.isPaused,
       preview: preview ?? this.preview,
+      fetchedRecords: fetchedRecords ?? this.fetchedRecords,
+      totalRecords:
+          clearTotalRecords ? null : (totalRecords ?? this.totalRecords),
+      runCancelled: runCancelled ?? this.runCancelled,
       runError: clearRunError ? null : (runError ?? this.runError),
       savedGraphs: savedGraphs ?? this.savedGraphs,
       loadingSavedGraphs: loadingSavedGraphs ?? this.loadingSavedGraphs,
@@ -104,6 +124,8 @@ final pipelineControllerProvider =
 
 class PipelineController extends Notifier<PipelineViewState> {
   final PipelineEngine _engine = PipelineEngine();
+  bool _pauseRequested = false;
+  bool _cancelRequested = false;
 
   /// The last run's materialized outputs, keyed by node id — read by the
   /// sink actions and by the canvas's preview panel. Deliberately not
@@ -122,7 +144,7 @@ class PipelineController extends Notifier<PipelineViewState> {
     );
     // Fire-and-forget — the editor is usable immediately; savedGraphs
     // populates once IndexedDB responds.
-    unawaited(_loadSavedGraphs());
+    unawaited(Future<void>.microtask(_loadSavedGraphs));
     return PipelineViewState(graph: graph);
   }
 
@@ -316,9 +338,15 @@ class PipelineController extends Notifier<PipelineViewState> {
       return;
     }
 
+    _pauseRequested = false;
+    _cancelRequested = false;
     state = state.copyWith(
       isRunning: true,
+      isPaused: false,
       preview: preview,
+      fetchedRecords: 0,
+      clearTotalRecords: true,
+      runCancelled: false,
       clearRunError: true,
       nodeStatus: {
         for (final n in state.graph.nodes) n.id: const PipelineNodeStatus(),
@@ -328,7 +356,15 @@ class PipelineController extends Notifier<PipelineViewState> {
     final ctx = PipelineExecutionContext(
       backend: ref.read(commonsBackendProvider),
       cache: _cache,
+      maxItemsPerSource: _maxItemsPerSourceForRun(),
       preview: preview,
+      beforeFetchPage: _waitForFetchPermission,
+      onFetchProgress: (fetched, totalHits) {
+        state = state.copyWith(
+          fetchedRecords: fetched,
+          totalRecords: totalHits,
+        );
+      },
       onNodeStatus: (nodeId, status, {message}) {
         state = state.copyWith(nodeStatus: {
           ...state.nodeStatus,
@@ -343,8 +379,59 @@ class PipelineController extends Notifier<PipelineViewState> {
     } catch (e) {
       state = state.copyWith(runError: e.toString());
     } finally {
-      state = state.copyWith(isRunning: false);
+      state = state.copyWith(
+        isRunning: false,
+        isPaused: false,
+        runCancelled: _cancelRequested,
+      );
+      _pauseRequested = false;
     }
+  }
+
+  /// Dataset manifests can deliberately exhaust Wikimedia continuation;
+  /// every other pipeline keeps the normal 1,000-record browser safety cap.
+  /// A custom manifest limit is also used as the source cap, then applied
+  /// once more at its sink after unions or other multi-branch operations.
+  int? _maxItemsPerSourceForRun() {
+    final manifests = state.graph.nodes.where((node) =>
+        node.type == PipelineNodeType.sinkCsvExport &&
+        state.graph.incomingEdges(node.id).isNotEmpty);
+    if (manifests.isEmpty) return 1000;
+
+    var largestCustomLimit = 0;
+    for (final node in manifests) {
+      final scope = node.config['resultScope'] as String? ?? 'all';
+      if (scope == 'all') return null;
+      final limit = (node.config['maxRecords'] as num?)?.toInt() ?? 1000;
+      if (limit > largestCustomLimit) largestCustomLimit = limit;
+    }
+    return largestCustomLimit > 0 ? largestCustomLimit : 1000;
+  }
+
+  Future<bool> _waitForFetchPermission() async {
+    while (_pauseRequested && !_cancelRequested) {
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+    }
+    return !_cancelRequested;
+  }
+
+  void pauseRun() {
+    if (!state.isRunning || state.isPaused) return;
+    _pauseRequested = true;
+    state = state.copyWith(isPaused: true);
+  }
+
+  void resumeRun() {
+    if (!state.isRunning || !state.isPaused) return;
+    _pauseRequested = false;
+    state = state.copyWith(isPaused: false);
+  }
+
+  void cancelRun() {
+    if (!state.isRunning) return;
+    _cancelRequested = true;
+    _pauseRequested = false;
+    state = state.copyWith(isPaused: false, runCancelled: true);
   }
 
   // ---------------------------------------------------------------------
@@ -370,13 +457,73 @@ class PipelineController extends Notifier<PipelineViewState> {
   Future<String?> exportSinkCsv(String nodeId,
       {String fileName = 'pipeline_export'}) async {
     final output = _lastOutputs[nodeId];
+    if (output?.hasError == true) return output!.error;
     if (output == null || !output.isMaterialized) {
       return 'Run the pipeline before exporting.';
     }
-    final records =
-        output.records ?? output.items!.map((item) => item.toJson()).toList();
-    await DownloadService.downloadCsvRecords(records, fileName);
-    return null;
+    final node = state.graph.nodeById(nodeId);
+    if (node == null) return 'That manifest node no longer exists.';
+
+    final level =
+        manifestMetadataLevelFromName(node.config['metadataLevel'] as String?);
+    final links =
+        manifestImageLinksFromName(node.config['imageLinks'] as String?);
+    final hasFieldSelect =
+        _hasUpstreamType(nodeId, PipelineNodeType.transformFieldSelect);
+    final records = buildManifestRecords(
+      output.items!,
+      metadataLevel: level,
+      imageLinks: links,
+      projectedRecords: hasFieldSelect ? output.records : null,
+      additionalRecords: hasFieldSelect ? null : output.records,
+    );
+    try {
+      await DownloadService.downloadCsvRecords(records, fileName);
+      return null;
+    } on DownloadSecurityException catch (error) {
+      return error.message;
+    }
+  }
+
+  /// Runs at manifest scale and then starts the browser download. Keeping
+  /// this as one action means users do not need to understand the internal
+  /// split between pipeline execution and sink side effects.
+  Future<String?> generateManifest(String nodeId,
+      {String fileName = 'commonslens_manifest'}) async {
+    if (state.isRunning) return 'A pipeline run is already in progress.';
+    await run(preview: false);
+    if (state.runCancelled) {
+      return 'Manifest generation was cancelled; no file was downloaded.';
+    }
+    if (state.runError != null) return state.runError;
+    return exportSinkCsv(nodeId, fileName: fileName);
+  }
+
+  void downloadManifestHelper(String nodeId) {
+    final node = state.graph.nodeById(nodeId);
+    final configured = node?.config['fileName'] as String?;
+    final csvName = (configured == null || configured.trim().isEmpty)
+        ? 'commonslens_manifest.csv'
+        : configured.toLowerCase().endsWith('.csv')
+            ? configured
+            : '$configured.csv';
+    DownloadService.downloadManifestPythonHelper(csvName);
+  }
+
+  bool _hasUpstreamType(String nodeId, PipelineNodeType type) {
+    final pending = <String>[nodeId];
+    final visited = <String>{};
+    while (pending.isNotEmpty) {
+      final current = pending.removeLast();
+      if (!visited.add(current)) continue;
+      for (final edge in state.graph.incomingEdges(current)) {
+        final upstream = state.graph.nodeById(edge.fromNodeId);
+        if (upstream == null) continue;
+        if (upstream.type == type) return true;
+        pending.add(upstream.id);
+      }
+    }
+    return false;
   }
 
   Future<String?> exportSinkJson(String nodeId,
@@ -387,8 +534,12 @@ class PipelineController extends Notifier<PipelineViewState> {
     }
     final records =
         output.records ?? output.items!.map((item) => item.toJson()).toList();
-    await DownloadService.downloadJsonRecords(records, fileName);
-    return null;
+    try {
+      await DownloadService.downloadJsonRecords(records, fileName);
+      return null;
+    } on DownloadSecurityException catch (error) {
+      return error.message;
+    }
   }
 
   Future<String?> exportSinkZip(
@@ -410,7 +561,8 @@ class PipelineController extends Notifier<PipelineViewState> {
   String? sendToSearch(String nodeId) {
     final items = materializedItemsFor(nodeId);
     if (items == null) return 'Run the pipeline before sending to Search.';
-    ref.read(searchControllerProvider.notifier).loadExternalResults(items);
+    ref.read(searchControllerProvider.notifier)
+        .loadExternalResults(items, sourceNodeId: nodeId);
     return null;
   }
 

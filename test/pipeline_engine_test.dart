@@ -32,6 +32,39 @@ void main() {
     expect(preview.effectiveMaxItems, 20);
   });
 
+  test('manifest runs can exhaust continuation beyond the normal cap',
+      () async {
+    final backend = _PagedBackend(pageCount: 3, itemsPerPage: 450);
+    final progress = <int>[];
+    final result = await PipelineEngine().run(
+      _manifestGraph(),
+      PipelineExecutionContext(
+        backend: backend,
+        maxItemsPerSource: null,
+        onFetchProgress: (fetched, _) => progress.add(fetched),
+      ),
+    );
+
+    expect(backend.calls, 3);
+    expect(result.sinkOutputsByNodeId['manifest']!.items, hasLength(1350));
+    expect(progress, [450, 900, 1350]);
+  });
+
+  test('custom manifest maximum is enforced at the sink', () async {
+    final result = await PipelineEngine().run(
+      _manifestGraph(config: const {
+        'resultScope': 'custom',
+        'maxRecords': 3,
+      }),
+      PipelineExecutionContext(
+        backend: _PagedBackend(pageCount: 2, itemsPerPage: 4),
+        maxItemsPerSource: null,
+      ),
+    );
+
+    expect(result.sinkOutputsByNodeId['manifest']!.items, hasLength(3));
+  });
+
   test('Combine Constraints sends text and depicts as one backend query',
       () async {
     final backend = _RecordingBackend();
@@ -231,6 +264,69 @@ void main() {
       {'title': 'File:Projected.jpg', 'width': 1600},
     ]);
   });
+}
+
+PipelineGraph _manifestGraph({Map<String, dynamic>? config}) => PipelineGraph(
+      id: 'manifest-graph',
+      name: 'Manifest export',
+      updatedAt: DateTime.utc(2026),
+      nodes: [
+        PipelineNode(
+          id: 'source',
+          type: PipelineNodeType.sourceTextQuery,
+          config: const {'query': 'dataset'},
+        ),
+        PipelineNode(
+          id: 'manifest',
+          type: PipelineNodeType.sinkCsvExport,
+          config: config,
+        ),
+      ],
+      edges: const [
+        PipelineEdge(
+          id: 'source-manifest',
+          fromNodeId: 'source',
+          fromPortId: 'out',
+          toNodeId: 'manifest',
+          toPortId: 'in',
+        ),
+      ],
+    );
+
+class _PagedBackend extends CommonsBackend {
+  final int pageCount;
+  final int itemsPerPage;
+  int calls = 0;
+
+  _PagedBackend({required this.pageCount, required this.itemsPerPage});
+
+  @override
+  Future<MediaSearchResult> search(
+    SearchState filters, {
+    Map<String, dynamic>? continueToken,
+  }) async {
+    final page = (continueToken?['page'] as int?) ?? 0;
+    calls++;
+    final hasMore = page + 1 < pageCount;
+    return MediaSearchResult(
+      items: List.generate(itemsPerPage, (index) {
+        final id = page * itemsPerPage + index;
+        return SearchItem(
+          title: 'File:$id.jpg',
+          url: 'https://upload.wikimedia.org/$id.jpg',
+          thumb: 'https://upload.wikimedia.org/thumb/$id.jpg',
+          commonsUrl: 'https://commons.wikimedia.org/wiki/File:$id.jpg',
+          snippet: '',
+          mime: 'image/jpeg',
+          isSvg: false,
+        );
+      }),
+      hasMore: hasMore,
+      continueToken: hasMore ? {'page': page + 1} : null,
+      queryUsed: filters.queryText,
+      totalHits: pageCount * itemsPerPage,
+    );
+  }
 }
 
 class _StaticBackend extends CommonsBackend {

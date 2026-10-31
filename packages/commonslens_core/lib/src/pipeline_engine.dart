@@ -126,16 +126,24 @@ class PipelineExecutionContext {
   final CommonsBackend backend;
   final PipelineCache? cache;
 
-  /// Hard cap on items fetched per materialized branch. Commons has no
-  /// concept of "give me everything" for a CirrusSearch query — this is
-  /// the pipeline's own safety valve against an unbounded fetch loop.
-  final int maxItemsPerSource;
+  /// Hard cap on items fetched per materialized branch. Null means follow
+  /// Wikimedia continuation tokens until the result set is exhausted. The
+  /// Dataset Manifest sink uses that mode because it exports URLs and
+  /// metadata rather than downloading every media binary.
+  final int? maxItemsPerSource;
 
   /// Preview mode swaps [maxItemsPerSource] for [previewCap] everywhere —
   /// the fast, cheap "see roughly what this looks like" run, as opposed to
   /// a full "Run" that respects the real per-source caps.
   final bool preview;
   final int previewCap;
+
+  /// Called after each fetched page so the UI can report record progress.
+  final void Function(int fetched, int? totalHits)? onFetchProgress;
+
+  /// Called before each network page. It may wait while a run is paused;
+  /// false asks the engine to stop pagination and retain the partial result.
+  final Future<bool> Function()? beforeFetchPage;
 
   /// UI hook — called before a node starts, and once with its final
   /// status, so pipeline_page.dart can show a running/success/warning/
@@ -150,10 +158,21 @@ class PipelineExecutionContext {
     this.maxItemsPerSource = 1000,
     this.preview = false,
     this.previewCap = 20,
+    this.onFetchProgress,
+    this.beforeFetchPage,
     this.onNodeStatus,
   }) : backend = backend ?? CommonsBackend();
 
-  int get effectiveMaxItems => preview ? previewCap : maxItemsPerSource;
+  int? get effectiveMaxItems => preview ? previewCap : maxItemsPerSource;
+
+  bool shouldFetchMore(int itemCount) =>
+      effectiveMaxItems == null || itemCount < effectiveMaxItems!;
+
+  List<SearchItem> applyItemLimit(List<SearchItem> items) {
+    final limit = effectiveMaxItems;
+    if (limit == null || items.length <= limit) return items;
+    return items.sublist(0, limit);
+  }
 }
 
 // -----------------------------------------------------------------------------

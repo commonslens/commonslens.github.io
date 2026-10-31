@@ -1,132 +1,40 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'backend_providers.dart';
 import 'bookmark_service.dart';
 import 'bulk_download_tray.dart';
+import 'media_queue.dart';
 import 'search_components.dart';
 import 'search_models.dart';
 
 class BookmarksPage extends ConsumerStatefulWidget {
-  const BookmarksPage({super.key});
+  final String initialQuery;
+
+  const BookmarksPage({super.key, this.initialQuery = ''});
 
   @override
   ConsumerState<BookmarksPage> createState() => _BookmarksPageState();
 }
 
 class _BookmarksPageState extends ConsumerState<BookmarksPage> {
-  final _searchController = TextEditingController();
+  late final _searchController =
+      TextEditingController(text: widget.initialQuery);
   final _scrollController = ScrollController();
 
-  Set<String> _requestedUrls = <String>{};
-  List<SearchItem> _items = const [];
-  bool _loading = false;
-  int _failedCount = 0;
-  int _loadGeneration = 0;
+  @override
+  void didUpdateWidget(covariant BookmarksPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialQuery != widget.initialQuery) {
+      _searchController.text = widget.initialQuery;
+    }
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-
-  void _syncBookmarks(Set<String> urls) {
-    if (setEquals(_requestedUrls, urls)) return;
-
-    _requestedUrls = {...urls};
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadBookmarks(_requestedUrls);
-    });
-  }
-
-  Future<void> _loadBookmarks(Set<String> urls) async {
-    final generation = ++_loadGeneration;
-
-    if (urls.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _items = const [];
-        _failedCount = 0;
-        _loading = false;
-      });
-      return;
-    }
-
-    if (mounted) {
-      setState(() {
-        _loading = true;
-        _failedCount = 0;
-      });
-    }
-
-    final loaded = await Future.wait(
-      urls.map((url) async {
-        final item = await ref
-            .read(commonsBackendProvider)
-            .fetchItem(_fileTitleFromUrl(url));
-        return (url: url, item: item);
-      }),
-    );
-
-    if (!mounted || generation != _loadGeneration) return;
-
-    final currentUrls = ref.read(bookmarkStoreProvider).urls;
-    if (!setEquals(currentUrls, urls)) return;
-
-    final items = <SearchItem>[];
-    var failedCount = 0;
-    for (final result in loaded) {
-      final item = result.item;
-      if (item == null) {
-        failedCount++;
-      } else {
-        items.add(item);
-      }
-    }
-
-    setState(() {
-      _items = items;
-      _failedCount = failedCount;
-      _loading = false;
-    });
-  }
-
-  void _retry() {
-    final urls = ref.read(bookmarkStoreProvider).urls;
-    _requestedUrls = <String>{};
-    _syncBookmarks(urls);
-  }
-
-  static String _fileTitleFromUrl(String url) {
-    try {
-      final uri = Uri.parse(url);
-      if (uri.pathSegments.isNotEmpty) {
-        final filename = Uri.decodeComponent(uri.pathSegments.last);
-        if (filename.isNotEmpty) {
-          return filename.startsWith('File:') ? filename : 'File:$filename';
-        }
-      }
-    } catch (_) {
-      // Fall through to the original value; the backend will report a
-      // missing item instead of making the bookmarks page crash.
-    }
-    return url.startsWith('File:') ? url : 'File:$url';
-  }
-
-  bool _matchesSearch(SearchItem item, String query) {
-    if (query.isEmpty) return true;
-    final haystack = [
-      item.title,
-      item.url,
-      item.snippet,
-      item.objectName,
-      item.uploader,
-      item.categories,
-    ].join(' ').toLowerCase();
-    return haystack.contains(query);
   }
 
   Widget _buildSearchBar() {
@@ -180,7 +88,8 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
     );
   }
 
-  Widget _buildBody(List<SearchItem> visibleItems, Set<String> bookmarkUrls) {
+  Widget _buildBody(List<SearchItem> visibleItems, Set<String> bookmarkUrls,
+      BookmarkItemsState bookmarkState, String query) {
     if (bookmarkUrls.isEmpty) {
       return const _BookmarksEmptyState(
         icon: Icons.bookmark_border,
@@ -190,7 +99,7 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
       );
     }
 
-    if (_loading && _items.isEmpty) {
+    if (bookmarkState.loading && bookmarkState.items.isEmpty) {
       return const Center(
         child: SizedBox(
           width: 22,
@@ -203,13 +112,13 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
       );
     }
 
-    if (!_loading && _items.isEmpty) {
+    if (!bookmarkState.loading && bookmarkState.items.isEmpty) {
       return _BookmarksEmptyState(
         icon: Icons.cloud_off_outlined,
         title: 'Bookmarks unavailable',
         message: 'The saved links could not be loaded right now.',
         action: TextButton.icon(
-          onPressed: _retry,
+          onPressed: () => ref.read(bookmarkItemsProvider.notifier).reload(),
           icon: const Icon(Icons.refresh, size: 17),
           label: const Text('Retry'),
         ),
@@ -222,8 +131,8 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
           child: Text(
-            '${visibleItems.length} OF ${_items.length} BOOKMARK${_items.length == 1 ? '' : 'S'}'
-            '${_failedCount == 0 ? '' : '  •  $_failedCount UNAVAILABLE'}',
+            '${visibleItems.length} OF ${bookmarkState.items.length} BOOKMARK${bookmarkState.items.length == 1 ? '' : 'S'}'
+            '${bookmarkState.failedCount == 0 ? '' : '  •  ${bookmarkState.failedCount} UNAVAILABLE'}',
             style: const TextStyle(
               color: Color(0xFF5A5A5A),
               fontSize: 10,
@@ -245,8 +154,7 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
             child: MediaResultsGrid(
               controller: _scrollController,
               items: visibleItems,
-              searchState: const SearchState(),
-              extraParams: const {'from': 'bookmarks'},
+              queueSource: MediaQueueSource.bookmarks(query),
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: 280,
@@ -263,11 +171,12 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
   @override
   Widget build(BuildContext context) {
     final bookmarkUrls = ref.watch(bookmarkStoreProvider).urls;
-    _syncBookmarks(bookmarkUrls);
+    final bookmarkState = ref.watch(bookmarkItemsProvider);
 
     final query = _searchController.text.trim().toLowerCase();
-    final visibleItems =
-        _items.where((item) => _matchesSearch(item, query)).toList();
+    final visibleItems = bookmarkState.items
+        .where((item) => bookmarkMatchesSearch(item, query))
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFF0B0B0B),
@@ -294,7 +203,9 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
       body: Column(
         children: [
           _buildSearchBar(),
-          Expanded(child: _buildBody(visibleItems, bookmarkUrls)),
+          Expanded(
+              child:
+                  _buildBody(visibleItems, bookmarkUrls, bookmarkState, query)),
           BulkDownloadTray(
             availableItems: visibleItems,
             zipName: 'commonslens_bookmarks.zip',

@@ -14,10 +14,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'search_models.dart';
-import 'search_url_codec.dart';
 import 'search_controller.dart';
-import 'pipeline_controller.dart';
 import 'backend_providers.dart';
+import 'media_queue.dart';
 
 part 'asset_media_renderer.dart';
 part 'asset_metadata_panel.dart';
@@ -62,172 +61,61 @@ class AssetViewer extends ConsumerStatefulWidget {
 }
 
 class _AssetViewerState extends ConsumerState<AssetViewer> {
-  late PageController _pageController;
-  late int _currentIndex;
+  PageController? _pageController;
+  int _currentIndex = 0;
   late _ViewerImageQuality _imageQuality;
-  bool _showMobileInfo = false;
-
-  bool _urlHydrated = false;
-  bool _suppressUrlSync = false;
-
   late FocusNode _focusNode;
-
-  bool _isStandalone = false;
-  SearchItem? _injectedTarget;
-  bool _isFetchingInjected = false;
-  String? _authorName;
-
-  // Pipeline previews already own complete SearchItem objects in the
-  // PipelineController's last-run output. Keep that exact in-memory list as
-  // the viewer gallery instead of re-fetching a tapped title and losing the
-  // surrounding results needed by the previous/next carousel.
-  bool _isPipelineMode = false;
-  String? _pipelineNodeId;
-
-  // Whether _currentIndex has actually been located against a REAL,
-  // populated gallery list yet — as opposed to just defaulted to 0
-  // because the gallery hadn't loaded when didChangeDependencies first
-  // ran. On a fresh page load/reload (the URL-hydrate branch below),
-  // hydrateFromUrl's search is only *scheduled* (postFrameCallback) and
-  // its network request hasn't resolved by the time the initial index
-  // lookup happens synchronously right after — so that first lookup
-  // always runs against an empty list, always finds nothing, and always
-  // falls back to index 0. Previously nothing ever revisited that once
-  // the real results streamed in, so a reload of e.g. "23 of 50" silently
-  // reopened on "1 of 50" every time. See _maybeResolveInitialIndex,
-  // called from build() once the gallery this viewer actually reads from
-  // has items, which re-locates widget.fileId in the real list and jumps
-  // the PageView to it if the initial guess (page 0) was wrong.
-  bool _initialIndexResolved = false;
+  bool _showMobileInfo = false;
+  bool _sourceReady = false;
+  bool _loadingMoreForTarget = false;
+  int _lastLoadAttemptCount = -1;
+  bool _hydratingSearch = false;
+  bool _fetchingTarget = false;
+  String? _fetchedTitle;
+  String? _pendingNavigationTitle;
+  SearchItem? _standaloneItem;
+  List<SearchItem> _visibleItems = const [];
+  MediaQueueData _queueData = const MediaQueueData([]);
+  late MediaQueueSource _source;
+  String? _queueId;
+  MediaQueueSnapshot? _snapshot;
 
   @override
   void initState() {
     super.initState();
-
     _imageQuality = _loadViewerImageQuality();
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _focusNode.requestFocus();
     });
-    // _pageController and _currentIndex are set in didChangeDependencies —
-    // computing the correct starting index needs GoRouterState.of(context),
-    // which Flutter does not allow calling from initState() (it depends on
-    // an InheritedWidget lookup that isn't valid until after initState
-    // completes). didChangeDependencies is the earliest safe place, and it
-    // always runs before the first build(), so `late` here is safe.
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_urlHydrated) {
-      _urlHydrated = true;
-      final params = GoRouterState.of(context).uri.queryParameters;
-      final author = params['author']?.trim();
-      final from = params['from'];
-
-      if (author != null && author.isNotEmpty) {
-        // Gallery source is the author-portfolio provider (see
-        // _getCombinedItems); nothing to hydrate up front, it loads itself
-        // on first watch.
-        _authorName = author;
-      } else if (from == 'pipeline') {
-        final nodeId = params['pipelineNode']?.trim();
-        final pipelineItems = nodeId == null || nodeId.isEmpty
-            ? null
-            : ref
-                .read(pipelineControllerProvider.notifier)
-                .materializedItemsFor(nodeId);
-        if (pipelineItems == null || pipelineItems.isEmpty) {
-          // Pipeline run outputs are intentionally in-memory. A direct link
-          // or browser reload may no longer have them, so retain the existing
-          // single-file fallback for that case.
-          _isStandalone = true;
-          _fetchInjectedTarget();
-        } else {
-          _isPipelineMode = true;
-          _pipelineNodeId = nodeId;
-        }
-      } else if (SearchUrlCodec.hasSearchContext(params)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
-
-          if (ref.read(searchControllerProvider).activeSession.items.isEmpty) {
-            ref.read(searchControllerProvider.notifier).hydrateFromUrl(params);
-          }
-        });
-      } else {
-        _isStandalone = true;
-        _fetchInjectedTarget();
-      }
-
-      // Now that the gallery source is resolved, find the tapped image's
-      // index in the correct source — matching
-      // _getCombinedItems()'s branching — instead of always reading the
-      // main search session regardless of mode, which is what caused every
-      // author-page (and, previously, map) tap to open on page 0.
-      //
-      // IMPORTANT: on a fresh page load via the hasSearchContext branch
-      // above (a reload, or any direct/shared link), hydrateFromUrl's
-      // actual network fetch hasn't run yet at this point — it's merely
-      // scheduled. So `initialItems` here is very often still empty, and
-      // this lookup can only ever fall back to index 0. That's expected
-      // and fine: _initialIndexResolved below is left false whenever the
-      // list we searched was empty, and build()'s
-      // _maybeResolveInitialIndex re-runs this same lookup once the
-      // gallery this viewer actually reads from (search/author)
-      // populates for real, correcting the page if needed. Standalone
-      // mode has no gallery to search against (a single injected item is
-      // inserted at index 0 by _getCombinedItems), so it's always
-      // considered resolved.
-      final initialItems = _authorName != null
-          ? ref.read(authorPortfolioProvider(_authorName!)).items
-          : _isPipelineMode
-              ? ref
-                      .read(pipelineControllerProvider.notifier)
-                      .materializedItemsFor(_pipelineNodeId!) ??
-                  const <SearchItem>[]
-              : ref.read(searchControllerProvider).activeSession.items;
-
-      final targetId = _normalizedTitle(widget.fileId);
-      final startIndex = initialItems
-          .indexWhere((it) => _normalizedTitle(it.title) == targetId);
-
-      _currentIndex = startIndex >= 0 ? startIndex : 0;
-      _pageController = PageController(initialPage: _currentIndex);
-      _initialIndexResolved =
-          _isStandalone || startIndex >= 0 || initialItems.isNotEmpty;
-    }
+    if (_sourceReady) return;
+    _sourceReady = true;
+    final params = GoRouterState.of(context).uri.queryParameters;
+    _source = MediaQueueSource.fromUrl(params);
+    _queueId = params['queue'];
+    _snapshot = ref.read(mediaQueueStoreProvider).get(_queueId, _source);
+    final savedTarget = _snapshot?.items.any((item) =>
+            normalizeMediaTitle(item.title) ==
+            normalizeMediaTitle(widget.fileId)) ??
+        false;
+    if (_source.kind == 'search' && !savedTarget) _startSearchHydration();
   }
 
-  /// Re-locates widget.fileId inside [items] and jumps the PageView to it,
-  /// if — and only if — the very first lookup in didChangeDependencies
-  /// couldn't have been trusted (i.e. it ran against a still-empty
-  /// gallery, see the comment there). This is what fixes a reload landing
-  /// on "1 of N" instead of the linked position: build() re-runs
-  /// automatically once the watched provider's items populate, giving
-  /// this a real list to search the *first* time one exists.
-  ///
-  /// Only ever does something once (`_initialIndexResolved` latches true
-  /// on the first real list it sees, found or not) — this is strictly an
-  /// initial-load correction, not a general "keep re-syncing to the URL"
-  /// mechanism. Ongoing file-to-file navigation within an already-loaded
-  /// gallery is handled separately by didUpdateWidget.
-  void _maybeResolveInitialIndex(List<SearchItem> items) {
-    if (_initialIndexResolved) return;
-    if (items.isEmpty) return; // still loading — nothing real to check yet
-    _initialIndexResolved = true;
-
-    final targetId = _normalizedTitle(widget.fileId);
-    final found =
-        items.indexWhere((it) => _normalizedTitle(it.title) == targetId);
-    if (found < 0 || found == _currentIndex) return;
-
-    _currentIndex = found;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  void _startSearchHydration() {
+    if (_hydratingSearch || _source.kind != 'search') return;
+    if (MediaQueueResolver.searchIsLive(ref, _source)) return;
+    _hydratingSearch = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      if (_pageController.hasClients) {
-        _pageController.jumpToPage(found);
+      try {
+        await MediaQueueResolver.hydrateSearch(ref, _source);
+      } finally {
+        if (mounted) setState(() => _hydratingSearch = false);
       }
     });
   }
@@ -235,120 +123,103 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
   @override
   void didUpdateWidget(covariant AssetViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-
-    final newFileId = _normalizedTitle(widget.fileId);
-    final oldFileId = _normalizedTitle(oldWidget.fileId);
-
-    if (newFileId.isEmpty || newFileId == oldFileId) return;
-
-    final items = _getCombinedItems();
-    if (items.isEmpty) return;
-
-    if (_currentIndex >= 0 && _currentIndex < items.length) {
-      if (_normalizedTitle(items[_currentIndex].title) == newFileId) {
-        return;
-      }
+    if (normalizeMediaTitle(oldWidget.fileId) !=
+        normalizeMediaTitle(widget.fileId)) {
+      _pendingNavigationTitle = null;
+      _fetchedTitle = null;
+      _fetchingTarget = false;
+      _standaloneItem = null;
+      _lastLoadAttemptCount = -1;
     }
+  }
 
-    int found =
-        items.indexWhere((it) => _normalizedTitle(it.title) == newFileId);
-    if (found != -1) {
-      _suppressUrlSync = true;
+  void _fetchStandaloneTarget() {
+    final title = widget.fileId;
+    if (_fetchingTarget || _fetchedTitle == title) return;
+    _fetchingTarget = true;
+    _fetchedTitle = title;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      SearchItem? item;
+      try {
+        item = await ref.read(commonsBackendProvider).fetchItem(title);
+      } catch (_) {
+        item = null;
+      }
+      if (!mounted || widget.fileId != title) return;
+      setState(() {
+        _standaloneItem = item;
+        _fetchingTarget = false;
+      });
+    });
+  }
+
+  void _loadMoreForTarget(int currentCount) {
+    if (_loadingMoreForTarget) return;
+    _lastLoadAttemptCount = currentCount;
+    _loadingMoreForTarget = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        await MediaQueueResolver.loadMore(ref, _source);
+      } finally {
+        if (mounted) setState(() => _loadingMoreForTarget = false);
+      }
+    });
+  }
+
+  void _resolvePage(List<SearchItem> items) {
+    final title = normalizeMediaTitle(_pendingNavigationTitle ?? widget.fileId);
+    final found =
+        items.indexWhere((item) => normalizeMediaTitle(item.title) == title);
+    if (found < 0) return;
+    if (_pageController == null || !_pageController!.hasClients) {
+      final oldController = _pageController;
+      _currentIndex = found;
+      _pageController = PageController(initialPage: found);
+      if (oldController != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          oldController.dispose();
+        });
+      }
+    } else if (_currentIndex != found) {
       _currentIndex = found;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _pageController.hasClients) {
-          _pageController.jumpToPage(found);
-          setState(() {});
+        if (mounted && _pageController?.hasClients == true) {
+          _pageController!.jumpToPage(found);
         }
       });
-    } else if (!_isFetchingInjected) {
-      _fetchInjectedTarget();
     }
-  }
-
-  String _normalizedTitle(String title) =>
-      title.replaceFirst('File:', '').trim().toLowerCase();
-
-  Future<void> _fetchInjectedTarget() async {
-    setState(() => _isFetchingInjected = true);
-    final item =
-        await ref.read(commonsBackendProvider).fetchItem(widget.fileId);
-    if (mounted) {
-      setState(() {
-        _injectedTarget = item;
-        _isFetchingInjected = false;
-      });
-    }
-  }
-
-  List<SearchItem> _getCombinedItems() {
-    List<SearchItem> gallery;
-    if (_authorName != null) {
-      gallery = ref.watch(authorPortfolioProvider(_authorName!)).items;
-    } else if (_isStandalone) {
-      gallery = const <SearchItem>[];
-    } else if (_isPipelineMode) {
-      // Watch the public pipeline state so this viewer rebuilds if the
-      // controller is replaced, while reading the runtime output through
-      // its dedicated accessor.
-      ref.watch(pipelineControllerProvider);
-      gallery = ref
-              .read(pipelineControllerProvider.notifier)
-              .materializedItemsFor(_pipelineNodeId!) ??
-          const <SearchItem>[];
-    } else {
-      gallery = ref.watch(searchControllerProvider).activeSession.items;
-    }
-
-    List<SearchItem> items = List.from(gallery);
-
-    if (_injectedTarget != null) {
-      if (!items.any((it) =>
-          _normalizedTitle(it.title) ==
-          _normalizedTitle(_injectedTarget!.title))) {
-        items.insert(0, _injectedTarget!);
-      }
-    }
-    return items;
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _pageController?.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
   void _onPageChanged(int index, int totalLength) {
+    if (index < 0 || index >= _visibleItems.length) return;
+    final item = _visibleItems[index];
     setState(() => _currentIndex = index);
-
-    if (_suppressUrlSync) {
-      _suppressUrlSync = false;
-      return;
-    }
-
-    if (!_isStandalone && index >= totalLength - 3) {
-      if (_authorName != null) {
-        ref
-            .read(authorPortfolioProvider(_authorName!).notifier)
-            .loadMore(_authorName!);
-      } else if (!_isPipelineMode) {
-        ref.read(searchControllerProvider.notifier).loadMore();
+    _pendingNavigationTitle = item.title;
+    if (_queueData.hasMore && index >= totalLength - 3) {
+      if (_queueData.fromSnapshot) {
+        _startSearchHydration();
+      } else {
+        MediaQueueResolver.loadMore(ref, _source);
       }
     }
-
-    final items = _getCombinedItems();
-    if (items.isNotEmpty) {
-      final params = Map<String, String>.from(
-          GoRouterState.of(context).uri.queryParameters);
-      params['id'] = items[index].title;
-      context.replace(Uri(path: '/view', queryParameters: params).toString());
+    final nextUrl = _source.urlFor(item.title, queueId: _queueId);
+    if (GoRouterState.of(context).uri.toString() != nextUrl) {
+      context.replace(nextUrl);
     }
   }
 
   void _navigateToPage(int index, int totalLength) {
     if (index >= 0 && index < totalLength) {
-      _pageController.animateToPage(
+      _pageController?.animateToPage(
         index,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -379,34 +250,99 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(searchControllerProvider).activeSession;
-    final portfolioSession = _authorName != null
-        ? ref.watch(authorPortfolioProvider(_authorName!))
-        : null;
-    final items = _getCombinedItems();
+    _snapshot = ref.read(mediaQueueStoreProvider).get(_queueId, _source);
+    final data = MediaQueueResolver.watch(
+      ref,
+      _source,
+      _snapshot,
+      widget.fileId,
+    );
+    _queueData = data;
+    final target = normalizeMediaTitle(widget.fileId);
+    var items = data.items;
+    var isStandalone = _source.kind == 'direct';
+    final targetInQueue = items.any(
+      (item) => normalizeMediaTitle(item.title) == target,
+    );
 
-    // Initial-load correction — see _maybeResolveInitialIndex's doc. No-op
-    // after the first time it sees a populated list (found or not), so
-    // this never fights ordinary page-swipe navigation.
-    _maybeResolveInitialIndex(items);
+    // A stored queue can display the requested position immediately while a
+    // fresh search catches up through its earlier pages in the background.
+    if (_source.kind == 'search' &&
+        data.fromSnapshot &&
+        MediaQueueResolver.searchIsLive(ref, _source)) {
+      final live = ref.read(searchControllerProvider).activeSession;
+      if (!live.loading &&
+          !live.loadingMore &&
+          live.hasMore &&
+          !live.items
+              .any((item) => normalizeMediaTitle(item.title) == target)) {
+        if (live.items.length > _lastLoadAttemptCount) {
+          _loadMoreForTarget(live.items.length);
+        }
+      }
+    }
 
-    final isLoading = (_isStandalone && _isFetchingInjected) ||
-        (portfolioSession != null &&
-            portfolioSession.loading &&
-            items.isEmpty) ||
-        (_authorName == null &&
-            !_isStandalone &&
-            !_isPipelineMode &&
-            session.loading &&
-            items.isEmpty);
+    if (!targetInQueue) {
+      if (_source.kind == 'search' &&
+          !MediaQueueResolver.searchIsLive(ref, _source)) {
+        _startSearchHydration();
+      }
+      if (!isStandalone &&
+          !data.loading &&
+          data.hasMore &&
+          items.length > _lastLoadAttemptCount) {
+        _loadMoreForTarget(items.length);
+        items = const [];
+      } else if (isStandalone ||
+          (!data.loading &&
+              (!data.hasMore || items.length <= _lastLoadAttemptCount))) {
+        _fetchStandaloneTarget();
+        isStandalone = true;
+        if (_standaloneItem != null &&
+            normalizeMediaTitle(_standaloneItem!.title) == target) {
+          items = [_standaloneItem!];
+        } else {
+          items = const [];
+        }
+      } else {
+        items = const [];
+      }
+    }
 
-    if (isLoading) {
+    if (items.isEmpty &&
+        ((data.loading && !isStandalone) ||
+            _loadingMoreForTarget ||
+            _hydratingSearch ||
+            _fetchingTarget ||
+            _fetchedTitle == null)) {
       return const Scaffold(
         backgroundColor: Color(0xFF070707),
-        body:
-            Center(child: CircularProgressIndicator(color: Color(0xFF3D7EFF))),
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF3D7EFF)),
+        ),
       );
     }
+
+    if (!isStandalone &&
+        !data.fromSnapshot &&
+        _queueId != null &&
+        items.isNotEmpty &&
+        (_snapshot == null ||
+            _snapshot!.hasMore != data.hasMore ||
+            !listEquals(
+              _snapshot!.items.map((item) => item.title).toList(),
+              items.map((item) => item.title).toList(),
+            ))) {
+      ref.read(mediaQueueStoreProvider).update(
+            _queueId!,
+            _source,
+            items,
+            hasMore: data.hasMore,
+          );
+      _snapshot = ref.read(mediaQueueStoreProvider).get(_queueId, _source);
+    }
+    _visibleItems = items;
+    if (items.isNotEmpty) _resolvePage(items);
 
     if (items.isEmpty) {
       return Scaffold(
@@ -420,7 +356,9 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go(widget.returnUrl);
+                context.go(_source.kind == 'direct'
+                    ? widget.returnUrl
+                    : _source.returnUrl);
               }
             },
           ),
@@ -454,10 +392,11 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () => context.go(widget.returnUrl),
+          onPressed: () => context.go(
+              _source.kind == 'direct' ? widget.returnUrl : _source.returnUrl),
         ),
         title: Text(
-          !_isStandalone
+          !isStandalone
               ? '${_currentIndex + 1} OF ${items.length}'
               : 'DIRECT LINK',
           style: const TextStyle(
@@ -522,8 +461,8 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                     child: Stack(
                       children: [
                         PageView.builder(
-                          controller: _pageController,
-                          physics: !_isStandalone
+                          controller: _pageController!,
+                          physics: !isStandalone
                               ? const BouncingScrollPhysics()
                               : const NeverScrollableScrollPhysics(),
                           itemCount: items.length,
@@ -545,7 +484,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                             );
                           },
                         ),
-                        if (hasPrevious && isDesktop && !_isStandalone)
+                        if (hasPrevious && isDesktop && !isStandalone)
                           Positioned(
                             left: 24,
                             top: 0,
@@ -556,7 +495,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
                                   _currentIndex - 1, items.length),
                             ),
                           ),
-                        if (hasNext && isDesktop && !_isStandalone)
+                        if (hasNext && isDesktop && !isStandalone)
                           Positioned(
                             right: 24,
                             top: 0,

@@ -39,7 +39,6 @@ void main() {
           items: items,
           itemLimit: 3,
           loadingMore: true,
-          searchState: const SearchState(),
           gridDelegate: delegate,
         ),
       ),
@@ -59,7 +58,6 @@ void main() {
         MediaResultsGrid(
           controller: controller,
           items: List.generate(30, _item),
-          searchState: const SearchState(),
           gridDelegate: delegate,
           nearEndThreshold: 0,
           onNearEnd: () => nearEndCalls++,

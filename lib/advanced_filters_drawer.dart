@@ -294,7 +294,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       case _FilterGroup.quality:
         return state.allImagesMode
             ? []
-            : state.selectedQualityFilters.map(qualityFilterLabel).toList();
+            : state.qualityMatchMode == QualityMatchMode.andAbove &&
+                    state.selectedQualityFilters.length == 1
+                ? [
+                    '${qualityFilterLabel(state.selectedQualityFilters.single)} and above'
+                  ]
+                : state.selectedQualityFilters.map(qualityFilterLabel).toList();
       case _FilterGroup.license:
         return [
           ...state.licensePresets.map(licensePresetLabel),
@@ -869,9 +874,31 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     if (selected.contains(quality)) {
       selected.remove(quality);
     } else {
+      if (current.qualityMatchMode == QualityMatchMode.andAbove) {
+        selected.clear();
+      }
       selected.add(quality);
     }
-    _update((c) => c.copyWith(qualityFilters: selected, allImages: false));
+    _update((c) => c.copyWith(
+          qualityFilters: selected,
+          allImages: selected.isEmpty,
+        ));
+  }
+
+  void _setQualityMatchMode(QualityMatchMode mode) {
+    _update((c) {
+      var selected = Set<QualityFilter>.from(c.selectedQualityFilters);
+      if (mode == QualityMatchMode.andAbove && selected.length > 1) {
+        final ordered = selected.toList()
+          ..sort((left, right) => left.index.compareTo(right.index));
+        selected = {ordered.first};
+      }
+      return c.copyWith(
+        qualityFilters: selected,
+        qualityMatchMode: mode,
+        allImages: selected.isEmpty,
+      );
+    });
   }
 
   // ---- License (instant, multi-select — a file only ever carries one
@@ -1121,9 +1148,40 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 const SizedBox(height: 20),
                 _sectionHeader('QUALITY TYPES'),
                 const Text(
-                  'Select one or more. All types are selected by default.',
+                  'Pick exact assessments, or use a tier plus every tier above it.',
                   style: TextStyle(
                       color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Commons keeps these as separate assessments; the combined order here is Valued → Quality → Featured.',
+                  style: TextStyle(
+                      color: Color(0xFF555555), fontSize: 10.5, height: 1.4),
+                ),
+                const SizedBox(height: 12),
+                _sectionHeader('MATCH MODE'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _combineModeButton(
+                        label: 'Individual',
+                        selected: state.qualityMatchMode ==
+                            QualityMatchMode.individual,
+                        onTap: () =>
+                            _setQualityMatchMode(QualityMatchMode.individual),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _combineModeButton(
+                        label: 'This + above',
+                        selected:
+                            state.qualityMatchMode == QualityMatchMode.andAbove,
+                        onTap: () =>
+                            _setQualityMatchMode(QualityMatchMode.andAbove),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 Wrap(
@@ -1197,7 +1255,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 const SizedBox(height: 24),
               ],
               if (_innerGroup == _FilterGroup.metadata) ...[
-                _sectionDivider('METADATA AND LOCATION'),
+                _sectionDivider('METADATA'),
                 const SizedBox(height: 20),
                 _sectionHeader('LANGUAGE & CONTENT'),
                 Row(

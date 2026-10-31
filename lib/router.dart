@@ -13,6 +13,7 @@ import 'features_page.dart';
 import 'bookmarks_page.dart';
 import 'legal_pages.dart';
 import 'seo_service.dart';
+import 'media_queue.dart';
 
 /// Keeps SEO metadata in sync on every route push, pop, or replacement.
 /// Reads the live browser URL (accurate thanks to usePathUrlStrategy() in
@@ -69,7 +70,9 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/bookmarks',
-      builder: (context, state) => const BookmarksPage(),
+      builder: (context, state) => BookmarksPage(
+        initialQuery: state.uri.queryParameters['bq'] ?? '',
+      ),
     ),
     GoRoute(
       path: '/terms',
@@ -91,29 +94,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final params = state.uri.queryParameters;
         final fileId = params['id'] ?? '';
-        final author = params['author'];
-        final from = params['from'];
         final viewerContext = Map<String, String>.from(params)..remove('id');
-
-        final String returnUrl;
-        if (from == 'map') {
-          // Compatibility for links created by the retired standalone map.
-          // /map now redirects into the integrated map search surface.
-          returnUrl = '/map';
-        } else if (from == 'pipeline') {
-          returnUrl = '/pipeline';
-        } else if (from == 'bookmarks') {
-          returnUrl = '/bookmarks';
-        } else if (author != null && author.trim().isNotEmpty) {
-          returnUrl = Uri(path: '/author', queryParameters: {'name': author})
-              .toString();
-        } else {
-          final returnParams = Map<String, String>.from(params)..remove('id');
-          returnUrl = Uri(
-            path: '/',
-            queryParameters: returnParams.isEmpty ? null : returnParams,
-          ).toString();
-        }
+        final source = MediaQueueSource.fromUrl(params);
+        final returnUrl = params['from'] == 'map' && source.kind == 'direct'
+            ? '/map'
+            : source.returnUrl;
 
         return AssetViewer(
           key: ValueKey(Uri(queryParameters: viewerContext).query),

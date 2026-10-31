@@ -15,7 +15,7 @@ mixin _SearchAssetOperations {
         'titles': title,
         'prop': 'info|imageinfo',
         'inprop': 'url',
-        'iiprop': 'url|size|mime|extmetadata|user|dimensions',
+        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
         'iiurlwidth': '320',
       };
 
@@ -331,7 +331,7 @@ mixin _SearchAssetOperations {
         'coprop': 'type|dim',
         'colimit': '$limit',
         'inprop': 'url',
-        'iiprop': 'url|size|mime|extmetadata|user|dimensions',
+        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
         'iiurlwidth': '320',
       };
 

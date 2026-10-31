@@ -52,6 +52,7 @@ import 'pipeline_controller.dart';
 import 'pipeline_engine.dart';
 import 'pipeline_models.dart';
 import 'search_components.dart';
+import 'media_queue.dart';
 import 'search_models.dart';
 import 'bulk_download_tray.dart';
 import 'backend_providers.dart';
@@ -243,6 +244,7 @@ String _nodeDescription(PipelineNodeType type) {
     case PipelineNodeType.sinkSendToSearch:
       return 'Sends this branch to the main search workspace.';
     case PipelineNodeType.sinkCsvExport:
+      return 'Exports the filtered dataset as metadata and direct media URLs. No image binaries are downloaded, so this output can page beyond the normal 1,000-item pipeline cap.';
     case PipelineNodeType.sinkJsonExport:
     case PipelineNodeType.sinkZipExport:
       return 'Materializes this branch and exports its media or metadata.';
@@ -313,7 +315,16 @@ String _nodeSummary(PipelineNode node) {
           ? 'Any format'
           : joined('formats').toUpperCase();
     case PipelineNodeType.filterQuality:
-      return (c['quality'] ?? 'Any quality').toString();
+      final quality = (c['quality'] ?? 'any').toString();
+      final mode = (c['qualityMode'] ?? 'individual').toString();
+      final label = {
+            'any': 'Any quality',
+            'qualityImage': 'Quality images',
+            'valuedImage': 'Valued images',
+            'featuredPicture': 'Featured pictures',
+          }[quality] ??
+          quality;
+      return mode == 'andAbove' && quality != 'any' ? '$label + above' : label;
     case PipelineNodeType.filterDateRange:
       return '${c['from'] ?? 'Any date'} to ${c['to'] ?? 'today'}';
     case PipelineNodeType.transformSort:
@@ -347,6 +358,11 @@ String _nodeSummary(PipelineNode node) {
     case PipelineNodeType.transformSample:
       return 'Limit ${c['limit'] ?? 'not set'}${c['shuffle'] == true ? ' - shuffled' : ''}';
     case PipelineNodeType.sinkCsvExport:
+      final scope = c['resultScope'] as String? ?? 'all';
+      final count =
+          scope == 'all' ? 'All available' : 'Up to ${c['maxRecords'] ?? 1000}';
+      final metadata = c['metadataLevel'] as String? ?? 'detailed';
+      return '$count · $metadata metadata';
     case PipelineNodeType.sinkJsonExport:
       return (c['fileName'] ?? 'pipeline_export').toString();
     case PipelineNodeType.sinkZipExport:
@@ -560,7 +576,13 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
             key: 'quality',
             label: 'Quality',
             kind: ConfigFieldKind.dropdown,
-            options: ['any', 'qualityImage', 'valuedImage', 'featuredPicture'])
+            options: ['any', 'qualityImage', 'valuedImage', 'featuredPicture']),
+        cf(
+            key: 'qualityMode',
+            label: 'Match mode',
+            kind: ConfigFieldKind.dropdown,
+            options: ['individual', 'andAbove'],
+            defaultValue: 'individual'),
       ];
     case PipelineNodeType.filterFormat:
       return [
@@ -686,6 +708,8 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
             'uploader',
             'width',
             'height',
+            'fileSizeBytes',
+            'sha1',
             'categories',
             'assessments',
             'objectName',
@@ -727,6 +751,42 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
         ),
       ];
     case PipelineNodeType.sinkCsvExport:
+      return [
+        cf(
+          key: 'resultScope',
+          label: 'Result count',
+          kind: ConfigFieldKind.dropdown,
+          options: ['all', 'custom'],
+          defaultValue: 'all',
+        ),
+        cf(
+          key: 'maxRecords',
+          label: 'Maximum records (Custom only)',
+          kind: ConfigFieldKind.int,
+          hint: '1000',
+          defaultValue: 1000,
+        ),
+        cf(
+          key: 'metadataLevel',
+          label: 'Metadata',
+          kind: ConfigFieldKind.dropdown,
+          options: ['detailed', 'essential', 'full'],
+          defaultValue: 'detailed',
+        ),
+        cf(
+          key: 'imageLinks',
+          label: 'Image links',
+          kind: ConfigFieldKind.dropdown,
+          options: ['both', 'original', 'thumbnail'],
+          defaultValue: 'both',
+        ),
+        cf(
+          key: 'fileName',
+          label: 'File name',
+          kind: ConfigFieldKind.text,
+          hint: 'commonslens_manifest',
+        ),
+      ];
     case PipelineNodeType.sinkJsonExport:
       return [
         cf(key: 'fileName', label: 'File name', kind: ConfigFieldKind.text)
@@ -780,11 +840,86 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
     }
   }
 
-  void _handleSinkResult(String? error) {
-    if (error != null && mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(error)));
-    }
+  void _handleSinkResult(String? error, [String? success]) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(error ??
+            success ??
+            'Export prepared — your download has started.')));
+  }
+
+  Widget _buildRunProgress(
+      PipelineViewState state, PipelineController controller) {
+    final total = state.totalRecords;
+    final hasUsableTotal = total != null && total > 0;
+    final progress =
+        hasUsableTotal ? (state.fetchedRecords / total).clamp(0.0, 1.0) : null;
+    final count = state.fetchedRecords;
+    final message = state.runCancelled
+        ? 'Stopping after the current request · $count records loaded'
+        : state.isPaused
+            ? 'Paused · $count records loaded'
+            : hasUsableTotal
+                ? 'Processing $count of ~$total records'
+                : 'Processing Commons results · $count records loaded';
+
+    return Container(
+      color: _kPanelBg,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          LinearProgressIndicator(
+            value: state.isPaused ? 0 : progress,
+            minHeight: 2,
+            backgroundColor: _kBorder,
+            color: state.isPaused ? Colors.amber : _kAccent,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 5, 6, 5),
+            child: Row(
+              children: [
+                Icon(
+                  state.isPaused
+                      ? Icons.pause_circle_outline
+                      : Icons.dataset_outlined,
+                  color: state.isPaused ? Colors.amber : _kAccent,
+                  size: 15,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(message,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 11.5)),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: state.isPaused ? 'Resume run' : 'Pause run',
+                  onPressed: state.runCancelled
+                      ? null
+                      : state.isPaused
+                          ? controller.resumeRun
+                          : controller.pauseRun,
+                  icon: Icon(
+                    state.isPaused
+                        ? Icons.play_arrow_rounded
+                        : Icons.pause_rounded,
+                    size: 18,
+                    color: Colors.white70,
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Cancel run',
+                  onPressed: state.runCancelled ? null : controller.cancelRun,
+                  icon:
+                      const Icon(Icons.stop_rounded, size: 18, color: _kError),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _startPipelineDownload(List<SearchItem> items, String zipName) {
@@ -1113,29 +1248,37 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
           const SizedBox(width: 4),
         ],
       ),
-      body: Row(
+      body: Column(
         children: [
-          SizedBox(
-            width: 240,
-            child: _Palette(
-                onAdd: (type) => controller.addNode(type,
-                    x: 80.0 + 40 * (state.graph.nodes.length % 8),
-                    y: 80.0 + 70 * (state.graph.nodes.length ~/ 8))),
-          ),
-          const VerticalDivider(width: 1, color: _kBorder),
+          if (state.isRunning) _buildRunProgress(state, controller),
           Expanded(
-            child: _PipelineCanvas(
-              onSelectionChanged: (id) => setState(() => _selectedNodeId = id),
-            ),
-          ),
-          const VerticalDivider(width: 1, color: _kBorder),
-          SizedBox(
-            width: 380,
-            child: _InspectorPanel(
-              nodeId: _selectedNodeId,
-              onSinkResult: _handleSinkResult,
-              onSendToSearch: _handleSendToSearch,
-              onDownloadItems: _startPipelineDownload,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 240,
+                  child: _Palette(
+                      onAdd: (type) => controller.addNode(type,
+                          x: 80.0 + 40 * (state.graph.nodes.length % 8),
+                          y: 80.0 + 70 * (state.graph.nodes.length ~/ 8))),
+                ),
+                const VerticalDivider(width: 1, color: _kBorder),
+                Expanded(
+                  child: _PipelineCanvas(
+                    onSelectionChanged: (id) =>
+                        setState(() => _selectedNodeId = id),
+                  ),
+                ),
+                const VerticalDivider(width: 1, color: _kBorder),
+                SizedBox(
+                  width: 380,
+                  child: _InspectorPanel(
+                    nodeId: _selectedNodeId,
+                    onSinkResult: _handleSinkResult,
+                    onSendToSearch: _handleSendToSearch,
+                    onDownloadItems: _startPipelineDownload,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

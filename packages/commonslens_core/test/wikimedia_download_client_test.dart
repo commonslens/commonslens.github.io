@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:commonslens_core/commonslens_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
@@ -37,7 +35,7 @@ void main() {
             "pages": {
               "1": {
                 "imageinfo": [
-                  {"thumburl": "https://upload.wikimedia.org/scaled.jpg"}
+                  {"thumburl": "https://upload.wikimedia.org/wikipedia/commons/thumb/scaled.jpg"}
                 ]
               }
             }
@@ -49,13 +47,13 @@ void main() {
 
     expect(
       await client.fetchScaledUrl('Example.jpg', 640),
-      'https://upload.wikimedia.org/scaled.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/scaled.jpg',
     );
     expect(transport.requests, hasLength(1));
   });
 
   test('returns validated media bytes without browser dependencies', () async {
-    final bytes = utf8.encode('binary-ish data');
+    final bytes = <int>[0xff, 0xd8, 0xff, 0x00, 0xff, 0xd9];
     final transport = _DownloadFixtureTransport(
       (_) => http.Response.bytes(
         bytes,
@@ -68,12 +66,13 @@ void main() {
     );
     final client = WikimediaDownloadClient(transport: transport);
 
-    final payload =
-        await client.fetchMedia('https://upload.wikimedia.org/example.jpg');
+    final payload = await client.fetchMedia(
+        'https://upload.wikimedia.org/wikipedia/commons/example.jpg');
 
     expect(payload, isNotNull);
     expect(payload!.bytes, bytes);
     expect(payload.contentType, 'image/jpeg');
+    expect(payload.extension, 'jpg');
   });
 
   test('rejects error documents and prevents work after close', () async {
@@ -87,12 +86,14 @@ void main() {
     final client = WikimediaDownloadClient(transport: transport);
 
     expect(
-      await client.fetchMedia('https://upload.wikimedia.org/error'),
+      await client.fetchMedia(
+          'https://upload.wikimedia.org/wikipedia/commons/error.jpg'),
       isNull,
     );
     client.close();
     expect(
-      await client.fetchMedia('https://upload.wikimedia.org/after-close'),
+      await client.fetchMedia(
+          'https://upload.wikimedia.org/wikipedia/commons/after-close.jpg'),
       isNull,
     );
     expect(transport.requests, hasLength(1));

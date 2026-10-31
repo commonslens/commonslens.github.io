@@ -576,12 +576,13 @@ class _RelatedMediaSection extends StatelessWidget {
                     message: related.title,
                     child: GestureDetector(
                       onTap: () {
-                        context.push(
-                          Uri(
-                            path: '/view',
-                            queryParameters: {'id': related.title},
-                          ).toString(),
+                        final source = MediaQueueSource.related(
+                          fileTitle,
+                          GoRouterState.of(context).uri.toString(),
                         );
+                        final queueId = ref.read(mediaQueueStoreProvider)
+                            .capture(source, items);
+                        context.push(source.urlFor(related.title, queueId: queueId));
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -1090,7 +1091,15 @@ class _DownloadSection extends StatelessWidget {
       ),
     );
 
-    await DownloadService.downloadSingleFile(url, item.title, item.extension);
+    final failure = await DownloadService.downloadSingleFile(item, url: url);
+    if (failure != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(failure),
+          backgroundColor: const Color(0xFF7A1F1F),
+        ),
+      );
+    }
   }
 
   String _getResizedUrl(int width) {

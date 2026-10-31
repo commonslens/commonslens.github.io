@@ -33,6 +33,7 @@
 library;
 
 import 'search_models.dart';
+import 'search_request_profile.dart';
 import 'commons_backend.dart';
 import 'pipeline_models.dart';
 
@@ -142,6 +143,10 @@ class PipelineExecutionContext {
   /// 50-scaled-image performance limit.
   final bool includeThumbnailUrls;
 
+  /// Pipeline previews remain UI-sized. The manifest ETL run opts into the
+  /// larger batch explicitly through the caller.
+  final SearchRequestProfile requestProfile;
+
   /// Preview mode swaps [maxItemsPerSource] for [previewCap] everywhere —
   /// the fast, cheap "see roughly what this looks like" run, as opposed to
   /// a full "Run" that respects the real per-source caps.
@@ -168,6 +173,7 @@ class PipelineExecutionContext {
     this.maxItemsPerSource = 1000,
     this.unlimitedCsvExport = false,
     this.includeThumbnailUrls = true,
+    this.requestProfile = SearchRequestProfile.ui,
     this.preview = false,
     this.previewCap = 100,
     this.onFetchProgress,

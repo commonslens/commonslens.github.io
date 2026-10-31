@@ -5,4 +5,5 @@ export 'package:commonslens_core/commonslens_core.dart'
         PipelineCache,
         PipelineEngine,
         PipelineExecutionContext,
-        PipelineRunResult;
+        PipelineRunResult,
+        SearchRequestProfile;

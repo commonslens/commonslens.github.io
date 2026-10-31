@@ -28,6 +28,7 @@ class _FakeBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     return const MediaSearchResult(
       items: [],

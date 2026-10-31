@@ -12,6 +12,7 @@ class _RecordingBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     searches.add(filters);
     return const MediaSearchResult(
@@ -42,11 +43,14 @@ void main() {
       PipelineExecutionContext(
         backend: backend,
         maxItemsPerSource: null,
+        requestProfile: SearchRequestProfile.pipelineEtl,
         onFetchProgress: (fetched, _) => progress.add(fetched),
       ),
     );
 
     expect(backend.calls, 3);
+    expect(backend.requestProfiles,
+        everyElement(SearchRequestProfile.pipelineEtl));
     expect(result.sinkOutputsByNodeId['manifest']!.items, hasLength(1350));
     expect(progress, [450, 900, 1350]);
   });
@@ -298,6 +302,7 @@ class _PagedBackend extends CommonsBackend {
   final int pageCount;
   final int itemsPerPage;
   int calls = 0;
+  final List<SearchRequestProfile> requestProfiles = [];
 
   _PagedBackend({required this.pageCount, required this.itemsPerPage});
 
@@ -306,7 +311,9 @@ class _PagedBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
+    requestProfiles.add(requestProfile);
     final page = (continueToken?['page'] as int?) ?? 0;
     calls++;
     final hasMore = page + 1 < pageCount;
@@ -340,6 +347,7 @@ class _StaticBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async =>
       MediaSearchResult(
         items: [item],

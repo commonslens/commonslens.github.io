@@ -187,7 +187,7 @@ mixin _PipelineSourceOperations {
     // wouldn't cache at all despite being just as re-run-heavy as any
     // other source during pipeline iteration.
     final signature =
-        '$_pipelineQueryCacheVersion|author:$username|pipelineCap=${cap ?? "all"}';
+        '$_pipelineQueryCacheVersion|author:$username|pipelineCap=${cap ?? "all"}|pageSize=${ctx.requestProfile.pageSize}';
 
     if (ctx.cache != null) {
       final cached = await ctx.cache!.getQueryResult(signature);
@@ -207,8 +207,11 @@ mixin _PipelineSourceOperations {
         cancelled = true;
         break;
       }
-      final result = await ctx.backend
-          .authorUploads(username, continueToken: continueToken);
+      final result = await ctx.backend.authorUploads(
+        username,
+        continueToken: continueToken,
+        requestProfile: ctx.requestProfile,
+      );
       if (!result.ok) {
         error = result.error;
         break;
@@ -248,7 +251,7 @@ Future<NodeOutput> _materializeState(
   final baseSignature = ctx.backend.buildQuerySignature(state);
   final cap = ctx.effectiveMaxItems;
   final signature =
-      '$_pipelineQueryCacheVersion|$baseSignature|pipelineCap=${cap ?? "all"}';
+      '$_pipelineQueryCacheVersion|$baseSignature|pipelineCap=${cap ?? "all"}|pageSize=${ctx.requestProfile.pageSize}';
 
   if (ctx.cache != null) {
     final cached = await ctx.cache!.getQueryResult(signature);
@@ -275,6 +278,7 @@ Future<NodeOutput> _materializeState(
       state,
       continueToken: continueToken,
       includeThumbnailUrls: ctx.includeThumbnailUrls,
+      requestProfile: ctx.requestProfile,
     );
     if (!result.ok) {
       error = result.error;

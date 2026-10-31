@@ -1,2 +1,6 @@
 export 'package:commonslens_core/commonslens_core.dart'
-    show CommonsAutocomplete, CommonsBackend, MediaSearchResult;
+    show
+        CommonsAutocomplete,
+        CommonsBackend,
+        MediaSearchResult,
+        SearchRequestProfile;

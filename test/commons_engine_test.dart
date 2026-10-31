@@ -51,6 +51,7 @@ class _ScriptedBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     return searchPages[searchCalls++];
   }
@@ -59,6 +60,7 @@ class _ScriptedBackend extends CommonsBackend {
   Future<MediaSearchResult> authorUploads(
     String username, {
     Map<String, dynamic>? continueToken,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     return authorPages[authorCalls++];
   }
@@ -88,6 +90,7 @@ class _DeferredBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) {
     return (requests[filters.queryText] = Completer<MediaSearchResult>())
         .future;

@@ -1,4 +1,5 @@
 import 'search_models.dart';
+import 'search_request_profile.dart';
 import 'search_service.dart';
 
 /// Plain-data result of one backend fetch. Exactly "the media and its
@@ -135,6 +136,7 @@ class CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     final built = _service.buildQuery(filters);
 
@@ -152,6 +154,7 @@ class CommonsBackend {
       filters,
       continueParams: continueToken,
       includeThumbWidth: includeThumbnailUrls,
+      requestProfile: requestProfile,
     );
 
     if (result == null) {
@@ -185,10 +188,12 @@ class CommonsBackend {
   Future<MediaSearchResult> authorUploads(
     String username, {
     Map<String, dynamic>? continueToken,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     final result = await _service.fetchAuthorImages(
       username,
       continueParams: continueToken,
+      requestProfile: requestProfile,
     );
 
     if (result == null) {
@@ -241,24 +246,15 @@ class CommonsBackend {
   /// by location". Exactly one of (lat & lng) or [boundingBox] must be
   /// supplied.
   ///
-  /// [limit] defaults to 500 — the documented anonymous-user ceiling for
-  /// this module (mw:Extension:GeoData#list=geosearch) — rather than the
-  /// smaller page size [search]/[authorUploads] use. This is deliberate,
-  /// not an oversight: verified against GeoData's own source
-  /// (QueryGeoSearchElastic.php, the backend Commons actually runs —
-  /// `$wgGeoDataBackend = 'elastic'`), this module never emits a
-  /// `continue` token at all. It just returns up to `limit` results,
-  /// full stop — there is no page 2 to ask for. Given that, asking for
-  /// anything less than the max in the first request only throws results
-  /// away for no benefit; [continueToken] is still accepted for forward
-  /// compatibility, but in practice [MediaSearchResult.hasMore] will
-  /// always come back false from this method against Commons today.
+  /// [limit] defaults to the ordinary 50-row UI/map batch. Pipeline browse
+  /// sources pass their own explicit limit because GeoData is not a normal
+  /// paginated search endpoint and does not emit a continuation token.
   Future<MediaSearchResult> geosearch({
     double? lat,
     double? lng,
     double radiusMeters = 1000,
     List<double>? boundingBox,
-    int limit = 500,
+    int limit = SearchService.pageSize,
     Map<String, dynamic>? continueToken,
   }) async {
     final result = await _service.geosearch(

@@ -45,6 +45,7 @@ class _PagedBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     searchCalls++;
     final isNextPage = continueToken != null;
@@ -60,6 +61,7 @@ class _PagedBackend extends CommonsBackend {
   Future<MediaSearchResult> authorUploads(
     String username, {
     Map<String, dynamic>? continueToken,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     authorCalls++;
     final isNextPage = continueToken != null;

@@ -13,6 +13,7 @@ export 'src/pipeline_manifest.dart';
 export 'src/pipeline_models.dart';
 export 'src/search_models.dart';
 export 'src/search_query_compiler.dart';
+export 'src/search_request_profile.dart';
 export 'src/search_service.dart';
 export 'src/search_url_codec.dart';
 export 'src/wikimedia_download_client.dart';

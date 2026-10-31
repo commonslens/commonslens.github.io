@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'search_models.dart';
 import 'search_query_compiler.dart';
+import 'search_request_profile.dart';
 import 'wikimedia_transport.dart';
 import 'wikimedia_response_mapper.dart';
 
@@ -10,11 +11,7 @@ part 'search_autocomplete_operations.dart';
 part 'search_browse_operations.dart';
 
 class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
-  // Wikimedia permits larger generator/search pages than the old 50-row
-  // setting. 200 keeps a full manifest to a reasonable number of sequential
-  // requests without increasing request concurrency or bypassing the global
-  // WikimediaRequestGate.
-  static const int pageSize = 200;
+  static const int pageSize = 50;
 
   static final WikimediaTransport _defaultTransport = GatedWikimediaTransport();
 
@@ -57,6 +54,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   Future<SearchResponse?> fetchAuthorImages(
     String username, {
     Map<String, dynamic>? continueParams,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     final user = username.trim();
     if (user.isEmpty) return null;
@@ -76,7 +74,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         'aiuser': user,
         'aisort': 'timestamp',
         'aidir': 'older', // newest uploads first
-        'ailimit': '$pageSize',
+        'ailimit': '${requestProfile.pageSize}',
         'aiprop': 'timestamp|canonicaltitle',
       };
 
@@ -300,6 +298,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     bool includeThumbWidth = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     final queryText = state.queryText.trim();
     final segments = queryText
@@ -316,6 +315,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: requestProfile.pageSize,
       );
     }
 
@@ -330,6 +330,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        pageSize: requestProfile.pageSize,
       ),
       continueParams: continueParams,
       continueBucketKey: '_query',
@@ -341,6 +342,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required int pageSize,
   }) async {
     // Union mode with 2+ include statements: Cirrus can't reliably OR a
     // statement clause together with the rest of the active filters in one
@@ -354,6 +356,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       );
     }
 
@@ -365,6 +368,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       ),
       continueParams: continueParams,
       continueBucketKey: '_stmt',
@@ -381,12 +385,14 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required int pageSize,
   }) async {
     if (state.allImagesMode) {
       return _fetchPageForLicense(
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       );
     }
 
@@ -397,6 +403,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       );
     }
 
@@ -411,6 +418,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       ),
       continueParams: continueParams,
       continueBucketKey: '_quality',
@@ -428,6 +436,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required int pageSize,
   }) async {
     final licenses = state.licensePresets.toList();
 
@@ -436,6 +445,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       );
     }
 
@@ -447,6 +457,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       ),
       continueParams: continueParams,
       continueBucketKey: '_license',
@@ -458,6 +469,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required int pageSize,
   }) async {
     // Same fan-out pattern for category union mode — deepCategoryMode,
     // excludeCategories, and everything else carry over unchanged onto
@@ -472,6 +484,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       );
     }
 
@@ -483,6 +496,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       ),
       continueParams: continueParams,
       continueBucketKey: '_cat',
@@ -494,6 +508,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required int pageSize,
   }) async {
     // Same fan-out pattern again for depicts union mode — depictsExclude
     // and everything else carry over unchanged onto each single-entity
@@ -505,6 +520,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       );
     }
 
@@ -516,6 +532,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        pageSize: pageSize,
       ),
       continueParams: continueParams,
       continueBucketKey: '_depicts',
@@ -527,12 +544,14 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required int pageSize,
   }) async {
     if (state.formats.isEmpty) {
       return _fetchSingle(state,
           continueParams: continueParams,
           overrideFormat: null,
-          includeThumbWidth: includeThumbWidth);
+          includeThumbWidth: includeThumbWidth,
+          pageSize: pageSize);
     }
 
     // Same fan-out pattern once more, this time branching on selected file
@@ -548,7 +567,8 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           branchState,
           continueParams: branchContinue,
           overrideFormat: format,
-          includeThumbWidth: includeThumbWidth),
+          includeThumbWidth: includeThumbWidth,
+          pageSize: pageSize),
       continueParams: continueParams,
       continueBucketKey: '_multi',
       sortMode: state.sortMode,
@@ -560,22 +580,24 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
     required bool includeThumbWidth,
+    required int pageSize,
   }) {
     return _fetchSingleAttempt(
       state,
       continueParams: continueParams,
       overrideFormat: overrideFormat,
       includeThumbWidth: includeThumbWidth,
+      pageSize: pageSize,
     );
   }
 
   /// Advances a generator/search continuation past one failed page. Commons
   /// returns `gsroffset` alongside its opaque `continue` marker, so a failed
-  /// 200-row page can be skipped without replaying it forever. This is only
+  /// page can be skipped without replaying it forever. This is only
   /// used after the transient retry budget is exhausted; successful pages
   /// always use Wikimedia's continuation unchanged.
   Map<String, dynamic>? _advanceFailedPage(
-      Map<String, dynamic>? continueParams) {
+      Map<String, dynamic>? continueParams, int pageSize) {
     final rawOffset = continueParams?['gsroffset'];
     final offset = rawOffset == null
         ? 0
@@ -592,8 +614,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   SearchResponse? _skipFailedPage({
     required Map<String, dynamic>? continueParams,
     required String reason,
+    required int pageSize,
   }) {
-    final nextContinue = _advanceFailedPage(continueParams);
+    final nextContinue = _advanceFailedPage(continueParams, pageSize);
     if (nextContinue == null) return null;
     final offset = continueParams?['gsroffset'] ?? 0;
     return SearchResponse(
@@ -630,6 +653,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
     required bool includeThumbWidth,
+    required int pageSize,
     int originalDateScanPages = 0,
   }) async {
     try {
@@ -673,8 +697,8 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
 
       // Wikimedia may split `prop=imageinfo` into several `iicontinue`
       // responses when thumbnail scaling is requested. Keep those requests
-      // inside this logical page so callers see 200-record pages, not fake
-      // 50-record pages. The continuation returned below is therefore always
+      // inside this logical page so callers see one profile-sized page rather
+      // than a fake smaller page. The continuation returned below is therefore always
       // the generator continuation for the next logical page.
       Map<String, dynamic>? propertyContinue = continueParams;
       final pagesByKey = <String, Map<String, dynamic>>{};
@@ -713,6 +737,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           return _skipFailedPage(
             continueParams: continueParams,
             reason: 'request retries exhausted',
+            pageSize: pageSize,
           );
         }
 
@@ -723,6 +748,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             return _skipFailedPage(
               continueParams: continueParams,
               reason: 'HTTP ${response.statusCode}',
+              pageSize: pageSize,
             );
           }
           return null;
@@ -747,6 +773,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
               continueParams: continueParams,
               overrideFormat: overrideFormat,
               includeThumbWidth: false,
+              pageSize: pageSize,
               originalDateScanPages: originalDateScanPages,
             );
           }
@@ -760,6 +787,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             return _skipFailedPage(
               continueParams: continueParams,
               reason: errorCode ?? 'Wikimedia API error',
+              pageSize: pageSize,
             );
           }
 
@@ -801,6 +829,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             return _skipFailedPage(
               continueParams: continueParams,
               reason: 'image metadata continuation did not converge',
+              pageSize: pageSize,
             );
           }
           propertyContinue = responseContinue;
@@ -879,6 +908,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             continueParams: nextContinue,
             overrideFormat: overrideFormat,
             includeThumbWidth: includeThumbWidth,
+            pageSize: pageSize,
             originalDateScanPages: originalDateScanPages + 1,
           );
         }
@@ -896,6 +926,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       return _skipFailedPage(
         continueParams: continueParams,
         reason: 'request exception',
+        pageSize: pageSize,
       );
     }
   }

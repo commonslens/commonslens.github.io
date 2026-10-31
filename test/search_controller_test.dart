@@ -26,6 +26,7 @@ class _DeferredPagingBackend extends CommonsBackend {
     SearchState filters, {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) {
     searchCalls++;
     if (continueToken != null) return nextPage.future;

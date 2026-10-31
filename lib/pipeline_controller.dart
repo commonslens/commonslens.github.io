@@ -372,6 +372,9 @@ class PipelineController extends Notifier<PipelineViewState> {
       maxItemsPerSource: unlimitedCsvExport ? null : _maxItemsPerSourceForRun(),
       unlimitedCsvExport: unlimitedCsvExport,
       includeThumbnailUrls: includeThumbnailUrls,
+      requestProfile: unlimitedCsvExport
+          ? SearchRequestProfile.pipelineEtl
+          : SearchRequestProfile.ui,
       preview: preview,
       beforeFetchPage: _waitForFetchPermission,
       onFetchProgress: (fetched, totalHits) {

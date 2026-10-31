@@ -31,7 +31,7 @@ void main() {
         expect(uri.queryParameters['iicontinue'], 'image-page-2');
         return http.Response('''
           {
-            "continue": {"gsroffset": 200, "continue": "gsroffset||"},
+            "continue": {"gsroffset": 50, "continue": "gsroffset||"},
             "query": {
               "pages": {
                 "1": {
@@ -50,8 +50,8 @@ void main() {
         ''', 200);
       }
 
-      expect(uri.queryParameters['gsrlimit'], '200');
-      expect(uri.queryParameters['iilimit'], '200');
+      expect(uri.queryParameters['gsrlimit'], '50');
+      expect(uri.queryParameters['iilimit'], '50');
       expect(uri.queryParameters['iiurlwidth'], '320');
       return http.Response('''
         {
@@ -88,7 +88,102 @@ void main() {
     expect(transport.requests, hasLength(2));
     expect(
         result!.items.map((item) => item.title), ['First.jpg', 'Second.jpg']);
-    expect(result.continueParams?['gsroffset'], 200);
+    expect(result.continueParams?['gsroffset'], 50);
+  });
+
+  test('pipeline ETL profile requests 200-record logical pages', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['gsrlimit'], '200');
+      expect(uri.queryParameters['iilimit'], '200');
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "1": {
+                "title": "File:Pipeline.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/pipeline.jpg",
+                  "mime": "image/jpeg"
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(queryText: 'pipeline'),
+      continueParams: null,
+      requestProfile: SearchRequestProfile.pipelineEtl,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.items, hasLength(1));
+  });
+
+  test('author pagination uses 50 for UI and 200 for pipeline ETL', () async {
+    final transport = _FixtureTransport((uri) async {
+      if (uri.queryParameters['list'] == 'allimages') {
+        expect(
+          uri.queryParameters['ailimit'],
+          anyOf('50', '200'),
+        );
+        return http.Response('''
+          {
+            "query": {
+              "allimages": [{
+                "name": "Example.jpg",
+                "canonicaltitle": "File:Example.jpg",
+                "timestamp": "2026-01-01T00:00:00Z"
+              }]
+            }
+          }
+        ''', 200);
+      }
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "1": {
+                "title": "File:Example.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/example.jpg",
+                  "mime": "image/jpeg"
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    await SearchService(transport: transport).fetchAuthorImages('Example');
+    await SearchService(transport: transport).fetchAuthorImages(
+      'Example',
+      requestProfile: SearchRequestProfile.pipelineEtl,
+    );
+
+    final listRequests = transport.requests
+        .where((uri) => uri.queryParameters['list'] == 'allimages')
+        .toList();
+    expect(listRequests.map((uri) => uri.queryParameters['ailimit']),
+        ['50', '200']);
+  });
+
+  test('geosearch defaults to the 50-row UI/map batch', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['ggslimit'], '50');
+      return http.Response('{"query":{"pages":{}}}', 200);
+    });
+
+    final result = await SearchService(transport: transport).geosearch(
+      lat: 51.5,
+      lng: -0.1,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.items, isEmpty);
   });
 
   test('filters original media dates from Commons metadata client-side',

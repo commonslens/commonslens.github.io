@@ -409,7 +409,7 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark image',
+            tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark media',
             icon: Icon(
               isBookmarked ? Icons.bookmark : Icons.bookmark_border,
               color: isBookmarked ? const Color(0xFF3D7EFF) : Colors.white,

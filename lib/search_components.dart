@@ -618,7 +618,7 @@ class _QuickBookmarkButton extends ConsumerWidget {
     );
 
     return Tooltip(
-      message: isBookmarked ? 'Remove bookmark' : 'Bookmark image',
+      message: isBookmarked ? 'Remove bookmark' : 'Bookmark media',
       child: Material(
         color: isBookmarked
             ? const Color(0xFF3D7EFF).withValues(alpha: 0.9)

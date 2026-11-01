@@ -65,6 +65,9 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
+  assets:
+    - assets/landing_background/
+
   # arcane_nodes 1.0.2 still requests its pre-fork package shader key.
   shaders:
     - packages/fl_nodes/shaders/grid.frag

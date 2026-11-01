@@ -1,8 +1,12 @@
 // ignore_for_file: deprecated_member_use, curly_braces_in_flow_control_structures
+import 'dart:async';
+import 'dart:math';
+
 import 'package:commonslens/advanced_filters_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'search_controller.dart';
@@ -98,6 +102,315 @@ class _SearchExample {
     required this.icon,
     required this.state,
   });
+}
+
+class _LandingBackgroundAsset {
+  final String assetPath;
+  final String title;
+  final String sourceUrl;
+  final Duration duration;
+  final String attribution;
+
+  const _LandingBackgroundAsset({
+    required this.assetPath,
+    required this.title,
+    required this.sourceUrl,
+    required this.duration,
+    required this.attribution,
+  });
+}
+
+const _landingBackgroundAssets = <_LandingBackgroundAsset>[
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/blackmarble.gif',
+    title: 'BlackMarble 2016 rotating globe at night',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:BlackMarble_2016_rotating_globe_at_night.gif',
+    duration: Duration(milliseconds: 6870),
+    attribution:
+        'NASA/GSFC · Miguel Román · Joshua Stevens · Jahobr · Public domain',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/lawn.gif',
+    title: 'Lawn Time-Lapse',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Lawn_Time-Lapse.gif',
+    duration: Duration(milliseconds: 4760),
+    attribution: 'Naturenow · CC BY-SA 4.0',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/hurricane_oscar.gif',
+    title: 'Hurricane Oscar meets a mid-latitude system',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Hurricane_Oscar_meets_a_mid-latitude_system_east_of_Bermuda_(CIRA_2018-10-30).gif',
+    duration: Duration(milliseconds: 6870),
+    attribution: 'CSU/CIRA & NOAA · Public domain',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/line6.gif',
+    title: 'Line 6 train approaching, Xi’an Metro',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Line_6_train_approaching,_Xi%27an_Metro,_Oct_2022.gif',
+    duration: Duration(milliseconds: 3120),
+    attribution: 'A Chinese user · CC BY-SA 4.0',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/towerfall.gif',
+    title: 'TowerFall treasure dash',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:TowerFall_treasure_dash.gif',
+    duration: Duration(milliseconds: 2760),
+    attribution: 'Matt Thorson · CC BY-SA 3.0',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/saturn_timelapse.gif',
+    title: 'Saturn timelapse — 29 years',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Saturn_timelapse-29_years.gif',
+    duration: Duration(milliseconds: 6870),
+    attribution: 'SockPuppetForTomruen · Public domain',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/saturn_stage_sep_c.gif',
+    title: 'Saturn StageSepC Apollo8',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Saturn_StageSepC_Apollo8.gif',
+    duration: Duration(milliseconds: 6870),
+    attribution: 'NASA · Public domain',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/wall_follower.gif',
+    title: 'Wall follower bot using Roboki',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Wall_follower_bot_using_Roboki.gif',
+    duration: Duration(milliseconds: 6120),
+    attribution: 'Yudu Robotics · CC BY-SA 4.0',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/milk_vortex.gif',
+    title: 'Milk vortex evolution',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Milk_vortex_evolution.gif',
+    duration: Duration(milliseconds: 1260),
+    attribution: 'Astrobob.tk · CC BY-SA 4.0',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/cat_gallop.gif',
+    title: 'Cat trotting, changing to a gallop',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Cat_trotting,_changing_to_a_gallop.gif',
+    duration: Duration(milliseconds: 5010),
+    attribution: 'Eadweard Muybridge · Public domain',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/hammer_feather.gif',
+    title: 'Hammer n feather, Apollo 15',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Hammer_n_feather,_Apollo_15.gif',
+    duration: Duration(milliseconds: 3760),
+    attribution: 'NASA · Public domain',
+  ),
+  _LandingBackgroundAsset(
+    assetPath: 'assets/landing_background/apollo10_earthrise.gif',
+    title: 'Apollo-10 Earthrise',
+    sourceUrl:
+        'https://commons.wikimedia.org/wiki/File:Apollo-10-Earthrise.gif',
+    duration: Duration(milliseconds: 6870),
+    attribution: 'NASA · Public domain',
+  ),
+];
+
+class _LandingBackground extends StatefulWidget {
+  const _LandingBackground();
+
+  @override
+  State<_LandingBackground> createState() => _LandingBackgroundState();
+}
+
+class _LandingBackgroundState extends State<_LandingBackground> {
+  static const _transitionDuration = Duration(milliseconds: 1200);
+
+  final Random _random = Random();
+  Timer? _rotationTimer;
+  late _LandingBackgroundAsset _current;
+  final List<_LandingBackgroundAsset> _queue = [];
+  _LandingBackgroundAsset? _next;
+  bool _motionDisabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = _landingBackgroundAssets.first;
+    _refillQueue();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _warmAsset(_current);
+      _warmAsset(_next);
+      _configureRotation();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final disabled = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (disabled != _motionDisabled || (_rotationTimer == null && !disabled)) {
+      _motionDisabled = disabled;
+      _configureRotation();
+    }
+  }
+
+  void _configureRotation() {
+    _rotationTimer?.cancel();
+    _rotationTimer = null;
+    if (_motionDisabled || !mounted) return;
+
+    final transition = _transitionFor(_current);
+    _rotationTimer = Timer(_current.duration - transition, _advanceToNext);
+  }
+
+  Duration _transitionFor(_LandingBackgroundAsset asset) {
+    final quarterDuration = Duration(
+      milliseconds: asset.duration.inMilliseconds ~/ 4,
+    );
+    return quarterDuration < _transitionDuration
+        ? quarterDuration
+        : _transitionDuration;
+  }
+
+  void _refillQueue() {
+    final candidates = _landingBackgroundAssets
+        .where((asset) => asset.assetPath != _current.assetPath)
+        .toList()
+      ..shuffle(_random);
+    _queue
+      ..clear()
+      ..addAll(candidates);
+    _next = _queue.first;
+  }
+
+  void _warmAsset(_LandingBackgroundAsset? asset) {
+    if (asset == null) return;
+    unawaited(
+      precacheImage(
+        AssetImage(asset.assetPath),
+        context,
+        onError: (Object error, StackTrace? stackTrace) {},
+      ),
+    );
+  }
+
+  void _advanceToNext() {
+    if (!mounted || _motionDisabled || _next == null) return;
+
+    setState(() {
+      _current = _next!;
+      _queue.removeAt(0);
+      if (_queue.isEmpty) {
+        _refillQueue();
+      } else {
+        _next = _queue.first;
+      }
+    });
+    _warmAsset(_next);
+    _configureRotation();
+  }
+
+  Future<void> _openAttribution() async {
+    final uri = Uri.parse(_current.sourceUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  void dispose() {
+    _rotationTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final asset = _current;
+    final transitionDuration =
+        _motionDisabled ? Duration.zero : _transitionFor(asset);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned.fill(
+          child: AnimatedSwitcher(
+            duration: transitionDuration,
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            layoutBuilder: (currentChild, previousChildren) => Stack(
+              fit: StackFit.expand,
+              children: [
+                ...previousChildren,
+                if (currentChild != null) currentChild,
+              ],
+            ),
+            child: Image.asset(
+              asset.assetPath,
+              key: ValueKey(asset.assetPath),
+              fit: BoxFit.cover,
+              filterQuality: FilterQuality.low,
+              gaplessPlayback: true,
+              excludeFromSemantics: true,
+            ),
+          ),
+        ),
+        IgnorePointer(
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.4, 1.0],
+                colors: [
+                  const Color(0xFF0B0B0B).withValues(alpha: 0.60),
+                  const Color(0xFF0B0B0B).withValues(alpha: 0.88),
+                  const Color(0xFF0B0B0B),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (asset.attribution.isNotEmpty)
+          Positioned(
+            right: 16,
+            bottom: 14,
+            child: SafeArea(
+              child: Material(
+                color: const Color(0xAA080808),
+                borderRadius: BorderRadius.circular(6),
+                child: InkWell(
+                  onTap: _openAttribution,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: Text(
+                        '${asset.title} · ${asset.attribution} · Wikimedia Commons',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 9.5,
+                          height: 1.25,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
@@ -667,7 +980,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final searchBar = centered
         ? FractionallySizedBox(
             key: searchKey,
-            widthFactor: 0.8,
+            widthFactor: isDesktop ? 0.8 : 0.95,
             child: SearchTopBar(
               initialQuery: filterState.queryText,
               onSearch: _search,
@@ -731,44 +1044,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. The Beautiful Background Image
-        Image.network(
-          // The original is 5059x3373 / 9.45 MB and decodes to roughly
-          // 65 MB in the browser. This official Wikimedia derivative is
-          // ample for the darkened hero while avoiding that startup hit.
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Lofoten%2C_Norway_%28Unsplash%29.jpg/1280px-Lofoten%2C_Norway_%28Unsplash%29.jpg',
-          fit: BoxFit.cover,
-          // Keep this brief: a multi-second, full-screen opacity animation is
-          // costly when CanvasKit has to use Chrome's software renderer.
-          filterQuality: FilterQuality.low,
-          frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-            if (wasSynchronouslyLoaded) return child;
-            return AnimatedOpacity(
-              opacity: frame == null ? 0 : 1,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-              child: child,
-            );
-          },
-        ),
+        const _LandingBackground(),
 
-        // 2. Dark Gradient Overlay (Fades from translucent top to solid dark bottom)
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: const [0.0, 0.4, 1.0],
-              colors: [
-                const Color(0xFF0B0B0B).withValues(alpha: 0.55),
-                const Color(0xFF0B0B0B).withValues(alpha: 0.80),
-                const Color(0xFF0B0B0B),
-              ],
-            ),
-          ),
-        ),
-
-        // 3. The Scrollable Content
+        // The Scrollable Content
         LayoutBuilder(
           builder: (context, constraints) {
             const contentPadding = EdgeInsets.symmetric(
@@ -788,18 +1066,38 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   child: Column(
                     children: [
                       const Spacer(),
-                      const WikiLogo(),
                       const SizedBox(height: 32),
 
                       // Hero Copy
-                      const Text('COMMONSLENS',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              fontSize: 42,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.white,
-                              letterSpacing: 5,
-                              height: 1.1)),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.center,
+                          child: Text.rich(
+                            const TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: 'COMMONS',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                TextSpan(
+                                  text: 'LENS',
+                                  style: TextStyle(color: Color(0xFF3D7EFF)),
+                                ),
+                              ],
+                            ),
+                            textAlign: TextAlign.center,
+                            softWrap: false,
+                            maxLines: 1,
+                            style: TextStyle(
+                                fontSize: 42,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 5,
+                                height: 1.1),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       const Text(
                           'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen source and free to use.',

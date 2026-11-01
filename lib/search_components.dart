@@ -141,9 +141,8 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
 
   @override
   Widget build(BuildContext context) {
-    // Below this width the Filters control collapses to icon-only, and the
-    // Search button disappears entirely. Enter/the field submit action
-    // already triggers a search and leaves more room for the query.
+    // Below this width the Filters and Search controls collapse to icon-only
+    // buttons so the query field still has room to breathe.
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
@@ -298,23 +297,26 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                       ),
                     ),
             ],
-            if (!isMobile) ...[
+            ...[
               const SizedBox(width: 8),
-              SizedBox(
-                height: 38,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3D7EFF),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6)),
-                      padding: const EdgeInsets.symmetric(horizontal: 18)),
-                  onPressed: () =>
-                      widget.onSearch(_fieldController?.text ?? ''),
-                  child: const Text('Search',
-                      style:
-                          TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              Tooltip(
+                message: 'Search',
+                child: SizedBox(
+                  width: isMobile ? 38 : null,
+                  height: 38,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3D7EFF),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6)),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 0 : 18)),
+                    onPressed: () =>
+                        widget.onSearch(_fieldController?.text ?? ''),
+                    child: const Icon(Icons.search_rounded, size: 18),
+                  ),
                 ),
               ),
             ],

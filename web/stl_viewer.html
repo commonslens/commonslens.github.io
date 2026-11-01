@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CommonsLens 3D viewer</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html, body, #viewer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #070707;
+    }
+
+    #viewer {
+      position: relative;
+    }
+
+    #viewer:fullscreen {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      outline: none;
+    }
+
+    #status {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-content: center;
+      gap: 12px;
+      padding: 24px;
+      color: #aaa;
+      text-align: center;
+      pointer-events: none;
+      background: radial-gradient(circle at center, rgba(27, 27, 27, .82), rgba(7, 7, 7, .96));
+      transition: opacity 180ms ease;
+    }
+
+    #status.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #status.error {
+      color: #f0a4a4;
+    }
+
+    #status .spinner {
+      width: 22px;
+      height: 22px;
+      margin: 0 auto;
+      border: 2px solid #2b2b2b;
+      border-top-color: #3d7eff;
+      border-radius: 50%;
+      animation: spin 800ms linear infinite;
+    }
+
+    #status.error .spinner {
+      display: none;
+    }
+
+    #source-link {
+      color: #8fb3ff;
+      pointer-events: auto;
+    }
+
+    #toolbar {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      pointer-events: none;
+      scrollbar-width: thin;
+    }
+
+    #toolbar > * {
+      flex: 0 0 auto;
+      pointer-events: auto;
+    }
+
+    #toolbar button,
+    #toolbar select {
+      border: 1px solid #353535;
+      border-radius: 5px;
+      padding: 8px 11px;
+      color: #ddd;
+      background: rgba(20, 20, 20, .9);
+      font: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #toolbar button:hover,
+    #toolbar button:focus-visible,
+    #toolbar select:hover,
+    #toolbar select:focus-visible {
+      border-color: #3d7eff;
+      outline: none;
+    }
+
+    #toolbar button[aria-pressed="true"] {
+      border-color: #3d7eff;
+      color: #fff;
+      background: rgba(61, 126, 255, .22);
+    }
+
+    #toolbar select {
+      appearance: auto;
+    }
+
+    #stats {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      z-index: 1;
+      max-width: min(360px, calc(100% - 32px));
+      padding: 10px 12px;
+      border: 1px solid #292929;
+      border-radius: 5px;
+      color: #aaa;
+      background: rgba(12, 12, 12, .88);
+      font-size: 11px;
+      line-height: 1.55;
+      pointer-events: none;
+    }
+
+    #stats strong {
+      color: #eee;
+      font-weight: 600;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="viewer" aria-label="Interactive 3D STL viewer">
+    <div id="status">
+      <div class="spinner" aria-hidden="true"></div>
+      <div id="status-text">Loading 3D model…</div>
+      <a id="source-link" hidden target="_blank" rel="noopener noreferrer">Open original STL</a>
+    </div>
+    <div id="toolbar" hidden aria-label="3D viewer controls">
+      <button id="fullscreen" type="button">Fullscreen</button>
+      <button id="fit" type="button">Fit model</button>
+      <select id="view-select" aria-label="Standard camera view">
+        <option value="iso">Isometric</option>
+        <option value="front">Front</option>
+        <option value="back">Back</option>
+        <option value="top">Top</option>
+        <option value="bottom">Bottom</option>
+        <option value="right">Right</option>
+        <option value="left">Left</option>
+      </select>
+      <button id="wireframe" type="button" aria-pressed="false">Wireframe</button>
+      <button id="shading" type="button" aria-pressed="false">Flat shading</button>
+      <button id="grid" type="button" aria-pressed="false">Grid</button>
+      <button id="axes" type="button" aria-pressed="false">Axes</button>
+    </div>
+    <aside id="stats" hidden aria-live="polite">
+      <div><strong>Model</strong> · <span id="stat-file-size">—</span></div>
+      <div><strong>Triangles</strong> · <span id="stat-triangles">—</span></div>
+      <div><strong>Dimensions</strong> · <span id="stat-dimensions">—</span> model units</div>
+      <div><strong>Loaded in</strong> · <span id="stat-load-time">—</span></div>
+    </aside>
+  </main>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    const container = document.querySelector('#viewer');
+    const status = document.querySelector('#status');
+    const statusText = document.querySelector('#status-text');
+    const sourceLink = document.querySelector('#source-link');
+    const toolbar = document.querySelector('#toolbar');
+    const fullscreenButton = document.querySelector('#fullscreen');
+    const fitButton = document.querySelector('#fit');
+    const viewSelect = document.querySelector('#view-select');
+    const wireframeButton = document.querySelector('#wireframe');
+    const shadingButton = document.querySelector('#shading');
+    const gridButton = document.querySelector('#grid');
+    const axesButton = document.querySelector('#axes');
+    const stats = document.querySelector('#stats');
+    const statFileSize = document.querySelector('#stat-file-size');
+    const statTriangles = document.querySelector('#stat-triangles');
+    const statDimensions = document.querySelector('#stat-dimensions');
+    const statLoadTime = document.querySelector('#stat-load-time');
+    const modelParams = new URLSearchParams(window.location.search);
+    const modelUrl = modelParams.get('url');
+
+    const showError = (message) => {
+      status.classList.add('error');
+      statusText.textContent = message;
+      sourceLink.hidden = !modelUrl;
+      if (modelUrl) sourceLink.href = modelUrl;
+    };
+
+    if (!modelUrl) {
+      showError('No STL file was supplied.');
+    } else {
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x070707);
+
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      container.appendChild(renderer.domElement);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.screenSpacePanning = true;
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x292929, 1.9));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+      keyLight.position.set(1, 2, 3);
+      scene.add(keyLight);
+      const fillLight = new THREE.DirectionalLight(0x7fa7ff, 0.7);
+      fillLight.position.set(-2, 1, -2);
+      scene.add(fillLight);
+
+      let mesh;
+      let gridHelper;
+      let axesHelper;
+      let modelRadius = 1;
+      let modelTarget = new THREE.Vector3();
+      let modelDimensions = new THREE.Vector3();
+      let modelFileBytes = Number.parseInt(modelParams.get('size') || '0', 10) || 0;
+      let disposed = false;
+      let animationFrame;
+      const loadStartedAt = performance.now();
+
+      const resize = () => {
+        const width = Math.max(container.clientWidth, 1);
+        const height = Math.max(container.clientHeight, 1);
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      };
+
+      const resizeObserver = new ResizeObserver(resize);
+      resizeObserver.observe(container);
+      resize();
+
+      const formatNumber = (value) =>
+        new Intl.NumberFormat().format(Math.round(value));
+
+      const formatBytes = (bytes) => {
+        if (!bytes || bytes <= 0) return 'unknown size';
+        const units = ['B', 'KB', 'MB', 'GB'];
+        let value = bytes;
+        let unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+          value /= 1024;
+          unit += 1;
+        }
+        const precision = unit === 0 ? 0 : value >= 10 ? 1 : 2;
+        return `${value.toFixed(precision)} ${units[unit]}`;
+      };
+
+      const setPressed = (button, pressed) => {
+        button.setAttribute('aria-pressed', String(pressed));
+      };
+
+      const cameraDistance = () => Math.max(modelRadius * 2.8, 0.01);
+
+      const setCameraView = (view) => {
+        const directions = {
+          iso: [1, 0.78, 1],
+          front: [0, 0, 1],
+          back: [0, 0, -1],
+          top: [0, 1, 0.001],
+          bottom: [0, -1, 0.001],
+          right: [1, 0, 0],
+          left: [-1, 0, 0],
+        };
+        const direction = new THREE.Vector3(...(directions[view] || directions.iso)).normalize();
+        const isTop = view === 'top';
+        const isBottom = view === 'bottom';
+        camera.up.set(0, 1, 0);
+        if (isTop) camera.up.set(0, 0, -1);
+        if (isBottom) camera.up.set(0, 0, 1);
+        camera.position.copy(modelTarget).add(direction.multiplyScalar(cameraDistance()));
+        controls.target.copy(modelTarget);
+        controls.update();
+      };
+
+      const setGridVisible = (visible) => {
+        if (gridHelper) gridHelper.visible = visible;
+        setPressed(gridButton, visible);
+      };
+
+      const setAxesVisible = (visible) => {
+        if (axesHelper) axesHelper.visible = visible;
+        setPressed(axesButton, visible);
+      };
+
+      fullscreenButton.addEventListener('click', async () => {
+        try {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen();
+          } else {
+            await container.requestFullscreen();
+          }
+        } catch (_) {
+          fullscreenButton.textContent = 'Fullscreen unavailable';
+        }
+      });
+
+      document.addEventListener('fullscreenchange', () => {
+        fullscreenButton.textContent = document.fullscreenElement
+          ? 'Exit fullscreen'
+          : 'Fullscreen';
+      });
+
+      const loader = new STLLoader();
+      loader.load(
+        modelUrl,
+        (geometry) => {
+          if (disposed) {
+            geometry.dispose();
+            return;
+          }
+
+          // Most CAD-authored STL files use Z-up, while Three.js and
+          // OrbitControls use Y-up. Convert the geometry itself so centering,
+          // bounds, grid placement, dimensions, and camera fitting all use
+          // the same displayed orientation.
+          geometry.rotateX(-Math.PI / 2);
+          geometry.computeVertexNormals();
+          geometry.center();
+          geometry.computeBoundingBox();
+          geometry.computeBoundingSphere();
+
+          modelRadius = Math.max(geometry.boundingSphere?.radius || 1, 0.001);
+          modelTarget = geometry.boundingBox?.getCenter(new THREE.Vector3()) ||
+              new THREE.Vector3();
+          modelDimensions = geometry.boundingBox?.getSize(new THREE.Vector3()) ||
+              new THREE.Vector3();
+          mesh = new THREE.Mesh(
+            geometry,
+            new THREE.MeshStandardMaterial({
+              color: 0xc8cdd6,
+              roughness: 0.62,
+              metalness: 0.08,
+            }),
+          );
+          scene.add(mesh);
+
+          const maxDimension = Math.max(
+            modelDimensions.x,
+            modelDimensions.y,
+            modelDimensions.z,
+            0.001,
+          );
+          gridHelper = new THREE.GridHelper(maxDimension * 2.4, 24, 0x3d7eff, 0x303030);
+          gridHelper.position.y = -modelDimensions.y / 2;
+          gridHelper.visible = false;
+          scene.add(gridHelper);
+          axesHelper = new THREE.AxesHelper(maxDimension * 0.75);
+          axesHelper.position.y = -modelDimensions.y / 2;
+          axesHelper.visible = false;
+          scene.add(axesHelper);
+
+          camera.near = Math.max(modelRadius / 1000, 0.0001);
+          camera.far = modelRadius * 100;
+          camera.updateProjectionMatrix();
+          controls.minDistance = modelRadius * 0.12;
+          controls.maxDistance = modelRadius * 30;
+          setCameraView('iso');
+
+          statFileSize.textContent = formatBytes(modelFileBytes);
+          statTriangles.textContent = formatNumber(geometry.attributes.position.count / 3);
+          statDimensions.textContent = [modelDimensions.x, modelDimensions.y, modelDimensions.z]
+            .map((value) => value.toFixed(3))
+            .join(' × ');
+          statLoadTime.textContent = `${((performance.now() - loadStartedAt) / 1000).toFixed(1)}s`;
+
+          status.classList.add('hidden');
+          toolbar.hidden = false;
+          stats.hidden = false;
+        },
+        (progress) => {
+          if (!progress.lengthComputable || progress.total <= 0) return;
+          modelFileBytes = progress.total;
+          const percent = Math.round((progress.loaded / progress.total) * 100);
+          statusText.textContent = `Loading 3D model… ${percent}%`;
+        },
+        () => showError('This STL could not be loaded in the browser.'),
+      );
+
+      fitButton.addEventListener('click', () => setCameraView('iso'));
+      viewSelect.addEventListener('change', () => setCameraView(viewSelect.value));
+      wireframeButton.addEventListener('click', () => {
+        if (!mesh) return;
+        mesh.material.wireframe = !mesh.material.wireframe;
+        setPressed(wireframeButton, mesh.material.wireframe);
+      });
+      shadingButton.addEventListener('click', () => {
+        if (!mesh) return;
+        mesh.material.flatShading = !mesh.material.flatShading;
+        mesh.material.needsUpdate = true;
+        setPressed(shadingButton, mesh.material.flatShading);
+      });
+      gridButton.addEventListener('click', () => {
+        setGridVisible(!gridHelper?.visible);
+      });
+      axesButton.addEventListener('click', () => {
+        setAxesVisible(!axesHelper?.visible);
+      });
+
+      const animate = () => {
+        if (disposed) return;
+        controls.update();
+        renderer.render(scene, camera);
+        animationFrame = requestAnimationFrame(animate);
+      };
+      animate();
+
+      const dispose = () => {
+        if (disposed) return;
+        disposed = true;
+        cancelAnimationFrame(animationFrame);
+        resizeObserver.disconnect();
+        controls.dispose();
+        if (mesh) {
+          mesh.geometry.dispose();
+          mesh.material.dispose();
+        }
+        renderer.dispose();
+        renderer.domElement.remove();
+      };
+      window.addEventListener('pagehide', dispose, { once: true });
+    }
+  </script>
+</body>
+</html>

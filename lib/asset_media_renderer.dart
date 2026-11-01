@@ -48,17 +48,30 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     final isAudio = widget.item.mediaKind == MediaKind.audio;
     final isImage = widget.item.mediaKind == MediaKind.image ||
         widget.item.mediaKind == MediaKind.vector;
+    final shouldRenderStl =
+        _isStl(widget.item) && _isSafeWikimediaUploadUrl(widget.item.url);
     final shouldRenderPdf = widget.item.mediaKind == MediaKind.document &&
         _shouldRenderPdfInBrowser();
 
     // PDFs are safe to inline in Chrome/Web, but Safari does not reliably
     // render cross-origin PDFs inside a browser iframe. DjVu remains blocked
     // because the browser fallback is unreliable there.
-    if (isVideo || isAudio || isImage || shouldRenderPdf) {
+    if (isVideo || isAudio || isImage || shouldRenderPdf || shouldRenderStl) {
       _isNativeHtml = true;
 
       ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-        if (isImage) {
+        if (shouldRenderStl) {
+          return html.IFrameElement()
+            ..src = _stlViewerUrl(widget.item.url, widget.item.fileSizeBytes)
+            ..title = 'Interactive 3D model viewer'
+            ..allow = 'fullscreen'
+            ..setAttribute('allowfullscreen', '')
+            ..style.width = '100%'
+            ..style.height = '100%'
+            ..style.border = 'none'
+            ..style.backgroundColor = '#070707'
+            ..style.outline = 'none';
+        } else if (isImage) {
           return html.ImageElement()
             ..src = widget.imageUrl
             ..style.width = '100%'
@@ -114,6 +127,24 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
       item.extension.toLowerCase() == 'svg' ||
       item.mime.toLowerCase() == 'image/svg+xml';
 
+  bool _isStl(SearchItem item) =>
+      item.extension.toLowerCase() == 'stl' ||
+      item.mime.toLowerCase() == 'application/sla';
+
+  bool _isSafeWikimediaUploadUrl(String value) {
+    final uri = Uri.tryParse(value);
+    return uri?.scheme == 'https' &&
+        uri?.host.toLowerCase() == 'upload.wikimedia.org';
+  }
+
+  String _stlViewerUrl(String modelUrl, int fileSizeBytes) => Uri(
+        path: 'stl_viewer.html',
+        queryParameters: {
+          'url': modelUrl,
+          if (fileSizeBytes > 0) 'size': '$fileSizeBytes',
+        },
+      ).toString();
+
   @override
   Widget build(BuildContext context) {
     if (_isNativeHtml) {
@@ -131,18 +162,23 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     IconData icon;
     String typeLabel;
 
-    switch (item.mediaKind) {
-      case MediaKind.vector:
-        icon = Icons.polyline_outlined;
-        typeLabel = 'VECTOR GRAPHIC';
-        break;
-      case MediaKind.document:
-        icon = Icons.description_outlined;
-        typeLabel = 'DOCUMENT (${item.extension.toUpperCase()})';
-        break;
-      default:
-        icon = Icons.insert_drive_file_outlined;
-        typeLabel = 'FILE';
+    if (_isStl(item)) {
+      icon = Icons.view_in_ar_outlined;
+      typeLabel = '3D MODEL';
+    } else {
+      switch (item.mediaKind) {
+        case MediaKind.vector:
+          icon = Icons.polyline_outlined;
+          typeLabel = 'VECTOR GRAPHIC';
+          break;
+        case MediaKind.document:
+          icon = Icons.description_outlined;
+          typeLabel = 'DOCUMENT (${item.extension.toUpperCase()})';
+          break;
+        default:
+          icon = Icons.insert_drive_file_outlined;
+          typeLabel = 'FILE';
+      }
     }
 
     return Stack(

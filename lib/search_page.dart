@@ -915,7 +915,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         key: const ValueKey('top-search-bar'),
                         initialQuery: filterState.queryText,
                         onSearch: _search,
-                        showFiltersButton: !isDesktop,
+                        showFiltersButton: !isDesktop && !isMobile,
                       ),
                     ),
                     _buildHeaderBar(session, filterState),
@@ -958,7 +958,22 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 Expanded(child: mainColumn),
               ],
             )
-          : mainColumn,
+          : isMobile
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 54),
+                      child: mainColumn,
+                    ),
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: _buildMobileFiltersButton(),
+                    ),
+                  ],
+                )
+              : mainColumn,
     );
   }
 
@@ -971,6 +986,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     required bool centered,
     required SearchState filterState,
     required bool isDesktop,
+    required bool isMobile,
   }) {
     final emptyKey = ValueKey<String>(
         centered ? 'landing-search-empty' : 'top-search-empty');
@@ -985,14 +1001,14 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               initialQuery: filterState.queryText,
               onSearch: _search,
               autofocus: true,
-              showFiltersButton: !isDesktop,
+              showFiltersButton: !isDesktop && !isMobile,
             ),
           )
         : SearchTopBar(
             key: searchKey,
             initialQuery: filterState.queryText,
             onSearch: _search,
-            showFiltersButton: !isDesktop,
+            showFiltersButton: !isDesktop && !isMobile,
           );
 
     final slot = AnimatedSize(
@@ -1099,23 +1115,44 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      const Text(
-                          'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen source and free to use.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: Color(0xFFCCCCCC),
-                              fontSize: 18,
-                              height: 1.6,
-                              fontWeight: FontWeight.w400)),
+                      SizedBox(height: isMobile ? 8 : 16),
+                      if (isMobile)
+                        const SizedBox(
+                          width: double.infinity,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Search Wikimedia Commons media — open source and free.',
+                              textAlign: TextAlign.center,
+                              softWrap: false,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Color(0xFFCCCCCC),
+                                fontSize: 11,
+                                height: 1.1,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        const Text(
+                            'Navigate, filter, and extract media from Wikimedia Commons intuitively and effortlessly.\nOpen source and free to use.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Color(0xFFCCCCCC),
+                                fontSize: 18,
+                                height: 1.6,
+                                fontWeight: FontWeight.w400)),
 
-                      const SizedBox(height: 32),
+                      SizedBox(height: isMobile ? 14 : 32),
 
                       _buildSearchSlot(
                         visible: true,
                         centered: true,
                         filterState: filterState,
                         isDesktop: isDesktop,
+                        isMobile: isMobile,
                       ),
 
                       if (isMobile) const SizedBox(height: 14),
@@ -1152,15 +1189,34 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       ),
 
                       const Spacer(),
-                      const Text(
-                        'CommonsLens is an independent, non-commercial research interface.\nMedia and data are sourced directly from Wikimedia Commons.\nCommonsLens does not make, host, own, license, or claim copyright over displayed content.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                          height: 1.6,
+                      if (isMobile)
+                        const SizedBox(
+                          width: double.infinity,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Independent, non-commercial; CommonsLens does not own displayed media.',
+                              textAlign: TextAlign.center,
+                              softWrap: false,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 9,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        const Text(
+                          'CommonsLens is an independent, non-commercial research interface.\nMedia and data are sourced directly from Wikimedia Commons.\nCommonsLens does not make, host, own, license, or claim copyright over displayed content.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                            height: 1.6,
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 2),
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 720),
@@ -1176,6 +1232,36 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildMobileFiltersButton() {
+    return Builder(
+      builder: (context) => SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 12, top: 8),
+          child: Tooltip(
+            message: 'Filters',
+            child: SizedBox(
+              width: 38,
+              height: 38,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF2A2A2A)),
+                  foregroundColor: const Color(0xFFB0B0B0),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+                child: const Icon(Icons.tune, size: 17),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

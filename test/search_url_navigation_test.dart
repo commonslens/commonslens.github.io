@@ -40,6 +40,7 @@ class _DeferredBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) {
     return (requests[filters.queryText] = Completer<MediaSearchResult>())
         .future;

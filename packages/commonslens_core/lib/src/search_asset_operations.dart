@@ -15,13 +15,13 @@ mixin _SearchAssetOperations {
         'titles': title,
         'prop': 'info|imageinfo',
         'inprop': 'url',
-        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
+        'iiprop': 'url|size|sha1|mime|extmetadata|user',
         'iiurlwidth': '320',
       };
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
 
-      final response = await _transport.get(uri,
+      var response = await _transport.get(uri,
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
@@ -29,12 +29,30 @@ mixin _SearchAssetOperations {
 
       if (response.statusCode != 200) return null;
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      var data = jsonDecode(response.body) as Map<String, dynamic>;
+      final apiError = data['error'];
+      if (apiError is Map && apiError['code'] == 'urlparamnormal') {
+        // A malformed/oversized file can make Wikimedia reject only the
+        // requested thumbnail width. The rights metadata is still usable, so
+        // retry the same single-file lookup without thumbnail scaling.
+        final fallbackParams = <String, String>{...params}
+          ..remove('iiurlwidth');
+        final fallbackUri =
+            Uri.https('commons.wikimedia.org', '/w/api.php', fallbackParams);
+        response = await _transport.get(fallbackUri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 15));
+        if (response.statusCode != 200) return null;
+        data = jsonDecode(response.body) as Map<String, dynamic>;
+      }
       final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
 
       if (pages.isEmpty) return null;
 
-      final page = pages.values.first;
+      final firstPage = pages.entries.first;
+      final page = firstPage.value as Map<String, dynamic>;
 
       if (page.containsKey('missing')) return null;
 
@@ -48,6 +66,8 @@ mixin _SearchAssetOperations {
         info,
         rawTitle: rawTitle,
         snippet: rawTitle,
+        pageId: (page['pageid'] as num?)?.toInt() ??
+            int.tryParse(firstPage.key.toString()),
         timestamp: page['timestamp'] as String?,
         descriptionUrl: page['fullurl'] as String?,
       );
@@ -56,180 +76,247 @@ mixin _SearchAssetOperations {
     }
   }
 
-  /// Every stored revision of a file, newest first — its upload/edit
-  /// history (re-uploads, crops, rotations, retouches), not the search
-  /// result's current version. Passing `iilimit` above 1 is what turns a
-  /// normal imageinfo request into a history request.
-  Future<List<FileRevision>> fetchFileHistory(
-    String filename, {
-    int limit = 20,
-  }) async {
+  /// Fetches non-extmetadata image information for a small batch of files.
+  /// The raw imageinfo object is intentionally preserved so ETL consumers can
+  /// inspect technical metadata without expanding SearchItem every time the
+  /// MediaWiki API adds a field.
+  Future<Map<String, Map<String, dynamic>>> fetchImageMetadataBatch(
+      List<String> filenames) async {
+    if (filenames.isEmpty) return {};
     try {
-      final title = filename.startsWith('File:') ? filename : 'File:$filename';
+      final titles = filenames
+          .map((filename) =>
+              filename.startsWith('File:') ? filename : 'File:$filename')
+          .toSet()
+          .toList();
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
         'action': 'query',
         'format': 'json',
         'origin': '*',
-        'titles': title,
-        'prop': 'imageinfo',
-        'iiprop': 'timestamp|url|user|size|comment|dimensions',
-        'iilimit': '$limit',
-        'iiurlwidth': '320',
+        'titles': titles.join('|'),
+        'prop': 'info|coordinates|imageinfo',
+        'inprop': 'url',
+        'coprop': 'type|name|dim|country|region',
+        'coprimary': 'all',
+        'iiprop':
+            'timestamp|user|userid|comment|parsedcomment|canonicaltitle|url|size|sha1|mime|thumbmime|thumburls|mediatype|metadata|commonmetadata|bitdepth|archivename|badfile',
+        'iilimit': '1',
       });
-
       final response = await _transport.get(uri,
           headers: {
-            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            'Api-User-Agent':
+                'CommonsLens/1.0 (https://github.com/commonslens/commonslens.github.io; Flutter Web)',
           },
-          timeout: const Duration(seconds: 15));
-
-      if (response.statusCode != 200) return const [];
+          timeout: const Duration(seconds: 20));
+      if (response.statusCode != 200) return {};
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      // Same failure class fetchPage/fetchAuthorImages guard against — a
-      // batch imageinfo call can come back HTTP 200 with a top-level
-      // `error` key instead of `query.pages` rather than throwing, so
-      // check for it explicitly instead of letting a null pages map
-      // silently look like "no history".
-      if (data.containsKey('error')) return const [];
-
+      if (data.containsKey('error')) return {};
       final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
-      if (pages.isEmpty) return const [];
-      final page = pages.values.first as Map<String, dynamic>;
-      if (page.containsKey('missing')) return const [];
-
-      final infoList = page['imageinfo'] as List? ?? [];
-      return infoList
-          .map((raw) {
-            final info = raw as Map<String, dynamic>;
-            final originalUrl = info['url'] as String? ?? '';
-            final thumburl = info['thumburl'] as String? ?? '';
-            return FileRevision(
-              url: originalUrl,
-              thumb: thumburl.isNotEmpty ? thumburl : originalUrl,
-              timestamp: info['timestamp'] as String?,
-              uploader: info['user']?.toString() ?? '',
-              comment: info['comment'] as String? ?? '',
-              size: info['size'] as int? ?? 0,
-              width: info['width'] as int? ?? 0,
-              height: info['height'] as int? ?? 0,
-            );
-          })
-          .where((rev) => rev.url.isNotEmpty)
-          .toList();
+      final result = <String, Map<String, dynamic>>{};
+      for (final rawPage in pages.values) {
+        if (rawPage is! Map) continue;
+        final page = Map<String, dynamic>.from(rawPage);
+        final infoList = page['imageinfo'];
+        if (infoList is! List || infoList.isEmpty || infoList.first is! Map) {
+          continue;
+        }
+        final info = Map<String, dynamic>.from(infoList.first as Map);
+        final coordinates = page['coordinates'];
+        result[page['title']?.toString() ?? ''] = {
+          'pageid': page['pageid'],
+          'title': page['title'],
+          'fullurl': page['fullurl'],
+          'coordinates': coordinates is List
+              ? coordinates
+                  .map((entry) =>
+                      entry is Map ? Map<String, dynamic>.from(entry) : entry)
+                  .toList()
+              : null,
+          'imageinfo': info,
+        };
+      }
+      return result;
     } catch (_) {
-      return const [];
+      return {};
     }
   }
 
-  /// Reads a file's Structured Data on Commons (SDC) entity back — its
-  /// multilingual captions and every structured statement (creator,
-  /// institution, coordinates of depicted place, inception date, and
-  /// anything else editors have added), as opposed to *filtering* on one
-  /// of those via haswbstatement: (see buildQuery / SearchState's
-  /// statementsInclude). Two requests: resolve the file's pageid (SDC
-  /// entities are addressed as `M<pageid>`, not by title), then fetch that
-  /// entity from Commons' own Wikibase API. Property/value labels are
-  /// resolved in a third, batched call against www.wikidata.org, since
-  /// Commons SDC reuses Wikidata's own P-/Q-code space rather than
-  /// maintaining a separate one.
+  /// Reads one file's Structured Data on Commons (SDC) entity back. The
+  /// single-file API is intentionally implemented through the batch API so
+  /// callers cannot accidentally get a less efficient code path.
   Future<StructuredDataResult?> fetchStructuredData(String filename) async {
+    final title = filename.startsWith('File:') ? filename : 'File:$filename';
+    final results = await fetchStructuredDataBatch([title]);
+    return results[title];
+  }
+
+  /// Reads SDC for many files using the MediaWiki batch limits:
+  /// page IDs in groups of 50, MediaInfo entities in groups of 50, and one
+  /// Wikidata label pass for all property/value IDs found in the batch.
+  /// [pageIds] lets pipeline search results skip the otherwise redundant
+  /// `prop=info` lookup when the source already returned page IDs.
+  Future<Map<String, StructuredDataResult>> fetchStructuredDataBatch(
+    List<String> filenames, {
+    Map<String, int?>? pageIds,
+  }) async {
+    final titles = filenames
+        .map((filename) =>
+            filename.startsWith('File:') ? filename : 'File:$filename')
+        .toSet()
+        .toList();
+    if (titles.isEmpty) return {};
+
+    final pageIdByTitle = <String, int>{};
+    for (final entry in pageIds?.entries ?? const <MapEntry<String, int?>>[]) {
+      final title =
+          entry.key.startsWith('File:') ? entry.key : 'File:${entry.key}';
+      final id = entry.value;
+      if (id != null) pageIdByTitle[title] = id;
+    }
+
     try {
-      final title = filename.startsWith('File:') ? filename : 'File:$filename';
-
-      final infoUri = Uri.https('commons.wikimedia.org', '/w/api.php', {
-        'action': 'query',
-        'format': 'json',
-        'origin': '*',
-        'titles': title,
-        'prop': 'info',
-      });
-      final infoRes = await _transport.get(infoUri,
-          headers: {
-            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-          },
-          timeout: const Duration(seconds: 10));
-      if (infoRes.statusCode != 200) return null;
-
-      final infoData = jsonDecode(infoRes.body) as Map<String, dynamic>;
-      if (infoData.containsKey('error')) return null;
-      final pages =
-          (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
-      if (pages.isEmpty) return null;
-      final page = pages.values.first as Map<String, dynamic>;
-      if (page.containsKey('missing')) return null;
-      final pageId = page['pageid'];
-      if (pageId == null) return null;
-      final mid = 'M$pageId';
-
-      final entityUri = Uri.https('commons.wikimedia.org', '/w/api.php', {
-        'action': 'wbgetentities',
-        'format': 'json',
-        'origin': '*',
-        'ids': mid,
-      });
-      final entityRes = await _transport.get(entityUri,
-          headers: {
-            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-          },
-          timeout: const Duration(seconds: 10));
-      if (entityRes.statusCode != 200) return null;
-
-      final entityData = jsonDecode(entityRes.body) as Map<String, dynamic>;
-      if (entityData.containsKey('error')) return null;
-      final entity = entityData['entities']?[mid] as Map<String, dynamic>?;
-      if (entity == null) return null;
-
-      final labelsRaw = entity['labels'] as Map<String, dynamic>? ?? {};
-      final captions = <String, String>{
-        for (final entry in labelsRaw.entries)
-          entry.key:
-              (entry.value as Map<String, dynamic>)['value'] as String? ?? '',
-      };
-
-      final statementsRaw = entity['statements'] as Map<String, dynamic>? ?? {};
-
-      // Collect every P-code, plus every Q-code among the values — one
-      // batched label lookup at the end instead of one request per claim.
-      final idsToResolve = <String>{};
-      final rawClaims = <MapEntry<String, Map<String, dynamic>>>[];
-
-      for (final propEntry in statementsRaw.entries) {
-        final propertyId = propEntry.key;
-        idsToResolve.add(propertyId);
-        final claims = propEntry.value as List? ?? [];
-        for (final claim in claims) {
-          final mainsnak = (claim as Map<String, dynamic>)['mainsnak']
-              as Map<String, dynamic>?;
-          if (mainsnak == null) continue;
-          rawClaims.add(MapEntry(propertyId, mainsnak));
-          final entityId = _responseMapper.entityIdFromSnak(mainsnak);
-          if (entityId != null) idsToResolve.add(entityId);
+      final missingTitles =
+          titles.where((title) => !pageIdByTitle.containsKey(title)).toList();
+      for (var start = 0; start < missingTitles.length; start += 50) {
+        final batch = missingTitles.skip(start).take(50).toList();
+        final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+          'action': 'query',
+          'format': 'json',
+          'origin': '*',
+          'titles': batch.join('|'),
+          'prop': 'info',
+        });
+        final response = await _transport.get(uri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 10));
+        if (response.statusCode != 200) continue;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data.containsKey('error')) continue;
+        final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
+        for (final rawPage in pages.values) {
+          if (rawPage is! Map) continue;
+          final page = Map<String, dynamic>.from(rawPage);
+          final title = page['title']?.toString();
+          final id = (page['pageid'] as num?)?.toInt();
+          if (title != null && id != null && !page.containsKey('missing')) {
+            pageIdByTitle[title] = id;
+          }
         }
       }
 
+      final entityByMid = <String, Map<String, dynamic>>{};
+      final mids = pageIdByTitle.values.map((id) => 'M$id').toList();
+      for (var start = 0; start < mids.length; start += 50) {
+        final batch = mids.skip(start).take(50).toList();
+        final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+          'action': 'wbgetentities',
+          'format': 'json',
+          'origin': '*',
+          'ids': batch.join('|'),
+        });
+        final response = await _transport.get(uri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 15));
+        if (response.statusCode != 200) continue;
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data.containsKey('error')) continue;
+        final entities = data['entities'] as Map<String, dynamic>? ?? {};
+        for (final entry in entities.entries) {
+          if (entry.value is Map) {
+            entityByMid[entry.key] =
+                Map<String, dynamic>.from(entry.value as Map);
+          }
+        }
+      }
+
+      final idsToResolve = <String>{};
+      for (final entity in entityByMid.values) {
+        final rawStatements = entity['statements'];
+        if (rawStatements is! Map) continue;
+        for (final entry in rawStatements.entries) {
+          idsToResolve.add(entry.key.toString());
+          final claims = entry.value is List ? entry.value as List : const [];
+          for (final rawClaim in claims) {
+            if (rawClaim is! Map) continue;
+            final rawSnak = rawClaim['mainsnak'];
+            if (rawSnak is Map) {
+              final snak = Map<String, dynamic>.from(rawSnak);
+              final entityId = _responseMapper.entityIdFromSnak(snak);
+              if (entityId != null) idsToResolve.add(entityId);
+            }
+          }
+        }
+      }
       final labels = await _resolveWikidataLabels(idsToResolve);
 
-      final statements = rawClaims.map((entry) {
-        final propertyId = entry.key;
-        final snak = entry.value;
-        final valueEntityId = _responseMapper.entityIdFromSnak(snak);
-        final display = valueEntityId != null
-            ? (labels[valueEntityId] ?? valueEntityId)
-            : _responseMapper.formatSnakValue(snak);
-        return StructuredDataStatement(
-          propertyId: propertyId,
-          propertyLabel: labels[propertyId] ?? propertyId,
-          valueDisplay: display,
-          valueEntityId: valueEntityId,
-        );
-      }).toList();
-
-      return StructuredDataResult(
-          mid: mid, captions: captions, statements: statements);
+      final results = <String, StructuredDataResult>{};
+      for (final title in titles) {
+        final pageId = pageIdByTitle[title];
+        if (pageId == null) continue;
+        final mid = 'M$pageId';
+        final entity = entityByMid[mid];
+        if (entity == null) continue;
+        results[title] = _structuredDataFromEntity(entity, labels);
+      }
+      return results;
     } catch (_) {
-      return null;
+      return {};
     }
+  }
+
+  StructuredDataResult _structuredDataFromEntity(
+    Map<String, dynamic> entity,
+    Map<String, String> labels,
+  ) {
+    final mid = entity['id']?.toString() ?? '';
+    final labelsRaw = entity['labels'];
+    final captions = <String, String>{};
+    if (labelsRaw is Map) {
+      for (final entry in labelsRaw.entries) {
+        final value = entry.value;
+        if (value is Map) {
+          captions[entry.key.toString()] = value['value']?.toString() ?? '';
+        }
+      }
+    }
+
+    final statements = <StructuredDataStatement>[];
+    final statementsRaw = entity['statements'];
+    if (statementsRaw is Map) {
+      for (final propEntry in statementsRaw.entries) {
+        final propertyId = propEntry.key.toString();
+        final claims =
+            propEntry.value is List ? propEntry.value as List : const [];
+        for (final rawClaim in claims) {
+          if (rawClaim is! Map) continue;
+          final rawSnak = rawClaim['mainsnak'];
+          if (rawSnak is! Map) continue;
+          final snak = Map<String, dynamic>.from(rawSnak);
+          final valueEntityId = _responseMapper.entityIdFromSnak(snak);
+          final display = valueEntityId != null
+              ? (labels[valueEntityId] ?? valueEntityId)
+              : _responseMapper.formatSnakValue(snak);
+          statements.add(StructuredDataStatement(
+            propertyId: propertyId,
+            propertyLabel: labels[propertyId] ?? propertyId,
+            valueDisplay: display,
+            valueEntityId: valueEntityId,
+          ));
+        }
+      }
+    }
+
+    return StructuredDataResult(
+      mid: mid,
+      captions: captions,
+      statements: statements,
+      raw: entity,
+    );
   }
 
   /// Batched label lookup for a mix of Wikidata P-codes and Q-codes.
@@ -331,7 +418,7 @@ mixin _SearchAssetOperations {
         'coprop': 'type|dim',
         'colimit': '$limit',
         'inprop': 'url',
-        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
+        'iiprop': 'url|size|sha1|mime|extmetadata|user',
         'iiurlwidth': '320',
       };
 
@@ -375,8 +462,9 @@ mixin _SearchAssetOperations {
       // index, rather than being scattered by an infinite sort key.
       final scored = <MapEntry<double, SearchItem>>[];
       var fallbackIndex = 0.0;
-      for (final page in pages.values) {
-        final p = page as Map<String, dynamic>;
+      for (final entry in pages.entries) {
+        final p = Map<String, dynamic>.from(entry.value as Map);
+        p['pageid'] ??= int.tryParse(entry.key.toString());
         final infoList = p['imageinfo'] as List?;
         if (infoList == null || infoList.isEmpty) continue;
         final info = infoList.first as Map<String, dynamic>;
@@ -401,6 +489,7 @@ mixin _SearchAssetOperations {
           info,
           rawTitle: rawTitle,
           snippet: rawTitle,
+          pageId: (p['pageid'] as num?)?.toInt(),
           descriptionUrl: p['fullurl'] as String?,
           latitude: itemLat,
           longitude: itemLng,
@@ -429,45 +518,83 @@ mixin _SearchAssetOperations {
     String filename, {
     int limit = 500,
   }) async {
+    final title = filename.startsWith('File:') ? filename : 'File:$filename';
+    final batch = await fetchGlobalUsageBatch([title], limit: limit);
+    return batch[title] ?? const [];
+  }
+
+  /// Batched global-usage lookup. A single `globalusage` property request can
+  /// carry many file titles; use modest groups because the response contains
+  /// one usage object for every matching wiki page.
+  Future<Map<String, List<GlobalUsageEntry>>> fetchGlobalUsageBatch(
+    List<String> filenames, {
+    int limit = 500,
+  }) async {
+    final titles = filenames
+        .map((filename) =>
+            filename.startsWith('File:') ? filename : 'File:$filename')
+        .toSet()
+        .toList();
+    final result = <String, List<GlobalUsageEntry>>{};
+    if (titles.isEmpty) return result;
+
     try {
-      final title = filename.startsWith('File:') ? filename : 'File:$filename';
-      final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
-        'action': 'query',
-        'format': 'json',
-        'origin': '*',
-        'titles': title,
-        'prop': 'globalusage',
-        'guprop': 'url',
-        'gulimit': '$limit',
-      });
+      for (var start = 0; start < titles.length; start += 20) {
+        final batch = titles.skip(start).take(20).toList();
+        final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
+          'action': 'query',
+          'format': 'json',
+          'origin': '*',
+          'titles': batch.join('|'),
+          'prop': 'globalusage',
+          'guprop': 'url|pageid|namespace',
+          'gulimit': '${limit.clamp(1, 500)}',
+        });
+        final response = await _transport.get(uri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 20));
+        if (response.statusCode != 200) continue;
 
-      final response = await _transport.get(uri,
-          headers: {
-            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-          },
-          timeout: const Duration(seconds: 15));
-
-      if (response.statusCode != 200) return const [];
-
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (data.containsKey('error')) return const [];
-
-      final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
-      if (pages.isEmpty) return const [];
-      final page = pages.values.first as Map<String, dynamic>;
-      if (page.containsKey('missing')) return const [];
-
-      final usageList = page['globalusage'] as List? ?? [];
-      return usageList.map((raw) {
-        final entry = raw as Map<String, dynamic>;
-        return GlobalUsageEntry(
-          wiki: entry['wiki'] as String? ?? '',
-          title: entry['title'] as String? ?? '',
-          url: entry['url'] as String?,
-        );
-      }).toList();
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        if (data.containsKey('error')) continue;
+        final pages = (data['query']?['pages'] as Map<String, dynamic>?) ?? {};
+        final returnedTitles = <String>{};
+        for (final rawPage in pages.values) {
+          if (rawPage is! Map) continue;
+          final page = Map<String, dynamic>.from(rawPage);
+          final title = page['title']?.toString();
+          if (title == null || page.containsKey('missing')) continue;
+          returnedTitles.add(title);
+          final usageList = page['globalusage'];
+          if (usageList is! List) {
+            result[title] = const [];
+            continue;
+          }
+          result[title] = usageList.whereType<Map>().map((raw) {
+            final entry = Map<String, dynamic>.from(raw);
+            final rawNamespace = entry['namespace'] ?? entry['ns'];
+            return GlobalUsageEntry(
+              wiki: entry['wiki']?.toString() ?? '',
+              title: entry['title']?.toString() ?? '',
+              url: entry['url']?.toString(),
+              pageId: (entry['pageid'] as num?)?.toInt(),
+              namespace: rawNamespace is num ? rawNamespace.toInt() : null,
+              raw: entry,
+            );
+          }).toList();
+        }
+        // A successful response with a page that has no usage still counts as
+        // a valid empty result. Titles absent from the response are left out
+        // so callers can distinguish a failed batch from "unused file".
+        for (final title in returnedTitles) {
+          result.putIfAbsent(title, () => const []);
+        }
+      }
     } catch (_) {
-      return const [];
+      // Return successful groups and empty lists for groups that failed.
     }
+    return result;
   }
 }

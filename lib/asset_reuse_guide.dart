@@ -20,7 +20,16 @@ class AssetReuseGuide {
 
   String get creditLine => plainText(item.creditHtml);
   String get permission => plainText(item.permissionHtml);
-  String get licenseName => plainText(item.licenseShortName);
+
+  /// `LicenseShortName` is the preferred machine-readable label. Some
+  /// Commons files expose only `UsageTerms`, so use that as a truthful
+  /// fallback instead of reporting the license as missing.
+  String get licenseName {
+    final shortName = plainText(item.licenseShortName);
+    if (shortName.isNotEmpty) return shortName;
+    return plainText(item.usageTerms);
+  }
+
   String get licenseUrl => item.licenseUrl.trim();
   String get sourceUrl => item.commonsUrl.trim().isNotEmpty
       ? item.commonsUrl.trim()

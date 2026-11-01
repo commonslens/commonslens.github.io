@@ -234,6 +234,28 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
             flNode.offset = Offset(node.x, node.y);
           }
         }
+
+        final flId = _ourNodeIdToFlId[node.id];
+        final flNode = flId == null ? null : _flController.nodes[flId];
+        final summary = _nodeCanvasBody(node);
+        final summaryField = flNode?.fields['pipeline_summary'];
+        if (flNode != null &&
+            summaryField != null &&
+            summaryField.data != summary) {
+          flNode.forceRecompute = true;
+          _flController.setFieldData(
+            flNode.id,
+            'pipeline_summary',
+            data: summary,
+            eventType: fln.FieldEventType.submit,
+          );
+          // arcane_nodes rebuilds the field widget after a submit event, but
+          // does not mark the render layer dirty for layout. The summary can
+          // grow from one line to several (especially on manifest nodes), so
+          // explicitly remeasure the node and its link positions as well.
+          _flController.nodesDataDirty = true;
+          _flController.linksDataDirty = true;
+        }
       }
 
       final prevEdgeIds = prev?.edges.map((e) => e.id).toSet() ?? {};
@@ -360,6 +382,7 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
           child: fln.FlNodeEditorWidget(
             controller: _flController,
             overlay: () => const [],
+            fieldBuilder: _buildCanvasField,
           ),
         ),
         // arcane_nodes paints a hard-coded red viewport outline in debug
@@ -376,18 +399,69 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
             ),
           ),
         ),
-        // Live legend/HUD — see this file's top doc comment: the canvas
-        // package can't host widgets inside a node, so a persistent,
-        // always-visible readout of what each port color means (plus a
-        // running node/edge count) is delivered as a corner overlay
-        // instead. IgnorePointer keeps it from stealing pan/drag gestures
-        // meant for the canvas underneath.
+        // Live legend/HUD — the nodes themselves now render their current
+        // configuration in the grey body below the colored header.
         const Positioned(
           top: 14,
           right: 14,
           child: IgnorePointer(child: _CanvasStatsBadge()),
         ),
+        Positioned(
+          left: 18,
+          bottom: 18,
+          child: _CanvasControls(controller: _flController),
+        ),
       ],
+    );
+  }
+
+  Widget _buildCanvasField(
+      BuildContext context, fln.FieldInstance field, fln.FlNodeStyle style) {
+    final raw = field.data?.toString() ?? '';
+    final lines =
+        raw.split('\n').where((line) => line.trim().isNotEmpty).toList();
+    return Container(
+      width: 245,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'CURRENT SETTINGS',
+            style: TextStyle(
+              color: Colors.white38,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 7),
+          for (final line in lines.take(8))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                line,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10.5,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          if (lines.length > 8)
+            Text(
+              '+${lines.length - 8} more settings',
+              style: const TextStyle(color: _kAccent, fontSize: 9.5),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -440,6 +514,211 @@ class _CanvasStatsBadge extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CanvasControls extends StatefulWidget {
+  final fln.FlNodeEditorController controller;
+
+  const _CanvasControls({required this.controller});
+
+  @override
+  State<_CanvasControls> createState() => _CanvasControlsState();
+}
+
+class _CanvasControlsState extends State<_CanvasControls> {
+  StreamSubscription<fln.NodeEditorEvent>? _events;
+  bool _refreshQueued = false;
+
+  fln.FlNodeEditorController get _controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _events = _controller.eventBus.events.listen((_) {
+      if (_refreshQueued) return;
+      _refreshQueued = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshQueued = false;
+        if (mounted) setState(() {});
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _events?.cancel();
+    super.dispose();
+  }
+
+  void _pan(double dx, double dy) {
+    final zoom = _controller.viewportZoom;
+    _controller.setViewportOffset(
+      Offset(dx, dy) / zoom,
+      animate: true,
+    );
+  }
+
+  void _zoomBy(double factor) {
+    final target = (_controller.viewportZoom * factor)
+        .clamp(_controller.config.minZoom, _controller.config.maxZoom)
+        .toDouble();
+    _controller.setViewportZoom(target, animate: true);
+  }
+
+  void _resetView() {
+    _controller.setViewportOffset(
+      Offset.zero,
+      absolute: true,
+      animate: true,
+    );
+    _controller.setViewportZoom(1.0, animate: true);
+  }
+
+  void _fitAll() {
+    if (_controller.nodes.isNotEmpty) {
+      _controller.focusNodesById(_controller.nodes.keys.toSet());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final zoom = (_controller.viewportZoom * 100).round();
+    return Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: _kPanelBg.withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _kBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x55000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _CanvasControlButton(
+                icon: Icons.remove_rounded,
+                tooltip: 'Zoom out',
+                onPressed: () => _zoomBy(0.8),
+              ),
+              SizedBox(
+                width: 45,
+                child: Text(
+                  '$zoom%',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              _CanvasControlButton(
+                icon: Icons.add_rounded,
+                tooltip: 'Zoom in',
+                onPressed: () => _zoomBy(1.25),
+              ),
+              const SizedBox(width: 4),
+              Container(width: 1, height: 22, color: _kBorder),
+              const SizedBox(width: 4),
+              _CanvasControlButton(
+                icon: Icons.center_focus_strong_rounded,
+                tooltip: 'Fit all nodes',
+                onPressed: _fitAll,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _CanvasControlButton(
+                icon: Icons.chevron_left_rounded,
+                tooltip: 'Pan canvas left',
+                onPressed: () => _pan(140, 0),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _CanvasControlButton(
+                    icon: Icons.expand_less_rounded,
+                    tooltip: 'Pan canvas up',
+                    onPressed: () => _pan(0, 140),
+                  ),
+                  _CanvasControlButton(
+                    icon: Icons.expand_more_rounded,
+                    tooltip: 'Pan canvas down',
+                    onPressed: () => _pan(0, -140),
+                  ),
+                ],
+              ),
+              _CanvasControlButton(
+                icon: Icons.chevron_right_rounded,
+                tooltip: 'Pan canvas right',
+                onPressed: () => _pan(-140, 0),
+              ),
+            ],
+          ),
+          const SizedBox(height: 3),
+          TextButton.icon(
+            onPressed: _resetView,
+            style: TextButton.styleFrom(
+              foregroundColor: _kMuted,
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            icon: const Icon(Icons.restart_alt_rounded, size: 13),
+            label: const Text('Reset view',
+                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CanvasControlButton extends StatelessWidget {
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _CanvasControlButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: SizedBox(
+        width: 29,
+        height: 29,
+        child: IconButton(
+          onPressed: onPressed,
+          padding: EdgeInsets.zero,
+          splashRadius: 15,
+          tooltip: tooltip,
+          icon: Icon(icon, size: 17, color: Colors.white70),
+          style: IconButton.styleFrom(
+            foregroundColor: Colors.white,
+            hoverColor: _kAccent.withValues(alpha: 0.15),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+          ),
+        ),
       ),
     );
   }

@@ -52,6 +52,7 @@ class _ScriptedBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async {
     return searchPages[searchCalls++];
   }
@@ -91,6 +92,7 @@ class _DeferredBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) {
     return (requests[filters.queryText] = Completer<MediaSearchResult>())
         .future;

@@ -46,6 +46,7 @@ class _PagedBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async {
     searchCalls++;
     final isNextPage = continueToken != null;

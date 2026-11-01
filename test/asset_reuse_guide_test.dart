@@ -12,6 +12,7 @@ void main() {
     String copyrighted = 'False',
     String creditHtml = '',
     String restrictions = '',
+    String usageTerms = '',
   }) {
     return SearchItem(
       title: title,
@@ -29,6 +30,7 @@ void main() {
       attributionRequired: attributionRequired,
       copyrighted: copyrighted,
       creditHtml: creditHtml,
+      usageTerms: usageTerms,
       objectName: 'A solar and lunar study',
       restrictions: restrictions,
     );
@@ -81,5 +83,14 @@ void main() {
     expect(guide.hasCompleteReuseMetadata, isFalse);
     expect(guide.attributionRequired, isNull);
     expect(guide.attributionText, isNot(contains('licensed under')));
+  });
+
+  test('uses usage terms when Commons omits the short license label', () {
+    final guide = AssetReuseGuide(item(
+      licenseShortName: '',
+      usageTerms: 'Creative Commons Attribution 4.0',
+    ));
+
+    expect(guide.licenseName, 'Creative Commons Attribution 4.0');
   });
 }

@@ -25,20 +25,13 @@
 /// `_ourIdToFlId`/`_flIdToOurId` and their edge equivalents are the
 /// explicit bridge between the two id spaces.
 ///
-/// VISUAL NOTE: the `arcane_nodes`/`fl_nodes` v1.x line this app is pinned
-/// to renders each node's box itself — it does not expose a way to embed
-/// arbitrary Flutter widgets *inside* a node on the canvas (confirmed
-/// against the package's own successor's docs; see the project's
-/// decisions log). So "widgets inside the node" is delivered here instead
-/// as: (1) category-colored ports/links so a node's role is visible at a
-/// glance on the canvas itself, (2) a live corner HUD, and, doing the
-/// heaviest lifting, (3) a completely rebuilt inspector panel that turns
-/// into a real per-node workspace — live status, an editable title, chip-
-/// based settings, and, on every node type (not just Preview sinks), a
-/// PREVIEW tab that renders that node's actual last-run output as a media
-/// grid with instant per-item downloads plus metadata-only CSV export.
+/// Each canvas node gets a compact settings field in its grey body. The
+/// field is kept in sync with the model so the graph itself shows the
+/// important values currently configured, while the inspector remains the
+/// place for editing and running the pipeline.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -54,6 +47,7 @@ import 'pipeline_models.dart';
 import 'search_models.dart';
 import 'backend_providers.dart';
 import 'autocomplete_request_coordinator.dart';
+import 'pipeline_preview_page.dart';
 
 part 'pipeline_editor_widgets.dart';
 part 'pipeline_inspector.dart';
@@ -196,12 +190,10 @@ Color _statusColor(NodeRunStatus status) {
 }
 
 // -----------------------------------------------------------------------------
-// Node prototypes — one per PipelineNodeType, built once. No FieldPrototypes
-// here: config editing lives entirely in this file's own inspector panel
-// (PipelineNode.config, via PipelineController.updateNodeConfig), not in
-// fl_nodes' own field/data system — the whole reason the inspector-panel
-// option was picked over fl_nodes_v2. Ports are colored per category so a
-// node's role reads at a glance on the canvas itself.
+// Node prototypes — one per PipelineNodeType, built once. The inspector owns
+// editing PipelineNode.config; the small summary field below is mirrored into
+// fl_nodes only so the graph shows the current configuration. Ports are
+// colored per category so a node's role reads at a glance on the canvas.
 // -----------------------------------------------------------------------------
 
 String _nodeDescription(PipelineNodeType type) {
@@ -237,13 +229,13 @@ String _nodeDescription(PipelineNodeType type) {
     case PipelineNodeType.transformSample:
       return 'Optionally shuffles, then limits the number of incoming items.';
     case PipelineNodeType.transformEnrich:
-      return 'Optional per-item enrichment. Adds Structured Data and/or Global Usage requests only when this node is connected.';
+      return 'Fetches additional non-extmetadata Wikimedia data for each selected item. Technical imageinfo is batched; structured data and usage are fetched respectfully and cached.';
     case PipelineNodeType.sinkPreview:
-      return 'Materializes the branch so its media can be browsed in the Preview tab.';
+      return 'Materializes the branch so its media can be browsed in the full-screen dataset preview.';
     case PipelineNodeType.sinkSendToSearch:
       return 'Sends this branch to the main search workspace.';
     case PipelineNodeType.sinkCsvExport:
-      return 'The final step: preview 100 records, or run the pipeline to download every match as one metadata CSV.';
+      return 'The final step: choose which columns and image links each CSV row should contain, then preview or export the matched files.';
     case PipelineNodeType.sinkJsonExport:
     case PipelineNodeType.sinkZipExport:
       return 'Legacy export node. Use Dataset Manifest (CSV) for metadata and media URLs.';
@@ -251,6 +243,54 @@ String _nodeDescription(PipelineNodeType type) {
       return type.category == PipelineNodeCategory.filter
           ? 'Narrows the incoming media set using this filter.'
           : 'Processes the incoming media set at this point in the pipeline.';
+  }
+}
+
+String _manifestMetadataLabel(String? value) {
+  switch (value) {
+    case 'essential':
+      return 'Essential columns';
+    case 'full':
+      return 'Full available columns';
+    case 'detailed':
+    default:
+      return 'Detailed columns';
+  }
+}
+
+String _manifestMetadataDescription(String? value) {
+  switch (value) {
+    case 'essential':
+      return 'Title, Commons URL, format, dimensions, file size, checksum, licence, artist, and attribution.';
+    case 'full':
+      return 'Every field currently present, including Enrich fields. Values unavailable for a file stay blank in its row.';
+    case 'detailed':
+    default:
+      return 'Adds uploader, upload dates, descriptions, credit, categories, assessments, coordinates, and usage terms.';
+  }
+}
+
+String _manifestImageLinksLabel(String? value) {
+  switch (value) {
+    case 'original':
+      return 'Original URL only';
+    case 'thumbnail':
+      return 'Web-optimized URL only';
+    case 'both':
+    default:
+      return 'Both original and web-optimized URLs';
+  }
+}
+
+String _manifestImageLinksDescription(String? value) {
+  switch (value) {
+    case 'original':
+      return 'Best for downloading the source file; usually the largest URL.';
+    case 'thumbnail':
+      return 'Best for browser previews and smaller datasets; not full resolution.';
+    case 'both':
+    default:
+      return 'Keeps a source URL and a lightweight preview URL in every row.';
   }
 }
 
@@ -356,9 +396,16 @@ String _nodeSummary(PipelineNode node) {
       return joined('terms').isEmpty ? 'No excluded terms' : joined('terms');
     case PipelineNodeType.transformSample:
       return 'Limit ${c['limit'] ?? 'not set'}${c['shuffle'] == true ? ' - shuffled' : ''}';
+    case PipelineNodeType.transformEnrich:
+      final enabled = <String>[];
+      if (c['imageInfo'] != false) enabled.add('technical metadata');
+      if (c['structuredData'] == true) enabled.add('structured data');
+      if (c['globalUsage'] == true) enabled.add('global usage');
+      return '${enabled.join(', ')} · ${c['maxEnrich'] ?? 20} items';
     case PipelineNodeType.sinkCsvExport:
       final metadata = c['metadataLevel'] as String? ?? 'detailed';
-      return 'All returned · $metadata metadata';
+      final links = c['imageLinks'] as String? ?? 'both';
+      return '${_manifestMetadataLabel(metadata)} · ${_manifestImageLinksLabel(links)}';
     case PipelineNodeType.sinkJsonExport:
     case PipelineNodeType.sinkZipExport:
       return 'Legacy export — CSV only';
@@ -379,6 +426,60 @@ String _nodeSummary(PipelineNode node) {
     default:
       return node.type.label;
   }
+}
+
+/// The compact, live configuration readout rendered inside the canvas node.
+/// The inspector remains the editor; this is the graph-level explanation of
+/// what the node will do when the pipeline runs.
+String _nodeCanvasBody(PipelineNode node) {
+  if (node.type == PipelineNodeType.sinkCsvExport) {
+    final metadata = node.config['metadataLevel'] as String? ?? 'detailed';
+    final links = node.config['imageLinks'] as String? ?? 'both';
+    final fileName = (node.config['fileName'] as String?)?.trim();
+    return [
+      'CSV columns: ${_manifestMetadataLabel(metadata)}',
+      'Image links: ${_manifestImageLinksLabel(links)}',
+      'File: ${fileName?.isNotEmpty == true ? fileName : 'commonslens_manifest'}.csv',
+    ].join('\n');
+  }
+
+  final lines = <String>[];
+  for (final entry in node.config.entries) {
+    if (entry.key == '_note') continue;
+    final value = entry.value;
+    if (value == null) {
+      lines.add('${_humanConfigKey(entry.key)}: null');
+    } else if (value is List) {
+      final values = value.map((item) => item.toString()).toList();
+      lines.add(
+          '${_humanConfigKey(entry.key)}: ${values.isEmpty ? 'none' : values.join(', ')}');
+    } else if (value is Map) {
+      lines.add('${_humanConfigKey(entry.key)}: ${value.length} selected');
+    } else if (value is bool) {
+      lines.add('${_humanConfigKey(entry.key)}: ${value ? 'on' : 'off'}');
+    } else {
+      lines.add('${_humanConfigKey(entry.key)}: $value');
+    }
+  }
+  if (lines.isEmpty) return 'No configuration yet';
+  return lines.join('\n');
+}
+
+String _humanConfigKey(String key) {
+  final spaced = key.replaceAllMapped(RegExp(r'([a-z])([A-Z])'),
+      (match) => '${match.group(1)} ${match.group(2)}');
+  return spaced[0].toUpperCase() + spaced.substring(1);
+}
+
+fln.FieldPrototype _canvasSummaryField() {
+  return fln.FieldPrototype(
+    idName: 'pipeline_summary',
+    displayName: 'Configuration',
+    dataType: String,
+    defaultData: '',
+    visualizerBuilder: (_) => const SizedBox.shrink(),
+    onVisualizerTap: (_, __) {},
+  );
 }
 
 fln.FlPortStyle Function(fln.PortState) _flPortStyleFor(Color color) {
@@ -451,6 +552,7 @@ Map<String, fln.NodePrototype> _buildNodePrototypes() {
               );
         },
         ports: _flPortsFor(type),
+        fields: [_canvasSummaryField()],
         // The app runs PipelineEngine instead of arcane_nodes' graph runner,
         // so the required package callback is intentionally a no-op.
         onExecute: (ports, fields, execState, forward, put) async {},
@@ -714,28 +816,42 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
             'structuredData',
             'globalUsage',
             'globalUsageCount',
+            'imageInfo',
           ],
         ),
       ];
     case PipelineNodeType.transformEnrich:
       return [
         cf(
+          key: 'imageInfo',
+          label: 'Technical image metadata (no extmetadata)',
+          kind: ConfigFieldKind.bool,
+          defaultValue: true,
+        ),
+        cf(
           key: 'structuredData',
           label: 'Structured Data on Commons',
           kind: ConfigFieldKind.bool,
-          defaultValue: true,
+          defaultValue: false,
         ),
         cf(
           key: 'globalUsage',
           label: 'Global Wikimedia usage',
           kind: ConfigFieldKind.bool,
-          defaultValue: true,
+          defaultValue: false,
         ),
         cf(
           key: 'maxEnrich',
           label: 'Maximum items to enrich',
           kind: ConfigFieldKind.int,
           hint: '20',
+        ),
+        cf(
+          key: 'batchSize',
+          label: 'Heavy metadata request batch',
+          kind: ConfigFieldKind.int,
+          hint: '10 (max 20)',
+          defaultValue: 10,
         ),
         cf(
           key: 'usageLimit',
@@ -748,17 +864,17 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
       return [
         cf(
           key: 'metadataLevel',
-          label: 'Metadata',
+          label: 'CSV columns',
           kind: ConfigFieldKind.dropdown,
           options: ['detailed', 'essential', 'full'],
           defaultValue: 'detailed',
         ),
         cf(
           key: 'imageLinks',
-          label: 'Image URL',
+          label: 'Image links per row',
           kind: ConfigFieldKind.dropdown,
-          options: ['original', 'thumbnail'],
-          defaultValue: 'original',
+          options: ['original', 'thumbnail', 'both'],
+          defaultValue: 'both',
         ),
         cf(
           key: 'fileName',
@@ -774,7 +890,7 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
       // sourceDepicts / sourceStatement (bespoke entries editor below),
       // setUnion/setIntersect/setDifference (no config, just two inputs),
       // transformDedupe (no config),
-      // sinkPreview/sinkSendToSearch (no config — see the PREVIEW tab).
+      // sinkPreview/sinkSendToSearch (no config — use the graph action).
       return const [];
   }
 }

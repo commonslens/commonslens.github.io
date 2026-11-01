@@ -9,15 +9,14 @@ import 'package:http/http.dart' as http;
 /// sends to Wikimedia. It prevents independent features (search, previews, metadata,
 /// and collection CSV exports) from creating overlapping request bursts.
 ///
-/// Wikimedia currently recommends no more than three concurrent requests.
-/// Commons Lens deliberately stays below that at two, spaces request starts,
-/// identifies Action API traffic, respects Retry-After, and applies a global
-/// cooldown so newly queued work cannot ignore a throttle response received
-/// by another feature.
+/// Wikimedia's Action API etiquette recommends series requests. Commons Lens
+/// therefore serializes Action API traffic, spaces request starts, identifies
+/// the client, respects Retry-After, and applies a global cooldown so newly
+/// queued work cannot ignore a throttle response received by another feature.
 class WikimediaRequestGate {
   WikimediaRequestGate._();
 
-  static const int maxConcurrent = 2;
+  static const int maxConcurrent = 1;
   static const Duration minimumStartSpacing = Duration(milliseconds: 400);
   static const String apiUserAgent =
       'CommonsLens/1.0 (https://github.com/commonslens/commonslens.github.io; Flutter Web)';
@@ -223,8 +222,9 @@ class WikimediaRequestGate {
     }
     if (throttled) {
       // Wikimedia asks clients to wait at least five seconds when a 429/503
-      // response does not expose Retry-After.
-      return Duration(seconds: max(5, 1 << (attempt - 1))) + _jitter();
+      // response does not expose Retry-After. Keep that floor while still
+      // making the three retry waits exponential: 5s, 10s, then 20s.
+      return Duration(seconds: 5 * (1 << (attempt - 1))) + _jitter();
     }
     return Duration(seconds: 1 << (attempt - 1)) + _jitter();
   }

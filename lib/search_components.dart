@@ -971,6 +971,7 @@ class MediaPreview extends StatefulWidget {
 
 class _MediaPreviewState extends State<MediaPreview> {
   bool _shouldLoad = false;
+  int _candidateIndex = 0;
   Timer? _loadTimer;
   @override
   void initState() {
@@ -993,20 +994,39 @@ class _MediaPreviewState extends State<MediaPreview> {
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(covariant MediaPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.url != widget.item.url) {
+      _candidateIndex = 0;
+      _shouldLoad = false;
+      _loadTimer?.cancel();
+      final slot = widget.index % 25;
+      if (slot == 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _shouldLoad = true);
+        });
+      } else {
+        _loadTimer = Timer(Duration(milliseconds: slot * 30), () {
+          if (mounted) setState(() => _shouldLoad = true);
+        });
+      }
+    }
+  }
+
   /// Whether item.thumb is an actual rendered thumbnail worth showing as
   /// an image, rather than the raw original file. Commons' imageinfo API
   /// returns a real scaled thumburl for essentially every media type,
   /// including PDFs (page-1 render) and SVGs (rasterized) — SearchService
   /// only falls back to the original `url` when thumbnail generation
   /// itself failed for the whole batch (see the urlparamnormal retry in
-  /// search_service.dart), so `thumb == url` is the correct signal to
-  /// fall back to the icon UI — not the file extension.
+  /// search_service.dart). The shared candidate list can also derive a safe
+  /// Wikimedia thumbnail when `thumb == url`; it returns an icon only when no
+  /// optimized candidate is available.
   bool _hasRenderableThumb(SearchItem item) {
-    if (item.thumb.isEmpty) return false;
     if (item.mediaKind == MediaKind.audio) return false;
     if (item.mediaKind == MediaKind.unknown) return false;
-    if (item.thumb == item.url) return false;
-    return true;
+    return item.previewUrlCandidates(320).isNotEmpty;
   }
 
   @override
@@ -1014,13 +1034,31 @@ class _MediaPreviewState extends State<MediaPreview> {
     if (!_shouldLoad) return const PreviewLoading();
     final item = widget.item;
     if (!_hasRenderableThumb(item)) return PreviewFallback(item: item);
-    return Image.network(item.thumb,
+    final candidates = item.previewUrlCandidates(320);
+    if (_candidateIndex >= candidates.length) {
+      return PreviewFallback(item: item);
+    }
+
+    final candidateIndex = _candidateIndex;
+    final imageUrl = candidates[candidateIndex];
+    return Image.network(imageUrl,
+        key: ValueKey(imageUrl),
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => PreviewFallback(item: item),
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) return child;
-          return const PreviewLoading();
+        filterQuality: FilterQuality.low,
+        cacheWidth: 640, errorBuilder: (_, __, ___) {
+      if (candidateIndex + 1 < candidates.length) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _candidateIndex == candidateIndex) {
+            setState(() => _candidateIndex++);
+          }
         });
+        return const PreviewLoading();
+      }
+      return PreviewFallback(item: item);
+    }, loadingBuilder: (context, child, progress) {
+      if (progress == null) return child;
+      return const PreviewLoading();
+    });
   }
 }
 

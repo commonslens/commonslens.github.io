@@ -199,14 +199,42 @@ void main() {
 
       final originalOnly = SearchItem(
         title: item.title,
-        url: item.url,
-        thumb: item.url,
+        url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.svg',
+        thumb:
+            'https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.svg',
         commonsUrl: item.commonsUrl,
         snippet: '',
         mime: item.mime,
         isSvg: true,
       );
       expect(originalOnly.thumbnailUrlAtWidth(1920), isNull);
+      expect(
+        originalOnly.previewUrlAtWidth(240),
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.svg/240px-Example.svg',
+      );
+    });
+
+    test('keeps the API thumbnail as a fallback when resizing fails', () {
+      const item = SearchItem(
+        title: 'Example.jpg',
+        url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.jpg',
+        thumb:
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.jpg/320px-Example.jpg',
+        commonsUrl: 'https://commons.wikimedia.org/wiki/File:Example.jpg',
+        snippet: '',
+        mime: 'image/jpeg',
+        isSvg: false,
+      );
+
+      final candidates = item.previewUrlCandidates(240);
+
+      expect(
+        candidates,
+        contains(
+          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.jpg/240px-Example.jpg',
+        ),
+      );
+      expect(candidates, contains(item.thumb));
     });
   });
 

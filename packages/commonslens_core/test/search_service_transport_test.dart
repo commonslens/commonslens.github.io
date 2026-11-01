@@ -7,6 +7,7 @@ class _FixtureTransport implements WikimediaTransport {
 
   final Future<http.Response> Function(Uri uri) handler;
   final List<Uri> requests = [];
+  final List<int> requestedMaxAttempts = [];
 
   @override
   Future<http.Response> get(
@@ -19,6 +20,7 @@ class _FixtureTransport implements WikimediaTransport {
     bool Function(http.Response response)? acceptResponse,
   }) {
     requests.add(uri);
+    requestedMaxAttempts.add(maxAttempts);
     return handler(uri);
   }
 }
@@ -120,6 +122,52 @@ void main() {
 
     expect(result, isNotNull);
     expect(result!.items, hasLength(1));
+  });
+
+  test('pipeline skips one failed 200-record page and continues', () async {
+    var calls = 0;
+    final transport = _FixtureTransport((uri) async {
+      calls++;
+      if (calls == 1) return http.Response('temporarily unavailable', 503);
+
+      expect(uri.queryParameters['gsroffset'], '200');
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "2": {
+                "title": "File:AfterFailure.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/after-failure.jpg",
+                  "mime": "image/jpeg"
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+    final backend = CommonsBackend(
+      service: SearchService(transport: transport),
+    );
+    const state = SearchState(queryText: 'pipeline');
+
+    final skipped = await backend.search(
+      state,
+      requestProfile: SearchRequestProfile.pipelineEtl,
+    );
+    expect(skipped.ok, isTrue);
+    expect(skipped.items, isEmpty);
+    expect(skipped.hasMore, isTrue);
+    expect(skipped.warning, contains('Skipped the 200-result pipeline batch'));
+    expect(transport.requestedMaxAttempts.first, 4);
+
+    final next = await backend.search(
+      state,
+      continueToken: skipped.continueToken,
+      requestProfile: SearchRequestProfile.pipelineEtl,
+    );
+    expect(next.items.map((item) => item.title), ['AfterFailure.jpg']);
   });
 
   test('author pagination uses 50 for UI and 200 for pipeline ETL', () async {
@@ -285,6 +333,112 @@ void main() {
     expect(item!.title, 'Example.jpg');
     expect(item.width, 1200);
     expect(item.licenseShortName, 'CC BY 4.0');
+    expect(item.pageId, 123);
+  });
+
+  test('batches Structured Data and preserves the raw MediaInfo entity',
+      () async {
+    final transport = _FixtureTransport((uri) async {
+      if (uri.host == 'commons.wikimedia.org' &&
+          uri.queryParameters['action'] == 'wbgetentities') {
+        expect(uri.host, 'commons.wikimedia.org');
+        expect(uri.queryParameters['ids'], 'M101|M102');
+        return http.Response('''
+          {
+            "entities": {
+              "M101": {
+                "id": "M101",
+                "labels": {"en": {"value": "A caption"}},
+                "statements": {
+                  "P180": [{
+                    "mainsnak": {
+                      "snaktype": "value",
+                      "datavalue": {
+                        "type": "wikibase-entityid",
+                        "value": {"id": "Q42"}
+                      }
+                    },
+                    "qualifiers": {"P580": [{"hash": "kept"}]}
+                  }]
+                }
+              },
+              "M102": {
+                "id": "M102",
+                "labels": {},
+                "statements": {}
+              }
+            }
+          }
+        ''', 200);
+      }
+      if (uri.host == 'www.wikidata.org') {
+        expect(uri.queryParameters['ids'], contains('P180'));
+        expect(uri.queryParameters['ids'], contains('Q42'));
+        return http.Response('''
+          {
+            "entities": {
+              "P180": {"labels": {"en": {"value": "depicts"}}},
+              "Q42": {"labels": {"en": {"value": "Douglas Adams"}}}
+            }
+          }
+        ''', 200);
+      }
+      fail('Unexpected request: $uri');
+    });
+    final backend = CommonsBackend(
+      service: SearchService(transport: transport),
+    );
+
+    final result = await backend.structuredDataBatch(
+      ['A.jpg', 'B.jpg'],
+      pageIds: {'A.jpg': 101, 'B.jpg': 102},
+    );
+
+    expect(result.keys, containsAll(['File:A.jpg', 'File:B.jpg']));
+    expect(result['File:A.jpg']!.captions['en'], 'A caption');
+    expect(
+        result['File:A.jpg']!.statements.single.valueDisplay, 'Douglas Adams');
+    expect(result['File:A.jpg']!.raw['statements'], isNotNull);
+    expect(result['File:A.jpg']!.raw['statements']['P180'][0]['qualifiers'],
+        isNotNull);
+    expect(transport.requests, hasLength(2));
+  });
+
+  test('batches global usage and retains page metadata', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['prop'], 'globalusage');
+      expect(uri.queryParameters['titles'], 'File:A.jpg|File:B.jpg');
+      expect(uri.queryParameters['guprop'], 'url|pageid|namespace');
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "1": {
+                "title": "File:A.jpg",
+                "globalusage": [{
+                  "wiki": "enwiki",
+                  "title": "Example",
+                  "url": "https://en.wikipedia.org/wiki/Example",
+                  "pageid": 44,
+                  "ns": 0
+                }]
+              },
+              "2": {"title": "File:B.jpg", "globalusage": []}
+            }
+          }
+        }
+      ''', 200);
+    });
+    final backend = CommonsBackend(
+      service: SearchService(transport: transport),
+    );
+
+    final result = await backend.globalUsageBatch(['A.jpg', 'B.jpg']);
+
+    expect(result['File:A.jpg']!.single.pageId, 44);
+    expect(result['File:A.jpg']!.single.namespace, 0);
+    expect(result['File:B.jpg'], isEmpty);
+    expect(transport.requests, hasLength(1));
   });
 
   test('browse extensions use the same injected transport', () async {

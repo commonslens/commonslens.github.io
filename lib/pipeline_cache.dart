@@ -8,7 +8,7 @@ import 'pipeline_engine.dart';
 import 'pipeline_models.dart';
 
 /// IndexedDB-backed [PipelineCache] plus graph persistence, all in one
-/// database (`commonslens_pipeline`, 3 object stores). Values are stored
+/// database (`commonslens_pipeline`, 4 object stores). Values are stored
 /// as JSON strings via dart:convert rather than raw nested Maps — sidesteps
 /// any ambiguity in dart:html's Dart-to-JS structured-clone conversion for
 /// IndexedDB.put, and matches this codebase's existing convention of
@@ -21,13 +21,15 @@ import 'pipeline_models.dart';
 /// pipeline run. Caching must never be why a pipeline fails.
 class PipelineIndexedDbCache implements PipelineCache {
   static const _dbName = 'commonslens_pipeline';
-  static const _dbVersion = 1;
+  static const _dbVersion = 2;
   static const _queryStoreName = 'query_cache';
   static const _nodeStoreName = 'node_cache';
+  static const _metadataStoreName = 'metadata_cache';
   static const _graphStoreName = 'graphs';
 
   final Duration queryTtl;
   final Duration nodeTtl;
+  final Duration metadataTtl;
 
   dynamic _db;
   Future<dynamic>? _opening;
@@ -35,9 +37,10 @@ class PipelineIndexedDbCache implements PipelineCache {
   PipelineIndexedDbCache({
     this.queryTtl = const Duration(hours: 1),
     this.nodeTtl = const Duration(hours: 1),
+    this.metadataTtl = const Duration(days: 7),
   });
 
-  /// Opens (or returns the already-open) database, creating all three
+  /// Opens (or returns the already-open) database, creating all four
   /// object stores on first run. Guarded by [_opening] so concurrent
   /// callers during app startup share one open() call instead of racing
   /// separate upgrade transactions.
@@ -60,6 +63,7 @@ class PipelineIndexedDbCache implements PipelineCache {
           for (final store in [
             _queryStoreName,
             _nodeStoreName,
+            _metadataStoreName,
             _graphStoreName
           ]) {
             if (!(upgradeDb.objectStoreNames?.contains(store) ?? false)) {
@@ -145,14 +149,30 @@ class PipelineIndexedDbCache implements PipelineCache {
     return DateTime.now().difference(cachedAt) < ttl;
   }
 
-  List<SearchItem>? _decodeItems(Map<String, dynamic> map, Duration ttl) {
+  PipelineQuerySnapshot? _decodeQuerySnapshot(
+      Map<String, dynamic> map, Duration ttl) {
     if (!_isFresh(map['cachedAt'] as String?, ttl)) return null;
     final itemsRaw = map['items'];
     if (itemsRaw is! List) return null;
-    return itemsRaw
-        .whereType<Map>()
-        .map((m) => SearchItem.fromJson(Map<String, dynamic>.from(m)))
-        .toList();
+    final continueRaw = map['continueToken'];
+    return PipelineQuerySnapshot(
+      items: itemsRaw
+          .whereType<Map>()
+          .map((m) => SearchItem.fromJson(Map<String, dynamic>.from(m)))
+          .toList(),
+      continueToken:
+          continueRaw is Map ? Map<String, dynamic>.from(continueRaw) : null,
+      totalHits: (map['totalHits'] as num?)?.toInt(),
+      complete: map['complete'] as bool? ?? true,
+      warnings:
+          (map['warnings'] as List?)?.whereType<String>().toList() ?? const [],
+      pageSize: (map['pageSize'] as num?)?.toInt(),
+    );
+  }
+
+  List<SearchItem>? _decodeItems(Map<String, dynamic> map, Duration ttl) {
+    final snapshot = _decodeQuerySnapshot(map, ttl);
+    return snapshot?.items;
   }
 
   // ---------------------------------------------------------------------
@@ -163,16 +183,44 @@ class PipelineIndexedDbCache implements PipelineCache {
   // ---------------------------------------------------------------------
 
   @override
-  Future<List<SearchItem>?> getQueryResult(String signature) =>
-      _get(_queryStoreName, signature, (map) => _decodeItems(map, queryTtl));
+  Future<PipelineQuerySnapshot?> getQuerySnapshot(String signature) => _get(
+      _queryStoreName, signature, (map) => _decodeQuerySnapshot(map, queryTtl));
 
   @override
-  Future<void> putQueryResult(String signature, List<SearchItem> items) => _put(
+  Future<void> putQuerySnapshot(
+          String signature, PipelineQuerySnapshot snapshot) =>
+      _put(
         _queryStoreName,
         signature,
         {
           'cachedAt': DateTime.now().toIso8601String(),
-          'items': items.map((i) => i.toJson()).toList(),
+          'items': snapshot.items.map((i) => i.toJson()).toList(),
+          'continueToken': snapshot.continueToken,
+          'totalHits': snapshot.totalHits,
+          'complete': snapshot.complete,
+          'warnings': snapshot.warnings,
+          'pageSize': snapshot.pageSize,
+        },
+      );
+
+  @override
+  Future<Map<String, dynamic>?> getMetadata(String key) => _get(
+        _metadataStoreName,
+        key,
+        (map) {
+          if (!_isFresh(map['cachedAt'] as String?, metadataTtl)) return null;
+          final payload = map['metadata'];
+          return payload is Map ? Map<String, dynamic>.from(payload) : null;
+        },
+      );
+
+  @override
+  Future<void> putMetadata(String key, Map<String, dynamic> metadata) => _put(
+        _metadataStoreName,
+        key,
+        {
+          'cachedAt': DateTime.now().toIso8601String(),
+          'metadata': metadata,
         },
       );
 
@@ -207,7 +255,11 @@ class PipelineIndexedDbCache implements PipelineCache {
   Future<void> clearCache() async {
     try {
       final db = await _open();
-      for (final store in [_queryStoreName, _nodeStoreName]) {
+      for (final store in [
+        _queryStoreName,
+        _nodeStoreName,
+        _metadataStoreName,
+      ]) {
         final txn = db.transaction(store, 'readwrite');
         await txn.objectStore(store).clear();
       }

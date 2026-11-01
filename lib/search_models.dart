@@ -3,7 +3,6 @@ export 'package:commonslens_core/commonslens_core.dart'
         DateFilter,
         DepictsEntity,
         FileFormat,
-        FileRevision,
         GlobalUsageEntry,
         LicensePreset,
         MediaKind,

@@ -123,29 +123,70 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         'origin': '*',
         'titles': orderedTitles.join('|'),
         'prop': 'imageinfo',
-        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
+        'iiprop': [
+          'url|size|sha1|mime|user',
+          if (requestProfile.includeExtmetadata) 'extmetadata',
+        ].join('|'),
         'iiurlwidth': '320',
       };
 
       final infoUri =
           Uri.https('commons.wikimedia.org', '/w/api.php', infoParams);
-      final infoResponse = await _transport.get(infoUri,
-          headers: {
-            'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
-          },
-          timeout: const Duration(seconds: 15));
+      late final http.Response infoResponse;
+      try {
+        infoResponse = await _transport.get(infoUri,
+            headers: {
+              'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
+            },
+            timeout: const Duration(seconds: 15),
+            maxAttempts: 4);
+      } catch (e) {
+        if (requestProfile != SearchRequestProfile.ui) {
+          return SearchResponse(
+            items: const [],
+            continueParams: nextContinue,
+            warning:
+                'Skipped the ${requestProfile.pageSize}-result uploader batch after 3 retries: $e',
+          );
+        }
+        return null;
+      }
 
-      if (infoResponse.statusCode != 200) return null;
+      if (infoResponse.statusCode != 200) {
+        if (requestProfile != SearchRequestProfile.ui) {
+          return SearchResponse(
+            items: const [],
+            continueParams: nextContinue,
+            warning:
+                'Skipped the ${requestProfile.pageSize}-result uploader batch after 3 retries: HTTP ${infoResponse.statusCode}',
+          );
+        }
+        return null;
+      }
 
       final infoData = jsonDecode(infoResponse.body) as Map<String, dynamic>;
+      if (infoData.containsKey('error')) {
+        if (requestProfile != SearchRequestProfile.ui) {
+          final error = infoData['error'];
+          final code = error is Map ? error['code'] ?? 'unknown' : 'unknown';
+          return SearchResponse(
+            items: const [],
+            continueParams: nextContinue,
+            warning:
+                'Skipped the ${requestProfile.pageSize}-result uploader batch after 3 retries: Wikimedia API error $code',
+          );
+        }
+        return null;
+      }
       final pages =
           (infoData['query']?['pages'] as Map<String, dynamic>?) ?? {};
 
       // pages is keyed by pageid with no guaranteed order — index by title
       // so we can rebuild the newest-first order from step 1.
       final byTitle = <String, Map<String, dynamic>>{};
-      for (final page in pages.values) {
-        final p = page as Map<String, dynamic>;
+      for (final entry in pages.entries) {
+        final p = Map<String, dynamic>.from(entry.value as Map);
+        p['pageid'] ??= int.tryParse(entry.key.toString());
         final t = p['title'] as String?;
         if (t != null) byTitle[t] = p;
       }
@@ -163,6 +204,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           info,
           rawTitle: title,
           snippet: title,
+          pageId: (page['pageid'] as num?)?.toInt(),
           timestamp: timestamps[title],
           uploaderFallback: user,
         );
@@ -299,7 +341,10 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     required Map<String, dynamic>? continueParams,
     bool includeThumbWidth = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async {
+    final skipFailedPages = requestProfile != SearchRequestProfile.ui;
+    final pageSize = pageSizeOverride ?? requestProfile.pageSize;
     final queryText = state.queryText.trim();
     final segments = queryText
         .split(multiQuerySeparator)
@@ -315,7 +360,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
-        pageSize: requestProfile.pageSize,
+        includeExtmetadata: requestProfile.includeExtmetadata,
+        pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -330,7 +377,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
-        pageSize: requestProfile.pageSize,
+        includeExtmetadata: requestProfile.includeExtmetadata,
+        pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       ),
       continueParams: continueParams,
       continueBucketKey: '_query',
@@ -342,7 +391,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) async {
     // Union mode with 2+ include statements: Cirrus can't reliably OR a
     // statement clause together with the rest of the active filters in one
@@ -356,7 +407,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -368,7 +421,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       ),
       continueParams: continueParams,
       continueBucketKey: '_stmt',
@@ -385,14 +440,18 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) async {
     if (state.allImagesMode) {
       return _fetchPageForLicense(
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -403,7 +462,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -418,7 +479,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       ),
       continueParams: continueParams,
       continueBucketKey: '_quality',
@@ -436,7 +499,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) async {
     final licenses = state.licensePresets.toList();
 
@@ -445,7 +510,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -457,7 +524,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       ),
       continueParams: continueParams,
       continueBucketKey: '_license',
@@ -469,7 +538,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) async {
     // Same fan-out pattern for category union mode — deepCategoryMode,
     // excludeCategories, and everything else carry over unchanged onto
@@ -484,7 +555,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -496,7 +569,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       ),
       continueParams: continueParams,
       continueBucketKey: '_cat',
@@ -508,7 +583,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) async {
     // Same fan-out pattern again for depicts union mode — depictsExclude
     // and everything else carry over unchanged onto each single-entity
@@ -520,7 +597,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         state,
         continueParams: continueParams,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       );
     }
 
@@ -532,7 +611,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         branchState,
         continueParams: branchContinue,
         includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
       ),
       continueParams: continueParams,
       continueBucketKey: '_depicts',
@@ -544,14 +625,18 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     SearchState state, {
     required Map<String, dynamic>? continueParams,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) async {
     if (state.formats.isEmpty) {
       return _fetchSingle(state,
           continueParams: continueParams,
           overrideFormat: null,
           includeThumbWidth: includeThumbWidth,
-          pageSize: pageSize);
+          includeExtmetadata: includeExtmetadata,
+          pageSize: pageSize,
+          skipFailedPages: skipFailedPages);
     }
 
     // Same fan-out pattern once more, this time branching on selected file
@@ -568,7 +653,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           continueParams: branchContinue,
           overrideFormat: format,
           includeThumbWidth: includeThumbWidth,
-          pageSize: pageSize),
+          includeExtmetadata: includeExtmetadata,
+          pageSize: pageSize,
+          skipFailedPages: skipFailedPages),
       continueParams: continueParams,
       continueBucketKey: '_multi',
       sortMode: state.sortMode,
@@ -580,50 +667,18 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
   }) {
     return _fetchSingleAttempt(
       state,
       continueParams: continueParams,
       overrideFormat: overrideFormat,
       includeThumbWidth: includeThumbWidth,
+      includeExtmetadata: includeExtmetadata,
       pageSize: pageSize,
-    );
-  }
-
-  /// Advances a generator/search continuation past one failed page. Commons
-  /// returns `gsroffset` alongside its opaque `continue` marker, so a failed
-  /// page can be skipped without replaying it forever. This is only
-  /// used after the transient retry budget is exhausted; successful pages
-  /// always use Wikimedia's continuation unchanged.
-  Map<String, dynamic>? _advanceFailedPage(
-      Map<String, dynamic>? continueParams, int pageSize) {
-    final rawOffset = continueParams?['gsroffset'];
-    final offset = rawOffset == null
-        ? 0
-        : rawOffset is num
-            ? rawOffset.toInt()
-            : int.tryParse(rawOffset.toString());
-    if (offset == null) return null;
-    return {
-      ...?continueParams,
-      'gsroffset': offset + pageSize,
-    };
-  }
-
-  SearchResponse? _skipFailedPage({
-    required Map<String, dynamic>? continueParams,
-    required String reason,
-    required int pageSize,
-  }) {
-    final nextContinue = _advanceFailedPage(continueParams, pageSize);
-    if (nextContinue == null) return null;
-    final offset = continueParams?['gsroffset'] ?? 0;
-    return SearchResponse(
-      items: const [],
-      continueParams: nextContinue,
-      warning:
-          'Skipped the $pageSize-result batch at offset $offset after retries were exhausted: $reason',
+      skipFailedPages: skipFailedPages,
     );
   }
 
@@ -653,7 +708,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     required Map<String, dynamic>? continueParams,
     FileFormat? overrideFormat,
     required bool includeThumbWidth,
+    required bool includeExtmetadata,
     required int pageSize,
+    required bool skipFailedPages,
     int originalDateScanPages = 0,
   }) async {
     try {
@@ -672,7 +729,10 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         'prop': 'info|imageinfo',
         'inprop': 'url',
         'gsrnamespace': '6',
-        'iiprop': 'url|size|sha1|mime|extmetadata|user|dimensions',
+        'iiprop': [
+          'url|size|sha1|mime|user',
+          if (includeExtmetadata) 'extmetadata',
+        ].join('|'),
         'iilimit': '$pageSize',
         if (includeThumbWidth) 'iiurlwidth': '320',
       };
@@ -734,24 +794,22 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         } catch (e) {
           // ignore: avoid_print
           print('🔍 [GIVE UP] request gate exhausted retries: $e');
-          return _skipFailedPage(
+          return _failedPageResponse(
             continueParams: continueParams,
-            reason: 'request retries exhausted',
             pageSize: pageSize,
+            skipFailedPages: skipFailedPages,
+            reason:
+                'request failed after the initial attempt plus 3 retries: $e',
           );
         }
 
         if (response.statusCode != 200) {
-          if (response.statusCode >= 500 ||
-              response.statusCode == 408 ||
-              response.statusCode == 429) {
-            return _skipFailedPage(
-              continueParams: continueParams,
-              reason: 'HTTP ${response.statusCode}',
-              pageSize: pageSize,
-            );
-          }
-          return null;
+          return _failedPageResponse(
+            continueParams: continueParams,
+            pageSize: pageSize,
+            skipFailedPages: skipFailedPages,
+            reason: 'HTTP ${response.statusCode}',
+          );
         }
 
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -773,7 +831,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
               continueParams: continueParams,
               overrideFormat: overrideFormat,
               includeThumbWidth: false,
+              includeExtmetadata: includeExtmetadata,
               pageSize: pageSize,
+              skipFailedPages: skipFailedPages,
               originalDateScanPages: originalDateScanPages,
             );
           }
@@ -784,15 +844,20 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             'ratelimited',
             'urlparamnormal',
           }.contains(errorCode)) {
-            return _skipFailedPage(
+            return _failedPageResponse(
               continueParams: continueParams,
-              reason: errorCode ?? 'Wikimedia API error',
               pageSize: pageSize,
+              skipFailedPages: skipFailedPages,
+              reason: 'Wikimedia API error ${errorCode ?? 'unknown'}',
             );
           }
 
-          // Permanent query errors remain fatal; they are not safe to skip.
-          return null;
+          return _failedPageResponse(
+            continueParams: continueParams,
+            pageSize: pageSize,
+            skipFailedPages: skipFailedPages,
+            reason: 'Wikimedia API error ${errorCode ?? 'unknown'}',
+          );
         }
 
         final responseContinue = data['continue'] as Map<String, dynamic>?;
@@ -805,6 +870,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             ...?pagesByKey[key],
             ...Map<String, dynamic>.from(page),
           };
+          merged['pageid'] ??= int.tryParse(key);
           final previousInfo = pagesByKey[key]?['imageinfo'];
           final currentInfo = page['imageinfo'];
           if (currentInfo is! List || currentInfo.isEmpty) {
@@ -826,10 +892,11 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           // responses. This guard prevents a malformed continuation from
           // creating an accidental infinite request loop.
           if (propertyPage >= 10) {
-            return _skipFailedPage(
+            return _failedPageResponse(
               continueParams: continueParams,
-              reason: 'image metadata continuation did not converge',
               pageSize: pageSize,
+              skipFailedPages: skipFailedPages,
+              reason: 'imageinfo continuation exceeded the safety limit',
             );
           }
           propertyContinue = responseContinue;
@@ -858,6 +925,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           rawTitle: rawTitle,
           snippet:
               _responseMapper.stripHtml(page['snippet'] as String? ?? rawTitle),
+          pageId: (page['pageid'] as num?)?.toInt(),
           timestamp: page['timestamp'] as String?,
           descriptionUrl: page['fullurl'] as String?,
         );
@@ -908,7 +976,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             continueParams: nextContinue,
             overrideFormat: overrideFormat,
             includeThumbWidth: includeThumbWidth,
+            includeExtmetadata: includeExtmetadata,
             pageSize: pageSize,
+            skipFailedPages: skipFailedPages,
             originalDateScanPages: originalDateScanPages + 1,
           );
         }
@@ -923,12 +993,57 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     } catch (e, st) {
       // ignore: avoid_print
       print('🔍 [EXCEPTION] $e\n$st');
-      return _skipFailedPage(
+      return _failedPageResponse(
         continueParams: continueParams,
-        reason: 'request exception',
         pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
+        reason: 'unexpected response error: $e',
       );
     }
+  }
+
+  SearchResponse? _failedPageResponse({
+    required Map<String, dynamic>? continueParams,
+    required int pageSize,
+    required bool skipFailedPages,
+    required String reason,
+  }) {
+    if (!skipFailedPages) return null;
+    return _skipFailedPage(
+      continueParams: continueParams,
+      pageSize: pageSize,
+      reason: reason,
+    );
+  }
+
+  /// Advance one logical generator page after its request exhausted retries.
+  /// The generator exposes `gsroffset`; remove only `iicontinue`, which is
+  /// the property-level cursor for the failed page rather than the next
+  /// search page.
+  SearchResponse? _skipFailedPage({
+    required Map<String, dynamic>? continueParams,
+    required int pageSize,
+    required String reason,
+  }) {
+    final rawOffset = continueParams?['gsroffset'];
+    final offset = rawOffset == null
+        ? 0
+        : rawOffset is num
+            ? rawOffset.toInt()
+            : int.tryParse(rawOffset.toString());
+    if (offset == null) return null;
+
+    final nextContinue = <String, dynamic>{...?continueParams};
+    nextContinue.remove('iicontinue');
+    nextContinue['gsroffset'] = offset + pageSize;
+    nextContinue['continue'] ??= '-||';
+
+    return SearchResponse(
+      items: const [],
+      continueParams: nextContinue,
+      warning:
+          'Skipped the $pageSize-result pipeline batch at offset $offset after 3 retries: $reason',
+    );
   }
 
   List<SearchItem> _multiSort<K>(

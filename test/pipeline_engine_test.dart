@@ -13,6 +13,7 @@ class _RecordingBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async {
     searches.add(filters);
     return const MediaSearchResult(
@@ -204,8 +205,8 @@ void main() {
     expect(output.items, [same(item)]);
     expect(output.records!.single['structuredData'], isA<Map>());
     expect(output.records!.single['globalUsageCount'], 1);
-    expect(
-        backend.calls, ['sdc:File:Example.jpg', 'usage:File:Example.jpg:10']);
+    expect(backend.calls,
+        ['sdc-batch:File:Example.jpg', 'usage-batch:File:Example.jpg:10']);
   });
 
   test('Field Select projects export records and retains typed media',
@@ -312,6 +313,7 @@ class _PagedBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async {
     requestProfiles.add(requestProfile);
     final page = (continueToken?['page'] as int?) ?? 0;
@@ -348,6 +350,7 @@ class _StaticBackend extends CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async =>
       MediaSearchResult(
         items: [item],
@@ -362,27 +365,37 @@ class _EnrichmentBackend extends _StaticBackend {
   _EnrichmentBackend(super.item);
 
   @override
-  Future<StructuredDataResult?> structuredData(String fileIdOrTitle) async {
-    calls.add('sdc:$fileIdOrTitle');
-    return const StructuredDataResult(
-      mid: 'M1',
-      captions: {'en': 'Example'},
-      statements: [],
-    );
+  Future<Map<String, StructuredDataResult>> structuredDataBatch(
+    List<String> fileIdsOrTitles, {
+    Map<String, int?>? pageIds,
+  }) async {
+    calls.add('sdc-batch:${fileIdsOrTitles.join(',')}');
+    return {
+      for (final title in fileIdsOrTitles)
+        (title.startsWith('File:') ? title : 'File:$title'):
+            const StructuredDataResult(
+          mid: 'M1',
+          captions: {'en': 'Example'},
+          statements: [],
+        ),
+    };
   }
 
   @override
-  Future<List<GlobalUsageEntry>> globalUsage(
-    String fileIdOrTitle, {
+  Future<Map<String, List<GlobalUsageEntry>>> globalUsageBatch(
+    List<String> fileIdsOrTitles, {
     int limit = 500,
   }) async {
-    calls.add('usage:$fileIdOrTitle:$limit');
-    return const [
-      GlobalUsageEntry(
-        wiki: 'en.wikipedia.org',
-        title: 'Example',
-        url: 'https://en.wikipedia.org/wiki/Example',
-      ),
-    ];
+    calls.add('usage-batch:${fileIdsOrTitles.join(',')}:$limit');
+    return {
+      for (final title in fileIdsOrTitles)
+        (title.startsWith('File:') ? title : 'File:$title'): const [
+          GlobalUsageEntry(
+            wiki: 'en.wikipedia.org',
+            title: 'Example',
+            url: 'https://en.wikipedia.org/wiki/Example',
+          ),
+        ],
+    };
   }
 }

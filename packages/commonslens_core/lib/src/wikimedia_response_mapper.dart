@@ -29,6 +29,7 @@ class WikimediaResponseMapper {
     Map<String, dynamic> info, {
     required String rawTitle,
     required String snippet,
+    int? pageId,
     String? timestamp,
     String? descriptionUrl,
     String? uploaderFallback,
@@ -51,6 +52,7 @@ class WikimediaResponseMapper {
       snippet: snippet,
       mime: mime,
       isSvg: mime == 'image/svg+xml',
+      pageId: pageId,
       timestamp: timestamp,
       descriptionUrl: descriptionUrl,
       artistHtml: _metadataValue(metadata, 'Artist'),

@@ -95,6 +95,31 @@ class NodeOutput {
   bool get hasError => error != null;
 }
 
+/// A resumable source-cache snapshot. [items] is the exact prefix already
+/// fetched, [continueToken] is Wikimedia's opaque cursor for the next page,
+/// and [complete] distinguishes "we reached the end" from "we stopped at a
+/// preview/run cap". Keeping the cursor is what lets a full run continue a
+/// preview without replaying or skipping its first page(s). [pageSize] records
+/// the source request size so a 200-row ETL run can bridge a cached 50-row
+/// preview at the boundary without overlapping API results.
+class PipelineQuerySnapshot {
+  final List<SearchItem> items;
+  final Map<String, dynamic>? continueToken;
+  final int? totalHits;
+  final bool complete;
+  final List<String> warnings;
+  final int? pageSize;
+
+  const PipelineQuerySnapshot({
+    required this.items,
+    required this.continueToken,
+    required this.totalHits,
+    required this.complete,
+    this.warnings = const [],
+    this.pageSize,
+  });
+}
+
 class PipelineRunResult {
   final Map<String, NodeOutput> outputsByNodeId;
   final Map<String, NodeOutput> sinkOutputsByNodeId;
@@ -115,8 +140,15 @@ abstract class PipelineCache {
   /// signature already used elsewhere, so a query compiled by this engine
   /// hits the same cache entry a hand-run search with identical filters
   /// would.
-  Future<List<SearchItem>?> getQueryResult(String signature);
-  Future<void> putQueryResult(String signature, List<SearchItem> items);
+  Future<PipelineQuerySnapshot?> getQuerySnapshot(String signature);
+  Future<void> putQuerySnapshot(
+      String signature, PipelineQuerySnapshot snapshot);
+
+  /// Raw non-extmetadata enrichment payload keyed by file revision and the
+  /// selected metadata bundle. Keeping this separate prevents large
+  /// enrichment responses from being duplicated in every query cache entry.
+  Future<Map<String, dynamic>?> getMetadata(String key);
+  Future<void> putMetadata(String key, Map<String, dynamic> metadata);
 }
 
 // -----------------------------------------------------------------------------

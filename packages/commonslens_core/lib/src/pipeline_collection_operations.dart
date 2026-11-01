@@ -583,38 +583,197 @@ mixin _PipelineCollectionOperations {
         );
 
       case PipelineNodeType.transformEnrich:
-        final includeSdc = _cfgBool(c, 'structuredData', true);
-        final includeUsage = _cfgBool(c, 'globalUsage', true);
+        final includeImageInfo = _cfgBool(c, 'imageInfo', true);
+        // Keep optional bundles opt-in so adding Enrich does not unexpectedly
+        // fetch large payloads. The selected bundles are batched below.
+        final includeSdc = _cfgBool(c, 'structuredData', false);
+        final includeUsage = _cfgBool(c, 'globalUsage', false);
         final configuredCap = _cfgInt(c, 'maxEnrich') ?? 20;
         final cap = configuredCap.clamp(0, items.length);
+        final batchSize = (_cfgInt(c, 'batchSize') ?? 10).clamp(1, 20);
         final usageLimit = (_cfgInt(c, 'usageLimit') ?? 50).clamp(1, 500);
         final rows = _recordsFor(input);
+        final enrichWarnings = <String>[];
 
-        // Intentionally sequential. CommonsBackend routes every request
-        // through WikimediaRequestGate, so this is slower but cannot create
-        // a per-item burst that risks a 429 or an IP-level throttle.
-        for (var index = 0; index < cap; index++) {
-          final item = items[index];
-          if (includeSdc) {
-            final sdc = await ctx.backend.structuredData(item.title);
-            rows[index]['structuredData'] = sdc?.toJson();
+        // Technical imageinfo is batched because it is the part of this node
+        // that can be fetched for several files in one request. extmetadata
+        // is deliberately not requested here.
+        if (includeImageInfo && cap > 0) {
+          final pending = <int>[];
+          for (var index = 0; index < cap; index++) {
+            final item = items[index];
+            final key = _enrichmentCacheKey('imageInfo', item);
+            final cached =
+                ctx.cache == null ? null : await ctx.cache!.getMetadata(key);
+            if (cached != null) {
+              rows[index]['imageInfo'] =
+                  cached['_missing'] == true ? null : cached;
+            } else {
+              pending.add(index);
+            }
           }
-          if (includeUsage) {
-            final usage = await ctx.backend.globalUsage(
-              item.title,
-              limit: usageLimit,
-            );
-            rows[index]['globalUsage'] =
-                usage.map((entry) => entry.toJson()).toList();
-            rows[index]['globalUsageCount'] = usage.length;
+
+          for (var start = 0; start < pending.length; start += batchSize) {
+            final indexes = pending.skip(start).take(batchSize).toList();
+            late final Map<String, Map<String, dynamic>> fetched;
+            try {
+              fetched = await ctx.backend.imageMetadataBatch(
+                indexes.map((index) => items[index].title).toList(),
+              );
+            } catch (e) {
+              enrichWarnings.add(
+                  'Skipped technical metadata batch at item ${indexes.first + 1} after retries: $e');
+              for (final index in indexes) {
+                rows[index]['imageInfo'] = null;
+              }
+              continue;
+            }
+            final batchSucceeded = fetched.isNotEmpty;
+            for (final index in indexes) {
+              final item = items[index];
+              final payload = _metadataPayloadFor(fetched, item.title);
+              rows[index]['imageInfo'] = payload;
+              if (ctx.cache != null && (payload != null || batchSucceeded)) {
+                await ctx.cache!.putMetadata(
+                  _enrichmentCacheKey('imageInfo', item),
+                  payload ?? {'_missing': true},
+                );
+              }
+            }
           }
         }
+
+        // Structured Data is a MediaInfo entity lookup, not an image-by-image
+        // operation. Resolve all uncached entities in one batch, while
+        // reusing page IDs already returned by the source search.
+        if (includeSdc && cap > 0) {
+          final pending = <int>[];
+          final pageIds = <String, int?>{};
+          for (var index = 0; index < cap; index++) {
+            final item = items[index];
+            final key = _enrichmentCacheKey('structuredData', item);
+            final cached =
+                ctx.cache == null ? null : await ctx.cache!.getMetadata(key);
+            if (cached != null) {
+              rows[index]['structuredData'] =
+                  cached['_missing'] == true ? null : cached;
+            } else {
+              pending.add(index);
+              pageIds[item.title] = item.pageId;
+            }
+          }
+
+          if (pending.isNotEmpty) {
+            late final Map<String, StructuredDataResult> fetched;
+            try {
+              fetched = await ctx.backend.structuredDataBatch(
+                pending.map((index) => items[index].title).toList(),
+                pageIds: pageIds,
+              );
+            } catch (e) {
+              enrichWarnings.add(
+                  'Skipped Structured Data batch at item ${pending.first + 1} after retries: $e');
+              for (final index in pending) {
+                rows[index]['structuredData'] = null;
+              }
+              fetched = const <String, StructuredDataResult>{};
+            }
+            final batchSucceeded = fetched.isNotEmpty;
+            for (final index in pending) {
+              final item = items[index];
+              final title = item.title.startsWith('File:')
+                  ? item.title
+                  : 'File:${item.title}';
+              final value = fetched[title]?.toJson();
+              rows[index]['structuredData'] = value;
+              if (ctx.cache != null && (value != null || batchSucceeded)) {
+                await ctx.cache!.putMetadata(
+                  _enrichmentCacheKey('structuredData', item),
+                  value ?? {'_missing': true},
+                );
+              }
+            }
+          }
+        }
+
+        // Global usage also accepts multiple file titles in one request. The
+        // configured usageLimit remains the user's explicit per-file bound;
+        // batching changes only the number of API calls, not the data contract.
+        if (includeUsage && cap > 0) {
+          final pending = <int>[];
+          for (var index = 0; index < cap; index++) {
+            final item = items[index];
+            final key = _enrichmentCacheKey('globalUsage:$usageLimit', item);
+            final cached =
+                ctx.cache == null ? null : await ctx.cache!.getMetadata(key);
+            final usageJson = cached?['entries'];
+            if (usageJson is List) {
+              rows[index]['globalUsage'] = usageJson;
+              rows[index]['globalUsageCount'] = usageJson.length;
+            } else {
+              pending.add(index);
+            }
+          }
+
+          if (pending.isNotEmpty) {
+            late final Map<String, List<GlobalUsageEntry>> fetched;
+            try {
+              fetched = await ctx.backend.globalUsageBatch(
+                pending.map((index) => items[index].title).toList(),
+                limit: usageLimit,
+              );
+            } catch (e) {
+              enrichWarnings.add(
+                  'Skipped global usage batch at item ${pending.first + 1} after retries: $e');
+              for (final index in pending) {
+                rows[index]['globalUsage'] = null;
+                rows[index]['globalUsageCount'] = null;
+              }
+              fetched = const <String, List<GlobalUsageEntry>>{};
+            }
+            for (final index in pending) {
+              final item = items[index];
+              final title = item.title.startsWith('File:')
+                  ? item.title
+                  : 'File:${item.title}';
+              final fetchedEntries = fetched[title];
+              if (fetchedEntries == null) {
+                // The batch itself failed; do not negative-cache a transport
+                // failure as if Wikimedia had returned an empty usage list.
+                rows[index]['globalUsage'] = null;
+                rows[index]['globalUsageCount'] = null;
+                continue;
+              }
+              final entries =
+                  fetchedEntries.map((entry) => entry.toJson()).toList();
+              rows[index]['globalUsage'] = entries;
+              rows[index]['globalUsageCount'] = entries.length;
+              if (ctx.cache != null) {
+                await ctx.cache!.putMetadata(
+                  _enrichmentCacheKey('globalUsage:$usageLimit', item),
+                  {'entries': entries},
+                );
+              }
+            }
+          }
+        }
+
         return NodeOutput.materialized(
           items,
           records: rows,
-          warning: cap < items.length
-              ? 'Enriched $cap of ${items.length} items. Increase the cap to process more.'
-              : null,
+          warning: <String>[
+            if (input.warning != null) input.warning!,
+            if (cap < items.length)
+              'Enriched $cap of ${items.length} items. Increase the cap to process more.',
+            ...enrichWarnings,
+          ].join(' ').trim().isEmpty
+              ? null
+              : <String>[
+                  if (input.warning != null) input.warning!,
+                  if (cap < items.length)
+                    'Enriched $cap of ${items.length} items. Increase the cap to process more.',
+                  ...enrichWarnings,
+                ].join(' '),
         );
 
       default:
@@ -630,6 +789,20 @@ mixin _PipelineCollectionOperations {
     return output.items!
         .map((item) => Map<String, dynamic>.from(item.toJson()))
         .toList();
+  }
+
+  Map<String, dynamic>? _metadataPayloadFor(
+      Map<String, Map<String, dynamic>> fetched, String title) {
+    final bare = title.startsWith('File:') ? title.substring(5) : title;
+    return fetched['File:$bare'] ?? fetched[bare];
+  }
+
+  String _enrichmentCacheKey(String bundle, SearchItem item) {
+    final revisionKey = item.sha1.isNotEmpty
+        ? item.sha1
+        : '${item.pageId ?? ''}|${item.timestamp ?? item.uploadDateTime}';
+    return 'pipeline-metadata-v2|$bundle|'
+        '${Uri.encodeComponent(item.title)}|${Uri.encodeComponent(revisionKey)}';
   }
 
   NodeOutput _selectIndexes(NodeOutput input, List<int> indexes) {

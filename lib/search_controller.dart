@@ -34,6 +34,16 @@ final structuredDataProvider =
   return ref.watch(commonsBackendProvider).structuredData(fileTitle);
 });
 
+/// Pipeline previews intentionally omit the expensive extmetadata block from
+/// their bulk search response. Hydrate that block only when the asset viewer
+/// actually needs reuse/licensing details for a file that does not already
+/// have them. Riverpod caches the result by title, so navigating back to the
+/// same file does not repeat the request.
+final reuseMetadataProvider =
+    FutureProvider.family<SearchItem?, String>((ref, fileTitle) {
+  return ref.watch(commonsBackendProvider).fetchItem(fileTitle);
+});
+
 /// Files CirrusSearch considers similar to [fileTitle], via its own
 /// `morelike:` keyword (see SearchService.buildQuery / SearchState.
 /// morelikeTitles) — the same mechanism the advanced filters drawer

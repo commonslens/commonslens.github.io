@@ -12,8 +12,9 @@ class MediaSearchResult {
   final bool hasMore;
   final String? error;
 
-  /// Non-fatal page-level warning, such as a skipped batch after its retry
-  /// budget was exhausted.
+  /// Non-fatal page-level warning. Pipeline profiles may skip a page after
+  /// retries are exhausted and carry this warning forward; the interactive
+  /// UI profile remains strict and returns an error instead.
   final String? warning;
 
   /// Opaque, JSON-serializable. Hand it back as [CommonsBackend.search]'s
@@ -137,6 +138,7 @@ class CommonsBackend {
     Map<String, dynamic>? continueToken,
     bool includeThumbnailUrls = true,
     SearchRequestProfile requestProfile = SearchRequestProfile.ui,
+    int? pageSizeOverride,
   }) async {
     final built = _service.buildQuery(filters);
 
@@ -155,6 +157,7 @@ class CommonsBackend {
       continueParams: continueToken,
       includeThumbWidth: includeThumbnailUrls,
       requestProfile: requestProfile,
+      pageSizeOverride: pageSizeOverride,
     );
 
     if (result == null) {
@@ -211,6 +214,7 @@ class CommonsBackend {
       hasMore: result.continueParams != null,
       continueToken: result.continueParams,
       queryUsed: 'allimages:$username',
+      warning: result.warning,
     );
   }
 
@@ -218,13 +222,12 @@ class CommonsBackend {
   Future<SearchItem?> fetchItem(String fileIdOrTitle) =>
       _service.fetchSingleItem(fileIdOrTitle);
 
-  /// Every stored revision of a file, newest first — its upload/edit
-  /// history, not just the current version [fetchItem] returns. Not
-  /// paginated the way [search]/[authorUploads] are: this is a single
-  /// bounded list (`limit`, default 20), not an opaque-continuation feed.
-  Future<List<FileRevision>> fileHistory(String fileIdOrTitle,
-          {int limit = 20}) =>
-      _service.fetchFileHistory(fileIdOrTitle, limit: limit);
+  /// Returns raw non-extmetadata imageinfo/page metadata for a batch of files.
+  /// Callers should keep batches small because technical metadata can be
+  /// considerably larger than ordinary search results.
+  Future<Map<String, Map<String, dynamic>>> imageMetadataBatch(
+          List<String> fileIdsOrTitles) =>
+      _service.fetchImageMetadataBatch(fileIdsOrTitles);
 
   /// A file's full Structured Data on Commons entity — multilingual
   /// captions plus every structured statement (creator, institution,
@@ -234,6 +237,15 @@ class CommonsBackend {
   /// entity, or on any fetch failure.
   Future<StructuredDataResult?> structuredData(String fileIdOrTitle) =>
       _service.fetchStructuredData(fileIdOrTitle);
+
+  /// Batched Structured Data read-through for pipeline enrichment. Existing
+  /// page IDs from the source search may be supplied to avoid repeating the
+  /// initial `prop=info` lookup.
+  Future<Map<String, StructuredDataResult>> structuredDataBatch(
+    List<String> fileIdsOrTitles, {
+    Map<String, int?>? pageIds,
+  }) =>
+      _service.fetchStructuredDataBatch(fileIdsOrTitles, pageIds: pageIds);
 
   /// Pure geographic browse — either a radius around ([lat], [lng]) or a
   /// literal rectangle via [boundingBox] ([northLat, westLng, southLat,
@@ -296,6 +308,13 @@ class CommonsBackend {
   Future<List<GlobalUsageEntry>> globalUsage(String fileIdOrTitle,
           {int limit = 500}) =>
       _service.fetchGlobalUsage(fileIdOrTitle, limit: limit);
+
+  /// Batched global-usage lookup for pipeline enrichment.
+  Future<Map<String, List<GlobalUsageEntry>>> globalUsageBatch(
+    List<String> fileIdsOrTitles, {
+    int limit = 500,
+  }) =>
+      _service.fetchGlobalUsageBatch(fileIdsOrTitles, limit: limit);
 
   Future<BrowseResult<CategoryItem>> browseCategories({
     String? prefix,

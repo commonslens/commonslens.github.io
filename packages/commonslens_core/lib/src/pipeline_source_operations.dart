@@ -4,7 +4,20 @@ part of 'pipeline_engine.dart';
 // partial result. The old implementation cached a truncated result after a
 // later continuation page failed; those entries must never satisfy an
 // unlimited CSV run.
-const _pipelineQueryCacheVersion = 'pipeline-query-v2';
+const _pipelineQueryCacheVersion = 'pipeline-query-v5';
+
+int _resumePageSize(
+  Map<String, dynamic>? continueToken, {
+  required int targetPageSize,
+}) {
+  final rawOffset = continueToken?['gsroffset'];
+  final offset = rawOffset is num
+      ? rawOffset.toInt()
+      : int.tryParse(rawOffset?.toString() ?? '');
+  if (offset == null || offset <= 0) return targetPageSize;
+  final remainder = targetPageSize - (offset % targetPageSize);
+  return remainder == targetPageSize ? targetPageSize : remainder;
+}
 
 mixin _PipelineSourceOperations {
   Future<NodeOutput> _executeSource(
@@ -180,28 +193,42 @@ mixin _PipelineSourceOperations {
 
   Future<NodeOutput> _materializeAuthor(
       String username, PipelineExecutionContext ctx) async {
-    final cap = ctx.effectiveMaxItems;
     // Not a CirrusSearch query, so there's no buildQuerySignature for it —
     // this synthetic signature is what lets the same query-result cache
     // (see PipelineCache) also cover author portfolios, which otherwise
     // wouldn't cache at all despite being just as re-run-heavy as any
     // other source during pipeline iteration.
     final signature =
-        '$_pipelineQueryCacheVersion|author:$username|pipelineCap=${cap ?? "all"}|pageSize=${ctx.requestProfile.pageSize}';
+        '$_pipelineQueryCacheVersion|author:$username|profile=${ctx.requestProfile.cacheKey}';
 
+    var items = <SearchItem>[];
+    Map<String, dynamic>? continueToken;
+    int? totalHits;
+    var complete = false;
+    var cachedWarnings = <String>[];
     if (ctx.cache != null) {
-      final cached = await ctx.cache!.getQueryResult(signature);
+      final cached = await ctx.cache!.getQuerySnapshot(signature);
       if (cached != null) {
-        final items = ctx.applyItemLimit(cached);
-        ctx.onFetchProgress?.call(items.length, null);
-        return NodeOutput.materialized(items);
+        items = cached.items.toList();
+        continueToken = cached.continueToken;
+        totalHits = cached.totalHits;
+        complete = cached.complete;
+        cachedWarnings = cached.warnings.toList();
+        if (complete || !ctx.shouldFetchMore(items.length)) {
+          final capped = ctx.applyItemLimit(items);
+          ctx.onFetchProgress?.call(capped.length, totalHits);
+          return NodeOutput.materialized(
+            capped,
+            totalHits: totalHits,
+            warning: cachedWarnings.isEmpty ? null : cachedWarnings.join(' '),
+          );
+        }
       }
     }
 
-    final items = <SearchItem>[];
-    Map<String, dynamic>? continueToken;
     String? error;
     var cancelled = false;
+    final warnings = cachedWarnings;
     while (ctx.shouldFetchMore(items.length)) {
       if (ctx.beforeFetchPage != null && !await ctx.beforeFetchPage!.call()) {
         cancelled = true;
@@ -216,25 +243,58 @@ mixin _PipelineSourceOperations {
         error = result.error;
         break;
       }
+      if (result.warning != null) warnings.add(result.warning!);
       items.addAll(result.items);
-      ctx.onFetchProgress
-          ?.call(ctx.applyItemLimit(items).length, result.totalHits);
-      if (!result.hasMore) break;
+      ctx.onFetchProgress?.call(
+          ctx.applyItemLimit(items).length, result.totalHits ?? totalHits);
+      totalHits = result.totalHits ?? totalHits;
+      if (!result.hasMore) {
+        complete = true;
+        continueToken = null;
+        break;
+      }
       continueToken = result.continueToken;
+      if (ctx.cache != null && !cancelled) {
+        await ctx.cache!.putQuerySnapshot(
+          signature,
+          PipelineQuerySnapshot(
+            items: items,
+            continueToken: continueToken,
+            totalHits: totalHits,
+            complete: false,
+            warnings: warnings,
+            pageSize: ctx.requestProfile.pageSize,
+          ),
+        );
+      }
     }
     // Permanent failures must not turn a partial author result into a
     // successful export.
     if (error != null) return NodeOutput.errorResult(error);
     final capped = ctx.applyItemLimit(items);
 
-    if (ctx.cache != null && !cancelled) {
-      await ctx.cache!.putQueryResult(signature, capped);
+    if (ctx.cache != null &&
+        !cancelled &&
+        (complete || !ctx.shouldFetchMore(items.length))) {
+      await ctx.cache!.putQuerySnapshot(
+        signature,
+        PipelineQuerySnapshot(
+          items: items,
+          continueToken: continueToken,
+          totalHits: totalHits,
+          complete: complete,
+          warnings: warnings,
+          pageSize: ctx.requestProfile.pageSize,
+        ),
+      );
     }
     return NodeOutput.materialized(
       capped,
       warning: cancelled
           ? 'Run cancelled after ${capped.length} records were loaded.'
-          : null,
+          : warnings.isEmpty
+              ? null
+              : warnings.join(' '),
     );
   }
 }
@@ -249,25 +309,57 @@ mixin _PipelineSourceOperations {
 Future<NodeOutput> _materializeState(
     SearchState state, PipelineExecutionContext ctx) async {
   final baseSignature = ctx.backend.buildQuerySignature(state);
-  final cap = ctx.effectiveMaxItems;
+  // The cap and page size are deliberately excluded: a 100-item preview and
+  // an unlimited export are two consumers of the same source stream. The
+  // cached continuation token lets the latter resume after the preview prefix
+  // instead of replaying it. The first ETL request bridges any partial
+  // preview page boundary; subsequent ETL requests are 200 rows.
   final signature =
-      '$_pipelineQueryCacheVersion|$baseSignature|pipelineCap=${cap ?? "all"}|pageSize=${ctx.requestProfile.pageSize}';
+      '$_pipelineQueryCacheVersion|$baseSignature|profile=${ctx.requestProfile.cacheKey}';
 
+  var items = <SearchItem>[];
+  Map<String, dynamic>? continueToken;
+  int? totalHits;
+  var complete = false;
+  var warnings = <String>[];
+  final targetPageSize = ctx.requestProfile.pageSize;
+  var requestPageSize = targetPageSize;
   if (ctx.cache != null) {
-    final cached = await ctx.cache!.getQueryResult(signature);
+    final cached = await ctx.cache!.getQuerySnapshot(signature);
     if (cached != null) {
-      final items = ctx.applyItemLimit(cached);
-      ctx.onFetchProgress?.call(items.length, null);
-      return NodeOutput.materialized(items);
+      items = cached.items.toList();
+      continueToken = cached.continueToken;
+      totalHits = cached.totalHits;
+      complete = cached.complete;
+      warnings = cached.warnings.toList();
+      if (ctx.requestProfile == SearchRequestProfile.pipelineEtl &&
+          cached.pageSize != null &&
+          cached.pageSize! < targetPageSize &&
+          continueToken != null) {
+        // Preview pages are 50 while ETL pages are 200. The first ETL
+        // request after a preview uses only the number needed to reach the
+        // next 200-row boundary, avoiding both overlap and a duplicate API
+        // download. Later requests use the normal 200-row page.
+        requestPageSize = _resumePageSize(
+          continueToken,
+          targetPageSize: targetPageSize,
+        );
+      }
+      if (complete || !ctx.shouldFetchMore(items.length)) {
+        final capped = ctx.applyItemLimit(items);
+        ctx.onFetchProgress?.call(capped.length, totalHits);
+        return NodeOutput.materialized(
+          capped,
+          totalHits: totalHits,
+          warning: warnings.isEmpty ? null : warnings.join(' '),
+        );
+      }
     }
   }
 
-  final items = <SearchItem>[];
-  Map<String, dynamic>? continueToken;
-  int? totalHits;
   String? error;
   var cancelled = false;
-  final warnings = <String>[];
+  final seenUrls = items.map((item) => item.url).toSet();
 
   while (ctx.shouldFetchMore(items.length)) {
     if (ctx.beforeFetchPage != null && !await ctx.beforeFetchPage!.call()) {
@@ -279,17 +371,38 @@ Future<NodeOutput> _materializeState(
       continueToken: continueToken,
       includeThumbnailUrls: ctx.includeThumbnailUrls,
       requestProfile: ctx.requestProfile,
+      pageSizeOverride: requestPageSize,
     );
     if (!result.ok) {
       error = result.error;
       break;
     }
     if (result.warning != null) warnings.add(result.warning!);
-    items.addAll(result.items);
+    for (final item in result.items) {
+      if (seenUrls.add(item.url)) items.add(item);
+    }
     totalHits = result.totalHits ?? totalHits;
     ctx.onFetchProgress?.call(ctx.applyItemLimit(items).length, totalHits);
-    if (!result.hasMore) break;
+    if (!result.hasMore) {
+      complete = true;
+      continueToken = null;
+      break;
+    }
     continueToken = result.continueToken;
+    requestPageSize = targetPageSize;
+    if (ctx.cache != null && !cancelled) {
+      await ctx.cache!.putQuerySnapshot(
+        signature,
+        PipelineQuerySnapshot(
+          items: items,
+          continueToken: continueToken,
+          totalHits: totalHits,
+          complete: false,
+          warnings: warnings,
+          pageSize: requestPageSize,
+        ),
+      );
+    }
   }
 
   // Never turn a failed continuation page into a successful partial result.
@@ -297,8 +410,20 @@ Future<NodeOutput> _materializeState(
 
   final capped = ctx.applyItemLimit(items);
 
-  if (ctx.cache != null && !cancelled && warnings.isEmpty) {
-    await ctx.cache!.putQueryResult(signature, capped);
+  if (ctx.cache != null &&
+      !cancelled &&
+      (complete || !ctx.shouldFetchMore(items.length))) {
+    await ctx.cache!.putQuerySnapshot(
+      signature,
+      PipelineQuerySnapshot(
+        items: items,
+        continueToken: continueToken,
+        totalHits: totalHits,
+        complete: complete,
+        warnings: warnings,
+        pageSize: requestPageSize,
+      ),
+    );
   }
 
   return NodeOutput.materialized(

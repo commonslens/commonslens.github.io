@@ -1,13 +1,13 @@
 part of 'pipeline_page.dart';
 
 // -----------------------------------------------------------------------------
-// Inspector panel — a tabbed per-node workspace: SETTINGS (the generic
-// field-spec form + bespoke Depicts/Statement editor + sink actions),
-// PREVIEW (this node's actual last-run output as a browsable media grid), and NOTES
-// (a freeform per-node scratchpad, stored in node.config['_note']).
+// Inspector panel — SETTINGS (the generic field-spec form + bespoke
+// Depicts/Statement editor + sink actions) and NOTES (a freeform per-node
+// scratchpad, stored in node.config['_note']). Materialized output opens in a
+// dedicated full-screen preview page.
 // -----------------------------------------------------------------------------
 
-enum _InspectorTab { settings, preview, notes }
+enum _InspectorTab { settings, notes }
 
 class _InspectorPanel extends ConsumerStatefulWidget {
   final String? nodeId;
@@ -138,6 +138,18 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                     size: 17, color: Colors.white54),
                 onPressed: () => controller.duplicateNode(node.id),
               ),
+              if (controller.outputFor(node.id)?.isMaterialized == true)
+                IconButton(
+                  tooltip: 'Preview dataset',
+                  icon: const Icon(Icons.visibility_outlined,
+                      size: 17, color: _kAccent),
+                  onPressed: () => openPipelinePreview(
+                    context,
+                    nodeId: node.id,
+                    title: node.title,
+                    output: controller.outputFor(node.id)!,
+                  ),
+                ),
               IconButton(
                 tooltip: 'Delete node',
                 icon:
@@ -200,7 +212,6 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
 
     return Row(children: [
       seg('SETTINGS', Icons.tune_rounded, _InspectorTab.settings),
-      seg('PREVIEW', Icons.visibility_outlined, _InspectorTab.preview),
       seg('NOTES', Icons.notes_rounded, _InspectorTab.notes),
     ]);
   }
@@ -209,8 +220,6 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     switch (_tab) {
       case _InspectorTab.settings:
         return _buildSettingsTab(node, controller);
-      case _InspectorTab.preview:
-        return _buildPreviewTab(node, controller);
       case _InspectorTab.notes:
         return _buildNotesTab(node, controller);
     }
@@ -239,12 +248,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
         ),
         if (node.type == PipelineNodeType.sinkCsvExport) ...[
           const SizedBox(height: 14),
-          _exportGuidanceCard(
-            icon: Icons.dataset_outlined,
-            title: 'One-way export',
-            text:
-                'Preview checks 100 records. Run fetches every match and downloads one metadata CSV. No image files are downloaded.',
-          ),
+          _manifestIntroCard(),
         ],
         if (node.type == PipelineNodeType.transformEnrich) ...[
           const SizedBox(height: 14),
@@ -256,8 +260,10 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           ),
         ],
         const SizedBox(height: 20),
-        const Text(
-          'CONFIGURATION',
+        Text(
+          node.type == PipelineNodeType.sinkCsvExport
+              ? 'MANIFEST SETUP'
+              : 'CONFIGURATION',
           style: TextStyle(
             color: _kMuted,
             fontSize: 10,
@@ -266,7 +272,15 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           ),
         ),
         const SizedBox(height: 10),
-        if (isEntriesType)
+        if (node.type == PipelineNodeType.sinkCsvExport)
+          _DatasetManifestConfiguration(
+            node: node,
+            onChanged: (key, value) => controller.updateNodeConfig(
+              node.id,
+              {...node.config, key: value},
+            ),
+          )
+        else if (isEntriesType)
           _EntriesEditor(node: node)
         else if (specs.isNotEmpty)
           for (final spec in specs) ...[
@@ -284,7 +298,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
           const SizedBox(height: 8),
           const Divider(color: _kBorder),
           const SizedBox(height: 12),
-          const Text('ACTIONS',
+          const Text('EXPORT ACTIONS',
               style: TextStyle(
                   color: _kMuted,
                   fontSize: 10,
@@ -302,6 +316,64 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
             ),
         ],
       ],
+    );
+  }
+
+  Widget _manifestIntroCard() {
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: _kAccent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: _kAccent.withValues(alpha: 0.32)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.dataset_outlined, size: 18, color: _kAccent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'What this node does',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Creates one CSV row per matched file. Choose the columns and URLs to keep below.',
+                      style: TextStyle(
+                          color: Colors.white60, fontSize: 11, height: 1.45),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 11),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: const [
+              _ManifestInfoChip(
+                  icon: Icons.table_chart_outlined, label: 'OUTPUT: CSV'),
+              _ManifestInfoChip(
+                  icon: Icons.image_not_supported_outlined,
+                  label: 'IMAGE FILES: NOT DOWNLOADED'),
+              _ManifestInfoChip(
+                  icon: Icons.data_usage_outlined,
+                  label: 'PREVIEW: FIRST 100 ROWS'),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -354,7 +426,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
       case PipelineNodeCategory.transform:
         text = type == PipelineNodeType.transformDedupe
             ? 'Dedupes its input by URL — no configuration needed.'
-            : 'Not implemented yet — items pass through unchanged. See the PREVIEW tab once you run the pipeline.';
+            : 'Not implemented yet — items pass through unchanged. Run the pipeline to inspect the resulting dataset.';
         break;
       case PipelineNodeCategory.sink:
         text = 'Connect an upstream branch, then use the action below.';
@@ -374,47 +446,77 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
     switch (node.type) {
       case PipelineNodeType.sinkCsvExport:
         return [
-          _actionButton(
-            Icons.visibility_outlined,
-            'Preview 100 Images (Recommended)',
-            enabled
-                ? () async {
-                    await controller.run(
-                      preview: true,
-                      includeThumbnailUrls: true,
-                    );
-                    final error = ref.read(pipelineControllerProvider).runError;
-                    if (!mounted) return;
-                    if (error == null) {
-                      setState(() => _tab = _InspectorTab.preview);
+          _ManifestAction(
+            icon: Icons.visibility_outlined,
+            title: 'Preview 100 records',
+            description:
+                'Quickly check the first 100 rows. This opens the image grid and the raw table.',
+            child: _actionButton(
+              Icons.visibility_outlined,
+              'Preview 100 records',
+              enabled
+                  ? () async {
+                      await controller.run(
+                        preview: true,
+                        includeThumbnailUrls: true,
+                      );
+                      final output = controller.outputFor(node.id);
+                      final runError =
+                          ref.read(pipelineControllerProvider).runError;
+                      final error = runError ??
+                          output?.error ??
+                          (output?.isMaterialized == true
+                              ? null
+                              : 'The manifest did not produce a previewable output.');
+                      if (!mounted) return;
+                      if (error == null) {
+                        if (output?.isMaterialized == true) {
+                          await openPipelinePreview(
+                            context,
+                            nodeId: node.id,
+                            title: node.title,
+                            output: output!,
+                          );
+                        }
+                      }
+                      widget.onSinkResult(
+                        error,
+                        error == null ? 'Preview ready.' : null,
+                      );
                     }
-                    widget.onSinkResult(
-                      error,
-                      error == null
-                          ? 'Preview ready: up to 100 records shown below.'
-                          : null,
-                    );
-                  }
-                : null,
-            primary: true,
+                  : null,
+              primary: true,
+            ),
           ),
-          _actionButton(
-            Icons.play_arrow_rounded,
-            'Run pipeline',
-            enabled
-                ? () async {
-                    final error = await controller.generateManifest(
-                      node.id,
-                      fileName: node.config['fileName'] as String? ??
-                          'commonslens_manifest',
-                    );
-                    final count = controller.materializedItemCountFor(node.id);
-                    widget.onSinkResult(
-                      error,
-                      count == null ? null : '$count records exported as CSV.',
-                    );
-                  }
-                : null,
+          _ManifestAction(
+            icon: Icons.download_outlined,
+            title: 'Run full export',
+            description:
+                'Fetches every match and downloads the CSV using the settings above.',
+            child: _actionButton(
+              Icons.download_outlined,
+              'Run full export',
+              enabled
+                  ? () async {
+                      final configuredFileName =
+                          (node.config['fileName'] as String?)?.trim();
+                      final error = await controller.generateManifest(
+                        node.id,
+                        fileName: configuredFileName?.isNotEmpty == true
+                            ? configuredFileName!
+                            : 'commonslens_manifest',
+                      );
+                      final count =
+                          controller.materializedItemCountFor(node.id);
+                      widget.onSinkResult(
+                        error,
+                        count == null
+                            ? null
+                            : '$count records exported as CSV.',
+                      );
+                    }
+                  : null,
+            ),
           ),
         ];
       case PipelineNodeType.sinkJsonExport:
@@ -451,7 +553,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                     disabledForegroundColor: Colors.white38,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(5)),
                   ),
                   icon: Icon(icon, size: 16),
                   label: Text(label,
@@ -466,7 +568,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                     side: const BorderSide(color: Color(0xFF2A4A8A)),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(5)),
                   ),
                   icon: Icon(icon, size: 16),
                   label: Text(label,
@@ -475,208 +577,6 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                 ),
         ),
       );
-
-  // ---- PREVIEW ----
-
-  Widget _buildPreviewTab(PipelineNode node, PipelineController controller) {
-    final output = controller.outputFor(node.id);
-
-    if (output == null) {
-      return _centeredHint(
-          'Choose Preview 100 Images on the Dataset Manifest sink to inspect the CSV-shaped output here.',
-          icon: Icons.play_circle_outline);
-    }
-    if (output.hasError) {
-      return _centeredHint(output.error ?? 'This node failed.',
-          color: _kError, icon: Icons.error_outline);
-    }
-    if (output.isPending) {
-      return _centeredHint(
-        'Folded into the upstream query — nothing fetched yet. Connect a Set-op, Transform, or Sink downstream to materialize it, then re-run.',
-        icon: Icons.hourglass_empty_rounded,
-      );
-    }
-
-    final items = output.items ?? const [];
-    const renderCap = 100;
-    final visibleItems = items.take(renderCap).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 8),
-          child: Row(
-            children: [
-              Text(
-                  items.length > renderCap
-                      ? '${visibleItems.length} of ${items.length} records'
-                      : '${items.length} record${items.length == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700)),
-              if (output.totalHits != null) ...[
-                const SizedBox(width: 6),
-                Text('of ~${output.totalHits}',
-                    style: const TextStyle(color: _kMuted, fontSize: 11)),
-              ],
-            ],
-          ),
-        ),
-        if (output.warning != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                  color: _kWarning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _kWarning.withValues(alpha: 0.4))),
-              child: Text(output.warning!,
-                  style: const TextStyle(
-                      color: _kWarning, fontSize: 11, height: 1.4)),
-            ),
-          ),
-        Expanded(
-          child: visibleItems.isEmpty
-              ? _centeredHint('No items matched at this stage.',
-                  icon: Icons.filter_alt_off_outlined)
-              : Column(
-                  children: [
-                    if (items.length > renderCap)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-                        child: Text(
-                            'Preview is capped at $renderCap records. Run pipeline to fetch every match and download the CSV.',
-                            style: const TextStyle(
-                                color: _kMuted, fontSize: 10.5)),
-                      ),
-                    Expanded(
-                      child: _buildPreviewRecordTable(visibleItems),
-                    ),
-                  ],
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _centeredHint(String text,
-      {Color color = _kMuted, IconData icon = Icons.info_outline}) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 26, color: color.withValues(alpha: 0.7)),
-            const SizedBox(height: 10),
-            Text(text,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: color, fontSize: 12, height: 1.5)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // A deliberately compact CSV-shaped viewer: every row is one record, with
-  // the image preview beside the same title, metadata, and URL fields that
-  // the manifest export exposes. It keeps the audit step honest without
-  // creating a second image-only browsing workflow.
-  Widget _buildPreviewRecordTable(List<SearchItem> items) {
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        final previewUrl = item.thumb.isNotEmpty ? item.thumb : item.url;
-        final dimensions = item.width > 0 && item.height > 0
-            ? '${item.width} × ${item.height}'
-            : 'Dimensions unavailable';
-        final fileSize = item.fileSizeBytes > 0
-            ? _formatPreviewBytes(item.fileSizeBytes)
-            : 'Size unavailable';
-
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _kFieldBg,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _kBorder),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(5),
-                child: SizedBox(
-                  width: 58,
-                  height: 58,
-                  child: item.isSvg
-                      ? const ColoredBox(
-                          color: Color(0xFF252525),
-                          child: Icon(Icons.broken_image_outlined,
-                              color: Colors.white54, size: 22),
-                        )
-                      : Image.network(
-                          previewUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => const ColoredBox(
-                            color: Color(0xFF252525),
-                            child: Icon(Icons.broken_image_outlined,
-                                color: Colors.white54, size: 22),
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${item.mime.isEmpty ? 'Unknown type' : item.mime}  ·  $dimensions  ·  $fileSize',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: _kMuted, fontSize: 9.5),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: _kAccent, fontSize: 9.5, height: 1.2),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  String _formatPreviewBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-  }
 
   // ---- NOTES ----
 
@@ -812,6 +712,337 @@ class _NodeOverviewCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManifestInfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ManifestInfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      decoration: BoxDecoration(
+        color: _kFieldBg,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: _kMuted),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white60,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ManifestAction extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final Widget child;
+
+  const _ManifestAction({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 14, color: _kAccent),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(description,
+                      style: const TextStyle(
+                          color: _kMuted, fontSize: 10.5, height: 1.35)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        child,
+      ],
+    );
+  }
+}
+
+class _DatasetManifestConfiguration extends StatelessWidget {
+  final PipelineNode node;
+  final void Function(String key, dynamic value) onChanged;
+
+  const _DatasetManifestConfiguration({
+    required this.node,
+    required this.onChanged,
+  });
+
+  InputDecoration _fileNameDecoration() => InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: _kFieldBg,
+        hintText: 'commonslens_manifest',
+        hintStyle: const TextStyle(color: Color(0xFF555566), fontSize: 11.5),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none),
+      );
+
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(
+          text,
+          style: const TextStyle(
+            color: _kMuted,
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.65,
+          ),
+        ),
+      );
+
+  Widget _sectionHelp(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(
+          text,
+          style: const TextStyle(color: _kMuted, fontSize: 10.5, height: 1.4),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final metadata = node.config['metadataLevel'] as String? ?? 'detailed';
+    final links = node.config['imageLinks'] as String? ?? 'both';
+    final fileName = node.config['fileName'] as String? ?? '';
+    final displayFileName = fileName.trim().isEmpty
+        ? 'commonslens_manifest'
+        : fileName
+            .trim()
+            .replaceFirst(RegExp(r'\.csv$', caseSensitive: false), '');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('CSV COLUMNS'),
+        _sectionHelp(
+            'This is not a filter. It decides which columns are written for each image.'),
+        _ManifestChoice(
+          title: _manifestMetadataLabel('essential'),
+          description: _manifestMetadataDescription('essential'),
+          selected: metadata == 'essential',
+          onTap: () => onChanged('metadataLevel', 'essential'),
+        ),
+        const SizedBox(height: 7),
+        _ManifestChoice(
+          title: _manifestMetadataLabel('detailed'),
+          description: _manifestMetadataDescription('detailed'),
+          badge: 'RECOMMENDED',
+          selected: metadata == 'detailed',
+          onTap: () => onChanged('metadataLevel', 'detailed'),
+        ),
+        const SizedBox(height: 7),
+        _ManifestChoice(
+          title: _manifestMetadataLabel('full'),
+          description: _manifestMetadataDescription('full'),
+          selected: metadata == 'full',
+          onTap: () => onChanged('metadataLevel', 'full'),
+        ),
+        const SizedBox(height: 8),
+        _ManifestNote(
+          icon: Icons.info_outline_rounded,
+          text:
+              'Full does not create extra API calls by itself. To add Structured Data, global usage, or technical imageinfo, connect an Enrich node first.',
+        ),
+        const SizedBox(height: 20),
+        _sectionLabel('IMAGE LINKS PER ROW'),
+        _sectionHelp(
+            'Choose which URLs the CSV stores. The image files themselves are not downloaded.'),
+        _ManifestChoice(
+          title: _manifestImageLinksLabel('original'),
+          description: _manifestImageLinksDescription('original'),
+          selected: links == 'original',
+          onTap: () => onChanged('imageLinks', 'original'),
+        ),
+        const SizedBox(height: 7),
+        _ManifestChoice(
+          title: _manifestImageLinksLabel('thumbnail'),
+          description: _manifestImageLinksDescription('thumbnail'),
+          selected: links == 'thumbnail',
+          onTap: () => onChanged('imageLinks', 'thumbnail'),
+        ),
+        const SizedBox(height: 7),
+        _ManifestChoice(
+          title: _manifestImageLinksLabel('both'),
+          description: _manifestImageLinksDescription('both'),
+          selected: links == 'both',
+          onTap: () => onChanged('imageLinks', 'both'),
+        ),
+        const SizedBox(height: 20),
+        _sectionLabel('OUTPUT FILE'),
+        _BufferedConfigTextField(
+          key: ValueKey('manifest-file-name-${node.id}'),
+          value: fileName,
+          decoration: _fileNameDecoration(),
+          parse: (value) => value,
+          onChanged: (value) => onChanged('fileName', value),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'The browser will download $displayFileName.csv',
+          style: const TextStyle(color: _kMuted, fontSize: 10.5),
+        ),
+      ],
+    );
+  }
+}
+
+class _ManifestChoice extends StatelessWidget {
+  final String title;
+  final String description;
+  final String? badge;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ManifestChoice({
+    required this.title,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: selected ? _kAccent.withValues(alpha: 0.1) : _kFieldBg,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: selected ? _kAccent : _kBorder),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 18,
+              color: selected ? _kAccent : _kMuted,
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(title,
+                            style: TextStyle(
+                                color: selected ? Colors.white : Colors.white70,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 7),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: _kSuccess.withValues(alpha: 0.13),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            badge!,
+                            style: const TextStyle(
+                              color: _kSuccess,
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(description,
+                      style: const TextStyle(
+                          color: _kMuted, fontSize: 10.5, height: 1.35)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ManifestNote extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _ManifestNote({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: _kFieldBg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 14, color: _kMuted),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Text(text,
+                style:
+                    const TextStyle(color: _kMuted, fontSize: 10, height: 1.4)),
           ),
         ],
       ),

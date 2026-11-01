@@ -1157,6 +1157,7 @@ class SearchItem {
   final String snippet;
   final String mime;
   final bool isSvg;
+  final int? pageId;
   final String? timestamp;
   final String? descriptionUrl;
 
@@ -1211,6 +1212,7 @@ class SearchItem {
     required this.snippet,
     required this.mime,
     required this.isSvg,
+    this.pageId,
     this.timestamp,
     this.descriptionUrl,
     this.artistHtml = '',
@@ -1273,6 +1275,66 @@ class SearchItem {
     );
   }
 
+  /// Returns a safe, display-sized preview URL even when the API response did
+  /// not include a distinct `thumburl`. Search results can legitimately fall
+  /// back to the original file URL after a thumbnail-scaling failure; using
+  /// that original directly in a grid makes a large result set painfully slow.
+  /// For standard Wikimedia upload URLs we can derive the equivalent thumb
+  /// path locally without another API request.
+  String? previewUrlAtWidth(int width) {
+    final candidates = previewUrlCandidates(width);
+    return candidates.isEmpty ? null : candidates.first;
+  }
+
+  /// Candidate URLs for a grid preview, ordered from the smallest derivative
+  /// to the API-provided thumbnail and finally a locally-derived Wikimedia
+  /// thumbnail. A derived URL can be invalid for unusual file names or media
+  /// types, so callers should try the candidates rather than treating the
+  /// first one as authoritative.
+  List<String> previewUrlCandidates(int width) {
+    if (width <= 0) return const [];
+
+    final candidates = <String>[];
+    void add(String? candidate) {
+      if (candidate != null &&
+          candidate.isNotEmpty &&
+          !candidates.contains(candidate)) {
+        candidates.add(candidate);
+      }
+    }
+
+    add(thumbnailUrlAtWidth(width));
+    if (thumb.isNotEmpty && thumb != url) add(thumb);
+    add(_derivedPreviewUrlAtWidth(width));
+    return candidates;
+  }
+
+  String? _derivedPreviewUrlAtWidth(int width) {
+    if (width <= 0 || url.isEmpty) return null;
+
+    final parsed = Uri.tryParse(url);
+    if (parsed == null ||
+        !parsed.host.toLowerCase().endsWith('wikimedia.org')) {
+      return null;
+    }
+    final segments = parsed.pathSegments;
+    final commonsIndex = segments.indexOf('commons');
+    if (commonsIndex < 0 || commonsIndex >= segments.length - 1) return null;
+
+    final fileSegments = segments.sublist(commonsIndex + 1);
+    final fileName = fileSegments.last;
+    return parsed.replace(
+      pathSegments: [
+        ...segments.take(commonsIndex + 1),
+        'thumb',
+        ...fileSegments,
+        '${width}px-$fileName',
+      ],
+      query: null,
+      fragment: null,
+    ).toString();
+  }
+
   /// Flat map of every field — every value here is already a JSON-native
   /// primitive (String/bool/int), no nested encoding needed.
   Map<String, dynamic> toJson() => {
@@ -1283,6 +1345,7 @@ class SearchItem {
         'snippet': snippet,
         'mime': mime,
         'isSvg': isSvg,
+        'pageId': pageId,
         'timestamp': timestamp,
         'descriptionUrl': descriptionUrl,
         'artistHtml': artistHtml,
@@ -1319,6 +1382,7 @@ class SearchItem {
         snippet: json['snippet'] as String? ?? '',
         mime: json['mime'] as String? ?? '',
         isSvg: json['isSvg'] as bool? ?? false,
+        pageId: (json['pageId'] as num?)?.toInt(),
         timestamp: json['timestamp'] as String?,
         descriptionUrl: json['descriptionUrl'] as String?,
         artistHtml: json['artistHtml'] as String? ?? '',
@@ -1444,8 +1508,8 @@ class SearchResponse {
   final Map<String, dynamic>? continueParams;
 
   /// Non-fatal issues encountered while fetching this page. A pipeline export
-  /// may continue after a page is skipped, but the caller must surface this
-  /// warning and must not cache the incomplete result as a clean dataset.
+  /// may continue after a page is skipped; the warning is carried into the
+  /// resumable pipeline cache so a later run does not repeat that page.
   final String? warning;
 
   /// Wikimedia's own estimate of total matches for this query. Only ever
@@ -1587,58 +1651,6 @@ class SearchSession {
 }
 
 // -----------------------------------------------------------------------------
-// File history (revisions) — see SearchService.fetchFileHistory
-// -----------------------------------------------------------------------------
-
-/// One stored revision of a file — a re-upload, crop, rotation, or retouch
-/// over the same title. Distinct from [SearchItem], which only ever
-/// represents a file's *current* version; this is what backs a "file
-/// history" view (Commons' own File: pages have exactly this table).
-class FileRevision {
-  final String url;
-  final String thumb;
-  final String? timestamp;
-  final String uploader;
-  final String comment;
-  final int size; // bytes
-  final int width;
-  final int height;
-
-  const FileRevision({
-    required this.url,
-    required this.thumb,
-    this.timestamp,
-    this.uploader = '',
-    this.comment = '',
-    this.size = 0,
-    this.width = 0,
-    this.height = 0,
-  });
-
-  Map<String, dynamic> toJson() => {
-        'url': url,
-        'thumb': thumb,
-        'timestamp': timestamp,
-        'uploader': uploader,
-        'comment': comment,
-        'size': size,
-        'width': width,
-        'height': height,
-      };
-
-  static FileRevision fromJson(Map<String, dynamic> json) => FileRevision(
-        url: json['url'] as String? ?? '',
-        thumb: json['thumb'] as String? ?? '',
-        timestamp: json['timestamp'] as String?,
-        uploader: json['uploader'] as String? ?? '',
-        comment: json['comment'] as String? ?? '',
-        size: (json['size'] as num?)?.toInt() ?? 0,
-        width: (json['width'] as num?)?.toInt() ?? 0,
-        height: (json['height'] as num?)?.toInt() ?? 0,
-      );
-}
-
-// -----------------------------------------------------------------------------
 // Structured Data on Commons (SDC) read-back — see
 // SearchService.fetchStructuredData. Distinct from WikidataStatement above,
 // which is a property=value *filter* used to build a haswbstatement: query
@@ -1686,16 +1698,24 @@ class StructuredDataResult {
   final Map<String, String> captions; // language code -> caption text
   final List<StructuredDataStatement> statements;
 
+  /// The complete MediaInfo entity returned by Wikimedia. The typed fields
+  /// above are convenient for UI/filtering; this raw object prevents
+  /// qualifiers, references, ranks, revision data, and future API fields from
+  /// being discarded during ETL.
+  final Map<String, dynamic> raw;
+
   const StructuredDataResult({
     required this.mid,
     required this.captions,
     required this.statements,
+    this.raw = const {},
   });
 
   Map<String, dynamic> toJson() => {
         'mid': mid,
         'captions': captions,
         'statements': statements.map((s) => s.toJson()).toList(),
+        'raw': raw,
       };
 
   static StructuredDataResult fromJson(Map<String, dynamic> json) {
@@ -1712,6 +1732,9 @@ class StructuredDataResult {
           .map((m) =>
               StructuredDataStatement.fromJson(Map<String, dynamic>.from(m)))
           .toList(),
+      raw: json['raw'] is Map
+          ? Map<String, dynamic>.from(json['raw'] as Map)
+          : const {},
     );
   }
 }
@@ -1727,23 +1750,39 @@ class GlobalUsageEntry {
   final String wiki; // e.g. "en.wikipedia.org"
   final String title; // the page title on that wiki
   final String? url;
+  final int? pageId;
+  final int? namespace;
+
+  /// Original usage object, retained so future API fields are not discarded.
+  final Map<String, dynamic> raw;
 
   const GlobalUsageEntry({
     required this.wiki,
     required this.title,
     this.url,
+    this.pageId,
+    this.namespace,
+    this.raw = const {},
   });
 
   Map<String, dynamic> toJson() => {
+        ...raw,
         'wiki': wiki,
         'title': title,
         'url': url,
+        'pageid': pageId,
+        'namespace': namespace,
       };
 
-  static GlobalUsageEntry fromJson(Map<String, dynamic> json) =>
-      GlobalUsageEntry(
-        wiki: json['wiki'] as String? ?? '',
-        title: json['title'] as String? ?? '',
-        url: json['url'] as String?,
-      );
+  static GlobalUsageEntry fromJson(Map<String, dynamic> json) => (() {
+        final rawNamespace = json['namespace'] ?? json['ns'];
+        return GlobalUsageEntry(
+          wiki: json['wiki'] as String? ?? '',
+          title: json['title'] as String? ?? '',
+          url: json['url'] as String?,
+          pageId: (json['pageid'] as num?)?.toInt(),
+          namespace: rawNamespace is num ? rawNamespace.toInt() : null,
+          raw: Map<String, dynamic>.from(json),
+        );
+      })();
 }

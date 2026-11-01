@@ -1,5 +1,13 @@
 part of 'asset_viewer.dart';
 
+const _terminalPanel = Color(0xFF10151D);
+const _terminalField = Color(0xFF080B10);
+const _terminalBorder = Color(0xFF29384D);
+const _terminalBlue = Color(0xFF4D8DFF);
+const _terminalText = Color(0xFFD7DEE8);
+const _terminalMuted = Color(0xFF7C8798);
+const _terminalWarning = Color(0xFFD6A85C);
+
 class _MetadataInspector extends StatelessWidget {
   final SearchItem item;
   final _ViewerImageQuality? imageQuality;
@@ -580,9 +588,11 @@ class _RelatedMediaSection extends StatelessWidget {
                           fileTitle,
                           GoRouterState.of(context).uri.toString(),
                         );
-                        final queueId = ref.read(mediaQueueStoreProvider)
+                        final queueId = ref
+                            .read(mediaQueueStoreProvider)
                             .capture(source, items);
-                        context.push(source.urlFor(related.title, queueId: queueId));
+                        context.push(
+                            source.urlFor(related.title, queueId: queueId));
                       },
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -782,7 +792,14 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
 
   @override
   Widget build(BuildContext context) {
-    final guide = _guide;
+    final baseGuide = _guide;
+    final needsReuseMetadata = !baseGuide.hasCompleteReuseMetadata;
+    final reuseMetadata = needsReuseMetadata
+        ? ref.watch(reuseMetadataProvider(widget.item.title))
+        : null;
+    final fetchedItem = reuseMetadata?.asData?.value;
+    final guide = AssetReuseGuide(fetchedItem ?? widget.item);
+    final reuseMetadataLoading = reuseMetadata?.isLoading == true;
     final structuredData = ref.watch(structuredDataProvider(widget.item.title));
     final structuredStatements = structuredData.asData?.value?.statements ??
         const <StructuredDataStatement>[];
@@ -799,23 +816,42 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
       if (statement.propertyId == 'P275') addLicense(statement.valueDisplay);
     }
     final reportedLicenses = licensesByKey.values.toList()..sort();
+    final hasLicense =
+        guide.licenseName.isNotEmpty || reportedLicenses.isNotEmpty;
+    final rightsMetadataLoading =
+        reuseMetadataLoading || (structuredData.isLoading && !hasLicense);
+    final displayedLicense = guide.licenseName.isNotEmpty
+        ? guide.licenseName
+        : reportedLicenses.isNotEmpty
+            ? reportedLicenses.join(' / ')
+            : rightsMetadataLoading
+                ? 'Resolving Commons license metadata…'
+                : 'License information incomplete';
     final attributionStatus = guide.attributionRequired;
     final snippet = guide.snippetFor(_format);
-    final statusLabel = attributionStatus == true
-        ? 'Attribution required'
-        : attributionStatus == false
-            ? 'Attribution not flagged as required'
-            : 'Verify attribution terms';
-    final statusIcon = attributionStatus == true
-        ? Icons.person_outline
-        : attributionStatus == false
-            ? Icons.check_circle_outline
-            : Icons.help_outline;
-    final statusColor = attributionStatus == true
-        ? const Color(0xFF7AABFF)
-        : attributionStatus == false
-            ? const Color(0xFF6ED6A0)
-            : const Color(0xFFE7B75C);
+    final statusLabel = rightsMetadataLoading
+        ? 'Loading rights metadata'
+        : attributionStatus == true
+            ? 'Attribution required'
+            : attributionStatus == false
+                ? 'Attribution not flagged as required'
+                : 'Verify attribution terms';
+    final statusIcon = rightsMetadataLoading
+        ? Icons.sync_rounded
+        : attributionStatus == true
+            ? Icons.person_outline
+            : attributionStatus == false
+                ? Icons.check_circle_outline
+                : Icons.help_outline;
+    final statusColor = rightsMetadataLoading
+        ? _terminalBlue
+        : attributionStatus == true
+            ? _terminalBlue
+            : attributionStatus == false
+                ? const Color(0xFF6ED6A0)
+                : _terminalWarning;
+    final rightsMetadataIncomplete =
+        !rightsMetadataLoading && (!hasLicense || guide.creator.isEmpty);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -823,9 +859,9 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFF171717),
-            borderRadius: BorderRadius.circular(9),
-            border: Border.all(color: const Color(0xFF2A2A2A)),
+            color: _terminalPanel,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: _terminalBorder),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -837,11 +873,12 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3D7EFF).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+                      color: _terminalField,
+                      border: Border.all(color: _terminalBlue),
+                      borderRadius: BorderRadius.circular(3),
                     ),
-                    child: const Icon(Icons.verified_user_outlined,
-                        size: 19, color: Color(0xFF7AABFF)),
+                    child: const Icon(Icons.terminal_rounded,
+                        size: 18, color: _terminalBlue),
                   ),
                   const SizedBox(width: 11),
                   Expanded(
@@ -849,11 +886,11 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          guide.licenseName.isEmpty
-                              ? 'License information incomplete'
-                              : guide.licenseName,
+                          displayedLicense,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: _terminalText,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             height: 1.3,
@@ -871,6 +908,7 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
                                   color: statusColor,
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w600,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
                             ),
@@ -883,28 +921,30 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
               ),
               const SizedBox(height: 14),
               const Text(
-                'LICENSES REPORTED BY COMMONS',
+                'LICENSES // REPORTED BY COMMONS',
                 style: TextStyle(
-                  color: Color(0xFF777777),
+                  color: _terminalMuted,
                   fontSize: 9.5,
                   letterSpacing: 1.2,
                   fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
                 ),
               ),
               const SizedBox(height: 7),
-              if (structuredData.isLoading && reportedLicenses.isEmpty)
+              if (rightsMetadataLoading && reportedLicenses.isEmpty)
                 const Text(
-                  'Loading all structured license claims…',
-                  style: TextStyle(color: Color(0xFFAAAAAA), fontSize: 12),
+                  '> loading Commons rights metadata…',
+                  style: TextStyle(
+                    color: _terminalMuted,
+                    fontSize: 11.5,
+                    fontFamily: 'monospace',
+                  ),
                 )
               else if (reportedLicenses.isEmpty)
-                const Text(
-                  'No machine-readable license claims were supplied. Check the source file page before reuse.',
-                  style: TextStyle(
-                    color: Color(0xFFFFD994),
-                    fontSize: 12,
-                    height: 1.45,
-                  ),
+                const _TerminalNotice(
+                  text:
+                      'No machine-readable license claim was supplied. Check the source file page before reuse.',
+                  warning: true,
                 )
               else ...[
                 Wrap(
@@ -918,20 +958,19 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
                             vertical: 6,
                           ),
                           decoration: BoxDecoration(
-                            color:
-                                const Color(0xFF3D7EFF).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(99),
+                            color: _terminalField,
+                            borderRadius: BorderRadius.circular(3),
                             border: Border.all(
-                              color: const Color(0xFF3D7EFF)
-                                  .withValues(alpha: 0.45),
+                              color: _terminalBlue.withValues(alpha: 0.65),
                             ),
                           ),
                           child: Text(
                             license,
                             style: const TextStyle(
-                              color: Color(0xFFBFD4FF),
+                              color: _terminalBlue,
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
+                              fontFamily: 'monospace',
                             ),
                           ),
                         ),
@@ -940,23 +979,22 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
                 ),
                 const SizedBox(height: 7),
                 const Text(
-                  'Includes the primary label and every structured copyright-license claim. The source page remains authoritative for template-only terms.',
+                  '// Includes the primary label and structured copyright-license claims. The source page remains authoritative for template-only terms.',
                   style: TextStyle(
-                    color: Color(0xFF969696),
-                    fontSize: 11,
+                    color: _terminalMuted,
+                    fontSize: 10.5,
                     height: 1.4,
+                    fontFamily: 'monospace',
                   ),
                 ),
               ],
-              if (!guide.hasCompleteReuseMetadata) ...[
+              if (rightsMetadataIncomplete) ...[
                 const SizedBox(height: 12),
-                const Text(
-                  'Commons did not provide complete machine-readable rights metadata for this file. Check the source page before reuse.',
-                  style: TextStyle(
-                    color: Color(0xFFFFD994),
-                    fontSize: 12,
-                    height: 1.45,
-                  ),
+                _TerminalNotice(
+                  text: hasLicense
+                      ? 'License found, but creator/credit metadata is incomplete. Verify the source page before reuse.'
+                      : 'Commons did not provide a complete machine-readable license. Check the source page before reuse.',
+                  warning: true,
                 ),
               ],
               _fact('CREATOR', guide.creator),
@@ -970,12 +1008,13 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
         ),
         const SizedBox(height: 18),
         const Text(
-          'COPY-READY FORMAT',
+          'COPY-READY FORMAT // OUTPUT',
           style: TextStyle(
-            color: Color(0xFF777777),
+            color: _terminalMuted,
             fontSize: 9.5,
             letterSpacing: 1.2,
             fontWeight: FontWeight.w800,
+            fontFamily: 'monospace',
           ),
         ),
         const SizedBox(height: 8),
@@ -1013,14 +1052,14 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
           constraints: const BoxConstraints(minHeight: 96),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF0D0D0D),
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: const Color(0xFF292929)),
+            color: _terminalField,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: _terminalBorder),
           ),
           child: SelectableText(
             snippet,
             style: TextStyle(
-              color: const Color(0xFFD8D8D8),
+              color: _terminalText,
               fontSize: 12,
               height: 1.5,
               fontFamily:
@@ -1037,7 +1076,7 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 13),
             shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
           ),
           icon: const Icon(Icons.content_copy, size: 16),
           label: Text('Copy $_formatLabel',
@@ -1070,14 +1109,48 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Attribution helpers are generated from the file’s Wikimedia metadata. Verify the source page and full license before publishing; this is not legal advice.',
+          '// Attribution helpers are generated from Wikimedia metadata. Verify the source page and full license before publishing; this is not legal advice.',
           style: TextStyle(
-            color: Color(0xFF777777),
+            color: _terminalMuted,
             fontSize: 10.5,
             height: 1.45,
+            fontFamily: 'monospace',
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TerminalNotice extends StatelessWidget {
+  final String text;
+  final bool warning;
+
+  const _TerminalNotice({
+    required this.text,
+    this.warning = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = warning ? _terminalWarning : _terminalMuted;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: _terminalField,
+        border: Border.all(color: color.withValues(alpha: 0.55)),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(
+        '> $text',
+        style: TextStyle(
+          color: color,
+          fontSize: 10.5,
+          height: 1.45,
+          fontFamily: 'monospace',
+        ),
+      ),
     );
   }
 }
@@ -1096,30 +1169,28 @@ class _ReuseFormatButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected
-          ? const Color(0xFF3D7EFF).withValues(alpha: 0.16)
-          : const Color(0xFF1A1A1A),
-      borderRadius: BorderRadius.circular(6),
+      color: selected ? _terminalBlue.withValues(alpha: 0.14) : _terminalField,
+      borderRadius: BorderRadius.circular(3),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(3),
         child: Container(
           height: 36,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color:
-                  selected ? const Color(0xFF3D7EFF) : const Color(0xFF292929),
+              color: selected ? _terminalBlue : _terminalBorder,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF999999),
+              color: selected ? _terminalText : _terminalMuted,
               fontSize: 9.5,
               letterSpacing: 0.7,
               fontWeight: FontWeight.w800,
+              fontFamily: 'monospace',
             ),
           ),
         ),
@@ -1144,15 +1215,19 @@ class _ReuseReferenceButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
-        foregroundColor: const Color(0xFFB8CFFF),
-        side: const BorderSide(color: Color(0xFF303030)),
+        foregroundColor: _terminalBlue,
+        side: const BorderSide(color: _terminalBorder),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         visualDensity: VisualDensity.compact,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3)),
       ),
       icon: Icon(icon, size: 14),
       label: Text(label,
-          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600)),
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            fontFamily: 'monospace',
+          )),
     );
   }
 }

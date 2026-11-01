@@ -44,9 +44,9 @@ class PipelineViewState {
   final int? totalRecords;
   final bool runCancelled;
 
-  /// Top-level failure that isn't any single node's fault — currently
-  /// only a detected cycle, surfaced before [PipelineEngine.run] is even
-  /// called (see [PipelineController.run]).
+  /// Top-level failure surfaced by the controller: graph validation failures
+  /// or uncaught execution failures. Node-level failures remain attached to
+  /// their node so independent branches can still finish.
   final String? runError;
 
   final List<PipelineGraph> savedGraphs;
@@ -128,7 +128,7 @@ class PipelineController extends Notifier<PipelineViewState> {
   bool _cancelRequested = false;
 
   /// The last run's materialized outputs, keyed by node id — read by the
-  /// sink actions and by the canvas's preview panel. Deliberately not
+  /// sink actions and the full-screen dataset preview. Deliberately not
   /// part of [PipelineViewState] (not serialized, not persisted): runtime
   /// scratch only, rebuilt from scratch by every [run].
   Map<String, NodeOutput> _lastOutputs = {};
@@ -372,9 +372,9 @@ class PipelineController extends Notifier<PipelineViewState> {
       maxItemsPerSource: unlimitedCsvExport ? null : _maxItemsPerSourceForRun(),
       unlimitedCsvExport: unlimitedCsvExport,
       includeThumbnailUrls: includeThumbnailUrls,
-      requestProfile: unlimitedCsvExport
-          ? SearchRequestProfile.pipelineEtl
-          : SearchRequestProfile.ui,
+      requestProfile: preview
+          ? SearchRequestProfile.pipelinePreview
+          : SearchRequestProfile.pipelineEtl,
       preview: preview,
       beforeFetchPage: _waitForFetchPermission,
       onFetchProgress: (fetched, totalHits) {
@@ -438,8 +438,8 @@ class PipelineController extends Notifier<PipelineViewState> {
   }
 
   // ---------------------------------------------------------------------
-  // Reading a node's last result — for the canvas's preview panel and the
-  // sink actions below. Public because pipeline_page.dart needs it too,
+  // Reading a node's last result — for the full-screen dataset preview and
+  // the sink actions below. Public because pipeline_page.dart needs it too,
   // not just this controller.
   // ---------------------------------------------------------------------
 
@@ -521,6 +521,8 @@ class PipelineController extends Notifier<PipelineViewState> {
       return 'Manifest generation was cancelled; no file was downloaded.';
     }
     if (state.runError != null) return state.runError;
+    final outputError = _lastOutputs[nodeId]?.error;
+    if (outputError != null) return outputError;
     return exportSinkCsv(nodeId, fileName: fileName);
   }
 

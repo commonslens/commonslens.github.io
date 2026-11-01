@@ -259,11 +259,11 @@ List<NodePort> defaultPortsFor(PipelineNodeType type) {
       break;
     default:
       ports.add(const NodePort(
-          id: 'in', label: '', direction: PipelinePortDirection.input));
+          id: 'in', label: 'Input', direction: PipelinePortDirection.input));
   }
   if (!type.isSink) {
     ports.add(const NodePort(
-        id: 'out', label: '', direction: PipelinePortDirection.output));
+        id: 'out', label: 'Output', direction: PipelinePortDirection.output));
   }
   return ports;
 }

@@ -58,6 +58,7 @@ class _SearchMapViewState extends State<SearchMapView> {
   bool _mapReady = false;
   bool _previewExpanded = true;
   ll.LatLng? _pendingManualSearch;
+  _MapViewport? _pendingManualViewport;
 
   @override
   void initState() {
@@ -90,13 +91,30 @@ class _SearchMapViewState extends State<SearchMapView> {
       // A map tap deliberately keeps the camera where the user tapped. The
       // state update still changes the search circle and result set below.
       _pendingManualSearch = null;
+      final viewport = _pendingManualViewport;
+      _pendingManualViewport = null;
+      if (viewport != null) {
+        // The controller move is deferred because didUpdateWidget runs during
+        // the parent build. Restoring the captured camera also protects this
+        // interaction from any map-option update caused by the new results.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _restoreViewport(viewport);
+        });
+      }
     } else if (oldLocation != newLocation && newLocation != null) {
+      // A non-tap location change (URL, filter, or another external source)
+      // is allowed to recenter the map. Do not let an old manual-search
+      // marker suppress this legitimate camera update.
+      _pendingManualSearch = null;
+      _pendingManualViewport = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _moveToLocation(newLocation);
       });
     } else if (newLocation == null &&
         oldWidget.session.items.isEmpty &&
         widget.session.items.isNotEmpty) {
+      _pendingManualSearch = null;
+      _pendingManualViewport = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _fitToItems(_plottableItems);
       });
@@ -153,6 +171,15 @@ class _SearchMapViewState extends State<SearchMapView> {
     );
   }
 
+  void _restoreViewport(_MapViewport viewport) {
+    if (!_mapReady) return;
+    _mapController.moveAndRotate(
+      viewport.center,
+      viewport.zoom,
+      viewport.rotation,
+    );
+  }
+
   void _fitToItems(List<SearchItem> items) {
     if (!_mapReady || items.isEmpty) return;
     final points = items
@@ -176,6 +203,16 @@ class _SearchMapViewState extends State<SearchMapView> {
     _radiusController.text = _formatRadius(radius);
     _radiusFocusNode.unfocus();
     _pendingManualSearch = point;
+    if (_mapReady) {
+      final camera = _mapController.camera;
+      _pendingManualViewport = _MapViewport(
+        center: camera.center,
+        zoom: camera.zoom,
+        rotation: camera.rotation,
+      );
+    } else {
+      _pendingManualViewport = null;
+    }
     widget.onSearchLocation(point.latitude, point.longitude, radius);
   }
 
@@ -547,6 +584,18 @@ extension on _SearchMapStyle {
         _SearchMapStyle.hybrid =>
           'https://www.esri.com/en-us/legal/terms/data-attributions',
       };
+}
+
+class _MapViewport {
+  final ll.LatLng center;
+  final double zoom;
+  final double rotation;
+
+  const _MapViewport({
+    required this.center,
+    required this.zoom,
+    required this.rotation,
+  });
 }
 
 class _MapCluster {

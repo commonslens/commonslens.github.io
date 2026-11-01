@@ -238,6 +238,38 @@ void main() {
     });
   });
 
+  test('exposes the complete Commons format set in the media tabs', () {
+    final allFormats = configForTab(MediaTabType.allMedia).allowedFormats;
+
+    expect(allFormats, containsAll(FileFormat.values));
+    expect(
+      configForTab(MediaTabType.audio).allowedFormats,
+      containsAll(<FileFormat>[
+        FileFormat.ogg,
+        FileFormat.ogx,
+        FileFormat.webm,
+        FileFormat.opus,
+        FileFormat.flac,
+        FileFormat.midi,
+      ]),
+    );
+    expect(
+      configForTab(MediaTabType.video).allowedFormats,
+      containsAll(<FileFormat>[
+        FileFormat.ogg,
+        FileFormat.ogx,
+        FileFormat.webm,
+        FileFormat.ogv,
+        FileFormat.mpg,
+        FileFormat.mpeg,
+      ]),
+    );
+    expect(
+      configForTab(MediaTabType.threeD).allowedFormats,
+      contains(FileFormat.stl),
+    );
+  });
+
   test('SearchSession JSON preserves result and pagination state', () {
     const item = SearchItem(
       title: 'Example.jpg',

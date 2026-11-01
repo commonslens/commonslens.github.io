@@ -246,16 +246,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   }
 
   double get _preferredPanelWidth {
-    if (_outerBarExpanded && _innerPanelExpanded) {
-      return _outerExpandedWidth + _innerExpandedWidth;
-    }
-    if (_outerBarExpanded) {
-      return _outerExpandedWidth + _collapsedRailWidth;
-    }
-    if (_innerPanelExpanded) {
-      return _collapsedRailWidth + _innerExpandedWidth;
-    }
-    return _collapsedRailWidth;
+    final outerWidth =
+        _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
+    return outerWidth + (_innerPanelExpanded ? _innerExpandedWidth : 0);
   }
 
   void _toggleOuterBar() {
@@ -263,7 +256,22 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   }
 
   void _toggleInnerPanel() {
+    if (widget.showCloseButton) {
+      _closeFilters();
+      return;
+    }
     setState(() => _innerPanelExpanded = !_innerPanelExpanded);
+  }
+
+  void _closeFilters() {
+    final scaffold = Scaffold.maybeOf(context);
+    if (scaffold?.isDrawerOpen == true) {
+      scaffold!.closeDrawer();
+      return;
+    }
+    if (scaffold == null && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _selectGroup(_FilterGroup group) {
@@ -273,9 +281,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       // filters remain usable side by side.
       setState(() => _activeGroup = group);
       widget.onLocationSelected?.call();
-      if (widget.showCloseButton && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
+      if (widget.showCloseButton) _closeFilters();
       return;
     }
 
@@ -479,11 +485,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             ),
           ),
         ),
-        pageButton(
-          icon: Icons.account_tree_outlined,
-          label: 'Visual ETL pipelines',
-          onTap: () => context.push('/pipeline'),
-        ),
+        if (!widget.showCloseButton)
+          pageButton(
+            icon: Icons.account_tree_outlined,
+            label: 'Visual ETL pipelines',
+            onTap: () => context.push('/pipeline'),
+          ),
         pageButton(
           icon: Icons.bookmark_border,
           label: 'Bookmarks',
@@ -506,22 +513,17 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         child: Column(
           children: [
             const SizedBox(height: 8),
-            IconButton(
-              icon: const Icon(Icons.chevron_right, color: Colors.white54),
-              tooltip: 'Expand filter groups',
-              onPressed: _toggleOuterBar,
-            ),
-            if (widget.showCloseButton)
+            if (!widget.showCloseButton)
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                tooltip: 'Close filters',
-                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.chevron_right, color: Colors.white54),
+                tooltip: 'Expand filter groups',
+                onPressed: _toggleOuterBar,
               ),
             const Divider(color: Color(0xFF222222), height: 1),
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: groups.length + 3,
+                itemCount: groups.length + (widget.showCloseButton ? 2 : 3),
                 itemBuilder: (context, index) {
                   if (index == groups.length) {
                     return const Divider(
@@ -530,14 +532,18 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     );
                   }
                   if (index == groups.length + 1) {
+                    final bookmarks = widget.showCloseButton;
                     return Tooltip(
-                      message: 'More Pages',
+                      message: bookmarks ? 'Bookmarks' : 'More Pages',
                       child: InkWell(
-                        onTap: () => context.push('/pipeline'),
-                        child: const SizedBox(
+                        onTap: () => context
+                            .push(bookmarks ? '/bookmarks' : '/pipeline'),
+                        child: SizedBox(
                           height: 48,
                           child: Icon(
-                            Icons.account_tree_outlined,
+                            bookmarks
+                                ? Icons.bookmark_border
+                                : Icons.account_tree_outlined,
                             color: Color(0xFF3D7EFF),
                             size: 19,
                           ),
@@ -620,23 +626,15 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         letterSpacing: 1.4,
                         fontWeight: FontWeight.w700)),
               ),
-              IconButton(
-                icon: const Icon(Icons.chevron_left,
-                    color: Colors.white54, size: 18),
-                tooltip: 'Minimize filter groups',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                onPressed: _toggleOuterBar,
-              ),
-              if (widget.showCloseButton)
+              if (!widget.showCloseButton)
                 IconButton(
-                  icon:
-                      const Icon(Icons.close, color: Colors.white54, size: 18),
-                  tooltip: 'Close filters',
+                  icon: const Icon(Icons.chevron_left,
+                      color: Colors.white54, size: 18),
+                  tooltip: 'Minimize filter groups',
                   padding: EdgeInsets.zero,
                   constraints:
                       const BoxConstraints(minWidth: 28, minHeight: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: _toggleOuterBar,
                 ),
             ],
           ),
@@ -719,53 +717,31 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                           letterSpacing: 1.3,
                           fontWeight: FontWeight.w700)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_left,
-                      color: Colors.white54, size: 18),
-                  tooltip: 'Minimize feature panel',
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 28, minHeight: 28),
-                  onPressed: _toggleInnerPanel,
-                ),
+                if (!widget.showCloseButton)
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left,
+                        color: Colors.white54, size: 18),
+                    tooltip: 'Minimize feature panel',
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: _toggleInnerPanel,
+                  ),
+                if (widget.showCloseButton)
+                  IconButton(
+                    icon: const Icon(Icons.close,
+                        color: Colors.white54, size: 18),
+                    tooltip: 'Close filters',
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: _closeFilters,
+                  ),
               ],
             ),
           ),
           const Divider(color: Color(0xFF222222), height: 1),
           Expanded(child: content),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInnerCollapsedRail({required double width}) {
-    return Container(
-      width: width,
-      color: const Color(0xFF111111),
-      child: Column(
-        children: [
-          const SizedBox(height: 8),
-          IconButton(
-            icon: const Icon(Icons.chevron_right,
-                color: Colors.white54, size: 18),
-            tooltip: 'Expand feature panel',
-            onPressed: _toggleInnerPanel,
-          ),
-          Expanded(
-            child: Center(
-              child: RotatedBox(
-                quarterTurns: 3,
-                child: Text(
-                  _groupTitle(_innerGroup),
-                  style: const TextStyle(
-                      color: Color(0xFF555555),
-                      fontSize: 10,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -1344,7 +1320,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   runSpacing: 8,
                   children: [
                     _licenseToggleChip(
-                      label: 'All images',
+                      label: 'All media',
                       selected: state.allImagesMode,
                       onTap: () => _toggleQuality(QualityFilter.any),
                     ),
@@ -1638,7 +1614,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             ],
           );
 
-          final bothCollapsed = !_outerBarExpanded && !_innerPanelExpanded;
           double outerWidth;
           double innerWidth = 0;
 
@@ -1649,46 +1624,38 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth,
                 )
                 .toDouble();
-            if (!bothCollapsed) {
+            if (_innerPanelExpanded) {
               innerWidth = (availableWidth - outerWidth)
                   .clamp(
                     0,
-                    _innerPanelExpanded
-                        ? _innerExpandedWidth
-                        : _collapsedRailWidth,
+                    _innerExpandedWidth,
                   )
                   .toDouble();
             }
-          } else if (_outerBarExpanded && _innerPanelExpanded) {
-            outerWidth = (availableWidth / 3)
-                .clamp(_collapsedRailWidth, _outerExpandedWidth)
-                .toDouble();
-            innerWidth = (availableWidth - outerWidth)
-                .clamp(0, _innerExpandedWidth)
-                .toDouble();
           } else if (_outerBarExpanded) {
             outerWidth =
-                availableWidth.clamp(0, _outerExpandedWidth).toDouble();
-            innerWidth = (availableWidth - outerWidth)
-                .clamp(0, _collapsedRailWidth)
-                .toDouble();
-          } else if (_innerPanelExpanded) {
-            outerWidth =
-                availableWidth.clamp(0, _collapsedRailWidth).toDouble();
-            innerWidth = (availableWidth - outerWidth)
-                .clamp(0, _innerExpandedWidth)
-                .toDouble();
+                (_innerPanelExpanded ? (availableWidth / 3) : availableWidth)
+                    .clamp(0, _outerExpandedWidth)
+                    .toDouble();
+            if (_innerPanelExpanded) {
+              innerWidth = (availableWidth - outerWidth)
+                  .clamp(0, _innerExpandedWidth)
+                  .toDouble();
+            }
           } else {
             outerWidth =
                 availableWidth.clamp(0, _collapsedRailWidth).toDouble();
+            if (_innerPanelExpanded) {
+              innerWidth = (availableWidth - outerWidth)
+                  .clamp(0, _innerExpandedWidth)
+                  .toDouble();
+            }
           }
 
           final outer = _buildOuterBar(state, width: outerWidth);
-          final Widget? inner = bothCollapsed
-              ? null
-              : _innerPanelExpanded
-                  ? _buildInnerPanel(featureContent, width: innerWidth)
-                  : _buildInnerCollapsedRail(width: innerWidth);
+          final Widget? inner = _innerPanelExpanded
+              ? _buildInnerPanel(featureContent, width: innerWidth)
+              : null;
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1703,15 +1670,21 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
     if (!widget.docked) return panel;
 
-    return AnimatedContainer(
+    return AnimatedSize(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeInOutCubic,
-      width: _preferredPanelWidth,
-      decoration: const BoxDecoration(
-        color: Color(0xFF111111),
-        border: Border(right: BorderSide(color: Color(0xFF1E1E1E))),
+      alignment: Alignment.centerLeft,
+      clipBehavior: Clip.hardEdge,
+      child: SizedBox(
+        width: _preferredPanelWidth,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Color(0xFF111111),
+            border: Border(right: BorderSide(color: Color(0xFF1E1E1E))),
+          ),
+          child: panel,
+        ),
       ),
-      child: panel,
     );
   }
 

@@ -40,11 +40,20 @@ class _ScriptedBackend extends CommonsBackend {
   });
 
   @override
-  QueryBuildResult buildQuery(SearchState filters) => QueryBuildResult(
-        srsearch: filters.queryText.trim(),
-        chips: const [],
-        debugPreview: filters.queryText.trim(),
-      );
+  QueryBuildResult buildQuery(SearchState filters) {
+    final parts = <String>[
+      if (filters.queryText.trim().isNotEmpty) filters.queryText.trim(),
+      if (filters.formats.isNotEmpty)
+        ...filters.formats.map((format) => 'filemime:${format.name}'),
+      if (filters.tab != MediaTabType.allMedia) 'filetype:${filters.tab.name}',
+    ];
+    final query = parts.join(' ');
+    return QueryBuildResult(
+      srsearch: query,
+      chips: const [],
+      debugPreview: query,
+    );
+  }
 
   @override
   Future<MediaSearchResult> search(
@@ -127,18 +136,22 @@ void main() {
       expect(backend.searchCalls, 0);
     });
 
-    test('format-only query resets without calling the backend', () async {
-      final backend = _ScriptedBackend();
+    test('format-only query searches without text', () async {
+      final backend = _ScriptedBackend(
+        searchPages: [
+          _page([_item('Example.png')]),
+        ],
+      );
       final session = CommonsSearchSession(backend: backend);
 
       final result = await session.search(const SearchState(
-        formats: {FileFormat.jpg},
+        formats: {FileFormat.png},
       ));
 
-      expect(result.hasSearched, isFalse);
-      expect(result.items, isEmpty);
-      expect(session.filterState.formats, contains(FileFormat.jpg));
-      expect(backend.searchCalls, 0);
+      expect(result.hasSearched, isTrue);
+      expect(result.items.single.title, 'Example.png');
+      expect(session.filterState.formats, contains(FileFormat.png));
+      expect(backend.searchCalls, 1);
     });
 
     test('loads, deduplicates, and re-sorts appended pages', () async {

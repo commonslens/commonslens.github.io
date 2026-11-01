@@ -89,8 +89,10 @@ void main() {
     await tester.pumpWidget(_mobileHost());
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Expand filter groups'), findsOneWidget);
-    expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
+    expect(find.byTooltip('Expand filter groups'), findsNothing);
+    expect(find.byTooltip('Close filters'), findsOneWidget);
+    expect(find.byTooltip('More Pages'), findsNothing);
+    expect(find.byTooltip('Bookmarks'), findsOneWidget);
     expect(find.text('IMAGE CLASSIFICATION'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
@@ -161,11 +163,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 130));
     expect(tester.takeException(), isNull);
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await tester.tap(find.byTooltip('Expand feature panel'));
-    await tester.pumpAndSettle();
+    expect(find.byTooltip('Expand feature panel'), findsNothing);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('LICENSE'));
@@ -184,10 +182,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('QUALITY TYPES'), findsOneWidget);
-    expect(find.text('All images'), findsOneWidget);
-    expect(find.text('Quality images'), findsOneWidget);
-    expect(find.text('Valued images'), findsOneWidget);
-    expect(find.text('Featured pictures'), findsOneWidget);
+    expect(find.text('All media'), findsOneWidget);
+    expect(find.text('Quality media'), findsOneWidget);
+    expect(find.text('Valued media'), findsOneWidget);
+    expect(find.text('Featured media'), findsOneWidget);
   });
 
   testWidgets('license group presents multi-select reuse guidance',

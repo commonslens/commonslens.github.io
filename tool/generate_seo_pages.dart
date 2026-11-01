@@ -52,7 +52,7 @@ const _pages = <_SeoPage>[
         items: [
           'Filter images, SVGs, audio, video, PDFs, DjVu files, and other documents.',
           'Restrict results to CC0, CC BY 4.0, CC BY-SA 4.0, or Public Domain media.',
-          'Filter by attribution requirement, Quality Images, Valued Images, or Featured Pictures.',
+          'Filter by attribution requirement, Quality Media, Valued Media, or Featured Media.',
           'Share the resulting filter state as a URL or inspect the generated CirrusSearch query.',
         ],
       ),

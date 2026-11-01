@@ -358,9 +358,9 @@ String _nodeSummary(PipelineNode node) {
       final mode = (c['qualityMode'] ?? 'individual').toString();
       final label = {
             'any': 'Any quality',
-            'qualityImage': 'Quality images',
-            'valuedImage': 'Valued images',
-            'featuredPicture': 'Featured pictures',
+            'qualityImage': 'Quality media',
+            'valuedImage': 'Valued media',
+            'featuredPicture': 'Featured media',
           }[quality] ??
           quality;
       return mode == 'andAbove' && quality != 'any' ? '$label + above' : label;

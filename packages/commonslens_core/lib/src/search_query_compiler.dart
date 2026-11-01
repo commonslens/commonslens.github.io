@@ -9,6 +9,15 @@ class SearchQueryCompiler {
 
   static final RegExp multiQuerySeparator = RegExp(r'\s+\+\s+');
 
+  // A few filters (formats, attribution, and original capture date) are
+  // applied partly or wholly after Commons returns a page. When one of
+  // those is used without free text or another indexed clause, give
+  // CirrusSearch a bounded media-only starting point instead of sending an
+  // empty search.
+  static const String _allMediaClause =
+      '(filetype:bitmap OR filetype:drawing OR filetype:audio OR '
+      'filetype:video OR filetype:office OR filetype:3D)';
+
   static const Map<LicensePreset, String> _licenseClauses = {
     LicensePreset.cc0: 'haswbstatement:P275=Q6938433',
     LicensePreset.ccBy1: 'haswbstatement:P275=Q30942811',
@@ -105,6 +114,10 @@ class SearchQueryCompiler {
         chips.add(const QueryChipData(id: 'tab', label: 'Docs'));
         parts.add('filetype:office');
         break;
+      case MediaTabType.threeD:
+        chips.add(const QueryChipData(id: 'tab', label: '3D'));
+        parts.add('filetype:3D');
+        break;
     }
 
     for (final format in state.formats.toList()
@@ -118,7 +131,7 @@ class SearchQueryCompiler {
     }
 
     if (overrideFormat != null) {
-      parts.add('filemime:"${_getMimeString(overrideFormat)}"');
+      parts.add(_fileMimeQuery(overrideFormat));
     }
 
     // Union mode (OR) for categories works exactly like statementsUnion
@@ -520,6 +533,10 @@ class SearchQueryCompiler {
       chips.add(QueryChipData(id: 'insource', label: 'Source: $insource'));
     }
 
+    if (parts.isEmpty && _needsMediaAnchor(state)) {
+      parts.add(_allMediaClause);
+    }
+
     final srsearch = parts.join(' ').trim();
 
     return QueryBuildResult(
@@ -527,6 +544,13 @@ class SearchQueryCompiler {
       chips: chips,
       debugPreview: srsearch,
     );
+  }
+
+  bool _needsMediaAnchor(SearchState state) {
+    final originalDate = state.originalDate;
+    return state.formats.isNotEmpty ||
+        state.attributionRequired != null ||
+        (originalDate != null && !originalDate.isEmpty);
   }
 
   String _getMimeString(FileFormat format) {
@@ -545,23 +569,54 @@ class SearchQueryCompiler {
         return 'image/tiff';
       case FileFormat.webp:
         return 'image/webp';
+      case FileFormat.xcf:
+        return 'image/x-xcf';
       case FileFormat.pdf:
         return 'application/pdf';
       case FileFormat.djvu:
         return 'image/vnd.djvu';
       case FileFormat.ogg:
       case FileFormat.oga:
+      case FileFormat.ogx:
+      case FileFormat.opus:
         return 'audio/ogg';
       case FileFormat.ogv:
         return 'video/ogg';
       case FileFormat.mp3:
         return 'audio/mpeg';
+      case FileFormat.flac:
+        return 'audio/flac';
+      case FileFormat.midi:
+        return 'audio/midi';
       case FileFormat.wav:
         return 'audio/wav';
       case FileFormat.webm:
         return 'video/webm';
+      case FileFormat.mpg:
+      case FileFormat.mpeg:
+        return 'video/mpeg';
       case FileFormat.mp4:
         return 'video/mp4';
+      case FileFormat.stl:
+        return 'application/sla';
+    }
+  }
+
+  /// Ogg and WebM are containers rather than single media types. Use a
+  /// component search so audio/video variants are both discoverable; the
+  /// client-side format matcher then narrows the result by extension/MIME.
+  String _fileMimeQuery(FileFormat format) {
+    switch (format) {
+      case FileFormat.ogg:
+      case FileFormat.oga:
+      case FileFormat.ogx:
+      case FileFormat.opus:
+      case FileFormat.ogv:
+        return 'filemime:ogg';
+      case FileFormat.webm:
+        return 'filemime:webm';
+      default:
+        return 'filemime:"${_getMimeString(format)}"';
     }
   }
 }

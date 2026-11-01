@@ -53,6 +53,7 @@ enum MediaTabType {
   audio,
   video,
   documents,
+  threeD,
 }
 
 enum FileFormat {
@@ -64,15 +65,23 @@ enum FileFormat {
   tif,
   tiff,
   webp,
+  xcf,
   pdf,
   djvu,
   ogg,
   oga,
+  ogx,
+  opus,
   ogv,
   mp3,
+  flac,
+  midi,
   wav,
   webm,
+  mpg,
+  mpeg,
   mp4,
+  stl,
 }
 
 enum SortMode {
@@ -173,11 +182,11 @@ String qualityFilterLabel(QualityFilter filter) {
     case QualityFilter.any:
       return 'Any quality';
     case QualityFilter.qualityImage:
-      return 'Quality images';
+      return 'Quality media';
     case QualityFilter.valuedImage:
-      return 'Valued images';
+      return 'Valued media';
     case QualityFilter.featuredPicture:
-      return 'Featured pictures';
+      return 'Featured media';
   }
 }
 
@@ -983,15 +992,23 @@ const mediaTabs = [
       FileFormat.tif,
       FileFormat.tiff,
       FileFormat.webp,
+      FileFormat.xcf,
       FileFormat.pdf,
       FileFormat.djvu,
       FileFormat.ogg,
       FileFormat.oga,
+      FileFormat.ogx,
+      FileFormat.opus,
       FileFormat.ogv,
       FileFormat.mp3,
+      FileFormat.flac,
+      FileFormat.midi,
       FileFormat.wav,
       FileFormat.webm,
+      FileFormat.mpg,
+      FileFormat.mpeg,
       FileFormat.mp4,
+      FileFormat.stl,
     },
     emptyMessage: 'No media found.',
   ),
@@ -1006,6 +1023,7 @@ const mediaTabs = [
       FileFormat.webp,
       FileFormat.tif,
       FileFormat.tiff,
+      FileFormat.xcf,
     },
     emptyMessage: 'No images found.',
   ),
@@ -1023,8 +1041,14 @@ const mediaTabs = [
     allowedFormats: {
       FileFormat.ogg,
       FileFormat.oga,
+      FileFormat.ogx,
+      FileFormat.opus,
       FileFormat.mp3,
+      FileFormat.flac,
+      FileFormat.midi,
       FileFormat.wav,
+      // WebM and Ogg containers can carry audio as well as video.
+      FileFormat.webm,
     },
     emptyMessage: 'No audio found.',
   ),
@@ -1032,8 +1056,13 @@ const mediaTabs = [
     type: MediaTabType.video,
     label: 'Video',
     allowedFormats: {
+      // Ogg and WebM are shared audio/video containers.
+      FileFormat.ogg,
+      FileFormat.ogx,
       FileFormat.webm,
       FileFormat.ogv,
+      FileFormat.mpg,
+      FileFormat.mpeg,
       FileFormat.mp4,
     },
     emptyMessage: 'No videos found.',
@@ -1046,6 +1075,14 @@ const mediaTabs = [
       FileFormat.djvu,
     },
     emptyMessage: 'No documents found.',
+  ),
+  MediaTabConfig(
+    type: MediaTabType.threeD,
+    label: '3D',
+    allowedFormats: {
+      FileFormat.stl,
+    },
+    emptyMessage: 'No 3D files found.',
   ),
 ];
 
@@ -1071,6 +1108,8 @@ String fileFormatLabel(FileFormat format) {
       return 'TIFF';
     case FileFormat.webp:
       return 'WEBP';
+    case FileFormat.xcf:
+      return 'XCF';
     case FileFormat.pdf:
       return 'PDF';
     case FileFormat.djvu:
@@ -1079,16 +1118,30 @@ String fileFormatLabel(FileFormat format) {
       return 'OGG';
     case FileFormat.oga:
       return 'OGA';
+    case FileFormat.ogx:
+      return 'OGX';
+    case FileFormat.opus:
+      return 'OPUS';
     case FileFormat.ogv:
       return 'OGV';
     case FileFormat.mp3:
       return 'MP3';
+    case FileFormat.flac:
+      return 'FLAC';
+    case FileFormat.midi:
+      return 'MIDI';
     case FileFormat.wav:
       return 'WAV';
     case FileFormat.webm:
       return 'WEBM';
+    case FileFormat.mpg:
+      return 'MPG';
+    case FileFormat.mpeg:
+      return 'MPEG';
     case FileFormat.mp4:
       return 'MP4';
+    case FileFormat.stl:
+      return 'STL';
   }
 }
 
@@ -1101,21 +1154,30 @@ MediaKind mediaKindFromFormat(FileFormat format) {
     case FileFormat.tif:
     case FileFormat.tiff:
     case FileFormat.webp:
+    case FileFormat.xcf:
       return MediaKind.image;
     case FileFormat.svg:
       return MediaKind.vector;
     case FileFormat.ogg:
     case FileFormat.oga:
+    case FileFormat.ogx:
+    case FileFormat.opus:
     case FileFormat.mp3:
+    case FileFormat.flac:
+    case FileFormat.midi:
     case FileFormat.wav:
       return MediaKind.audio;
     case FileFormat.webm:
     case FileFormat.ogv:
+    case FileFormat.mpg:
+    case FileFormat.mpeg:
     case FileFormat.mp4:
       return MediaKind.video;
     case FileFormat.pdf:
     case FileFormat.djvu:
       return MediaKind.document;
+    case FileFormat.stl:
+      return MediaKind.unknown;
   }
 }
 
@@ -1446,6 +1508,8 @@ class SearchItem {
         return 'SVG';
       case 'image/tiff':
         return 'TIFF';
+      case 'image/x-xcf':
+        return 'XCF';
       case 'application/pdf':
         return 'PDF';
       case 'image/vnd.djvu':
@@ -1453,20 +1517,30 @@ class SearchItem {
         return 'DJVU';
       case 'audio/ogg':
       case 'audio/ogg; codecs=opus':
-        return 'OGG';
+      case 'application/ogg':
+        return extension.isEmpty ? 'OGG' : extension.toUpperCase();
       case 'audio/mpeg':
       case 'audio/mp3':
         return 'MP3';
+      case 'audio/flac':
+        return 'FLAC';
+      case 'audio/midi':
+        return 'MIDI';
       case 'audio/wav':
       case 'audio/x-wav':
         return 'WAV';
+      case 'audio/webm':
       case 'video/webm':
         return 'WEBM';
       case 'video/ogg':
       case 'video/ogg; codecs=theora':
-        return 'OGV';
+        return extension.isEmpty ? 'OGV' : extension.toUpperCase();
+      case 'video/mpeg':
+        return extension.isEmpty ? 'MPEG' : extension.toUpperCase();
       case 'video/mp4':
         return 'MP4';
+      case 'application/sla':
+        return 'STL';
     }
 
     return extension.isEmpty ? mime.toUpperCase() : extension.toUpperCase();
@@ -1489,13 +1563,20 @@ class SearchItem {
     if (m.startsWith('video/') ||
         normalizedExtension == 'webm' ||
         normalizedExtension == 'ogv' ||
+        normalizedExtension == 'mpg' ||
+        normalizedExtension == 'mpeg' ||
         normalizedExtension == 'mp4') {
       return MediaKind.video;
     }
     if (m.startsWith('audio/') ||
         normalizedExtension == 'ogg' ||
         normalizedExtension == 'oga' ||
+        normalizedExtension == 'ogx' ||
+        normalizedExtension == 'opus' ||
         normalizedExtension == 'mp3' ||
+        normalizedExtension == 'flac' ||
+        normalizedExtension == 'mid' ||
+        normalizedExtension == 'midi' ||
         normalizedExtension == 'wav') {
       return MediaKind.audio;
     }

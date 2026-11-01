@@ -1159,34 +1159,82 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         case FileFormat.webp:
           if (ext == 'webp' || mime == 'image/webp') return true;
           break;
+        case FileFormat.xcf:
+          if (ext == 'xcf' || mime == 'image/x-xcf') return true;
+          break;
         case FileFormat.pdf:
           if (ext == 'pdf' || mime == 'application/pdf') return true;
           break;
         case FileFormat.djvu:
-          if (ext == 'djvu') return true;
+          if (ext == 'djvu' ||
+              mime == 'image/vnd.djvu' ||
+              mime == 'application/vnd.djvu') {
+            return true;
+          }
           break;
         case FileFormat.ogg:
-          if (ext == 'ogg' || mime.contains('ogg')) return true;
+          if (ext == 'ogg' || (ext.isEmpty && mime.contains('ogg'))) {
+            return true;
+          }
           break;
         case FileFormat.oga:
-          if (ext == 'oga' || mime.contains('ogg')) return true;
+          if (ext == 'oga' || (ext.isEmpty && mime.contains('ogg'))) {
+            return true;
+          }
+          break;
+        case FileFormat.ogx:
+          if (ext == 'ogx' || (ext.isEmpty && mime.contains('ogg'))) {
+            return true;
+          }
+          break;
+        case FileFormat.opus:
+          if (ext == 'opus' || (ext.isEmpty && mime.contains('ogg'))) {
+            return true;
+          }
           break;
         case FileFormat.ogv:
-          if (ext == 'ogv' || mime.contains('ogg')) return true;
+          if (ext == 'ogv' ||
+              (ext.isEmpty &&
+                  (mime == 'video/ogg' || mime == 'application/ogg'))) {
+            return true;
+          }
           break;
         case FileFormat.mp3:
-          if (ext == 'mp3' || mime.contains('mpeg') || mime.contains('mp3')) {
+          if (ext == 'mp3' || mime == 'audio/mpeg' || mime == 'audio/mp3') {
+            return true;
+          }
+          break;
+        case FileFormat.flac:
+          if (ext == 'flac' || mime == 'audio/flac') return true;
+          break;
+        case FileFormat.midi:
+          if (ext == 'mid' || ext == 'midi' || mime == 'audio/midi') {
             return true;
           }
           break;
         case FileFormat.wav:
-          if (ext == 'wav' || mime.contains('wav')) return true;
+          if (ext == 'wav' || mime == 'audio/wav' || mime == 'audio/x-wav') {
+            return true;
+          }
           break;
         case FileFormat.webm:
           if (ext == 'webm' || mime.contains('webm')) return true;
           break;
+        case FileFormat.mpg:
+          if (ext == 'mpg' || (ext.isEmpty && mime == 'video/mpeg')) {
+            return true;
+          }
+          break;
+        case FileFormat.mpeg:
+          if (ext == 'mpeg' || (ext.isEmpty && mime == 'video/mpeg')) {
+            return true;
+          }
+          break;
         case FileFormat.mp4:
           if (ext == 'mp4' || mime.contains('mp4')) return true;
+          break;
+        case FileFormat.stl:
+          if (ext == 'stl' || mime == 'application/sla') return true;
           break;
       }
     }

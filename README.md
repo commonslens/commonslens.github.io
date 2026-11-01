@@ -161,9 +161,9 @@ Save as docs/images/search-results.png and uncomment:
 - Any attribution status
 - Attribution required
 - No attribution required
-- Quality Images
-- Valued Images
-- Featured Pictures
+- Quality Media
+- Valued Media
+- Featured Media
 
 Attribution filtering is applied against returned rights metadata. CommonsLens does not infer that incomplete metadata means a file is unrestricted.
 

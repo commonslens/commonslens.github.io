@@ -1053,6 +1053,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               horizontal: 24,
               vertical: 36,
             );
+            final isMobile = MediaQuery.of(context).size.width < 600;
             final contentMinHeight =
                 constraints.maxHeight > contentPadding.vertical
                     ? constraints.maxHeight - contentPadding.vertical
@@ -1117,25 +1118,28 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         isDesktop: isDesktop,
                       ),
 
-                      const SizedBox(height: 14),
+                      if (isMobile) const SizedBox(height: 14),
+                      if (!isMobile) ...[
+                        const SizedBox(height: 14),
 
-                      // Search Examples
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        alignment: WrapAlignment.center,
-                        children: _examples
-                            .map((example) => ExampleChip(
-                                  category: example.category,
-                                  label: example.label,
-                                  tooltip: example.tooltip,
-                                  icon: example.icon,
-                                  onTap: () => _runExample(example),
-                                ))
-                            .toList(),
-                      ),
+                        // Search Examples
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          alignment: WrapAlignment.center,
+                          children: _examples
+                              .map((example) => ExampleChip(
+                                    category: example.category,
+                                    label: example.label,
+                                    tooltip: example.tooltip,
+                                    icon: example.icon,
+                                    onTap: () => _runExample(example),
+                                  ))
+                              .toList(),
+                        ),
 
-                      const SizedBox(height: 14),
+                        const SizedBox(height: 14),
+                      ],
 
                       TextButton.icon(
                         onPressed: () => context.push('/features'),

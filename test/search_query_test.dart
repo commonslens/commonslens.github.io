@@ -13,6 +13,20 @@ void main() {
     expect(built.chips.map((chip) => chip.id), contains('tab'));
   });
 
+  test('format-only and client-side-only filters get a media search anchor',
+      () {
+    final formatOnly = service.buildQuery(
+      const SearchState(formats: {FileFormat.png}),
+    );
+    final clientOnly = service.buildQuery(
+      const SearchState(attributionRequired: true),
+    );
+
+    expect(formatOnly.srsearch, contains('filetype:bitmap'));
+    expect(formatOnly.srsearch, contains('filetype:3D'));
+    expect(clientOnly.srsearch, contains('filetype:audio'));
+  });
+
   test('combines multiple quality types with OR semantics', () {
     final built = service.buildQuery(const SearchState(
       qualityFilters: {
@@ -50,7 +64,7 @@ void main() {
         contains('incategory:"Featured pictures on Wikimedia Commons"'));
     expect(
       built.chips.map((chip) => chip.label),
-      contains('Valued images and above'),
+      contains('Valued media and above'),
     );
   });
 
@@ -186,6 +200,34 @@ void main() {
         .srsearch;
 
     expect(query, contains('neartitle:"7km,Eiffel Tower"'));
+  });
+
+  test('shared Ogg and WebM containers are searchable in both media tabs', () {
+    final audio = service.buildQuery(
+      const SearchState(tab: MediaTabType.audio),
+      overrideFormat: FileFormat.webm,
+    );
+    final video = service.buildQuery(
+      const SearchState(tab: MediaTabType.video),
+      overrideFormat: FileFormat.ogg,
+    );
+
+    expect(audio.srsearch, contains('filetype:audio'));
+    expect(audio.srsearch, contains('filemime:webm'));
+    expect(video.srsearch, contains('filetype:video'));
+    expect(video.srsearch, contains('filemime:ogg'));
+  });
+
+  test('3D tab compiles to the Commons 3D file type and STL MIME', () {
+    final query = service
+        .buildQuery(
+          const SearchState(tab: MediaTabType.threeD),
+          overrideFormat: FileFormat.stl,
+        )
+        .srsearch;
+
+    expect(query, contains('filetype:3D'));
+    expect(query, contains('filemime:"application/sla"'));
   });
 
   test('supports the expanded Commons license presets', () {

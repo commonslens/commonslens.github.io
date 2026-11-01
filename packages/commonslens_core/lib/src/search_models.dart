@@ -261,7 +261,7 @@ class NearCoordFilter {
   const NearCoordFilter({
     required this.lat,
     required this.lng,
-    this.radiusKm = 10,
+    this.radiusKm = 2,
   });
 
   NearCoordFilter copyWith({double? lat, double? lng, double? radiusKm}) {
@@ -278,7 +278,7 @@ class NearCoordFilter {
   static NearCoordFilter fromJson(Map<String, dynamic> json) => NearCoordFilter(
         lat: _doubleOrNull(json['lat']) ?? 0,
         lng: _doubleOrNull(json['lng']) ?? 0,
-        radiusKm: _doubleOrNull(json['radiusKm']) ?? 10,
+        radiusKm: _doubleOrNull(json['radiusKm']) ?? 2,
       );
 
   @override

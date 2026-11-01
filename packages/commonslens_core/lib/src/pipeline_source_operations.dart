@@ -148,7 +148,7 @@ mixin _PipelineSourceOperations {
     final mode = _cfgString(c, 'mode', 'filtered');
     final lat = _cfgDouble(c, 'lat');
     final lng = _cfgDouble(c, 'lng');
-    final radiusKm = _cfgDouble(c, 'radiusKm') ?? 10;
+    final radiusKm = _cfgDouble(c, 'radiusKm') ?? 2;
     final boxRaw = c['box'];
     final box = boxRaw is List && boxRaw.length == 4
         ? boxRaw.map((v) => (v as num).toDouble()).toList()

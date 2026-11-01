@@ -17,6 +17,7 @@ const _mapPanel = Color(0xFF141414);
 const _mapBorder = Color(0xFF2A2A2A);
 const _mapAccent = Color(0xFF3D7EFF);
 const _minimumRadiusKm = 0.5;
+const _defaultRadiusKm = 2.0;
 
 /// The map presentation for the main search surface.
 ///
@@ -56,12 +57,14 @@ class _SearchMapViewState extends State<SearchMapView> {
   double _rotation = 0;
   bool _mapReady = false;
   bool _previewExpanded = true;
+  ll.LatLng? _pendingManualSearch;
 
   @override
   void initState() {
     super.initState();
     _radiusController = TextEditingController(
-      text: _formatRadius(widget.filterState.nearCoord?.radiusKm ?? 10),
+      text: _formatRadius(
+          widget.filterState.nearCoord?.radiusKm ?? _defaultRadiusKm),
     );
     _radiusFocusNode = FocusNode();
   }
@@ -78,7 +81,16 @@ class _SearchMapViewState extends State<SearchMapView> {
       _radiusController.text = _formatRadius(newLocation.radiusKm);
     }
 
-    if (oldLocation != newLocation && newLocation != null) {
+    final isManualSearch = oldLocation != newLocation &&
+        newLocation != null &&
+        _pendingManualSearch?.latitude == newLocation.lat &&
+        _pendingManualSearch?.longitude == newLocation.lng;
+
+    if (isManualSearch) {
+      // A map tap deliberately keeps the camera where the user tapped. The
+      // state update still changes the search circle and result set below.
+      _pendingManualSearch = null;
+    } else if (oldLocation != newLocation && newLocation != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _moveToLocation(newLocation);
       });
@@ -109,7 +121,8 @@ class _SearchMapViewState extends State<SearchMapView> {
   }
 
   double get _radiusKm {
-    final parsed = double.tryParse(_radiusController.text.trim()) ?? 10;
+    final parsed =
+        double.tryParse(_radiusController.text.trim()) ?? _defaultRadiusKm;
     return math.max(_minimumRadiusKm, parsed);
   }
 
@@ -162,6 +175,7 @@ class _SearchMapViewState extends State<SearchMapView> {
     final radius = _radiusKm;
     _radiusController.text = _formatRadius(radius);
     _radiusFocusNode.unfocus();
+    _pendingManualSearch = point;
     widget.onSearchLocation(point.latitude, point.longitude, radius);
   }
 

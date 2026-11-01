@@ -366,7 +366,7 @@ class _NearbyMediaButton extends StatelessWidget {
             Uri(path: '/', queryParameters: {
               'lat': item.resolvedLatitude!.toStringAsFixed(6),
               'lng': item.resolvedLongitude!.toStringAsFixed(6),
-              'radius': '10',
+              'radius': '2',
               'view': 'map',
             }).toString(),
           );

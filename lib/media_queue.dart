@@ -36,12 +36,25 @@ class MediaQueueSource {
         Uri(path: '/author', queryParameters: {'name': name}).toString(),
       );
 
-  factory MediaQueueSource.bookmarks(String query) => MediaQueueSource(
+  factory MediaQueueSource.bookmarks(String query, {String? folderId}) =>
+      MediaQueueSource(
         'bookmarks',
-        {'from': 'bookmarks', if (query.isNotEmpty) 'bq': query},
+        {
+          'from': 'bookmarks',
+          if (query.isNotEmpty) 'bq': query,
+          if (folderId != null && folderId.isNotEmpty) 'bf': folderId,
+        },
         Uri(
           path: '/bookmarks',
-          queryParameters: query.isEmpty ? null : {'bq': query},
+          queryParameters: {
+            if (query.isNotEmpty) 'bq': query,
+            if (folderId != null && folderId.isNotEmpty) 'bf': folderId,
+          }.isEmpty
+              ? null
+              : {
+                  if (query.isNotEmpty) 'bq': query,
+                  if (folderId != null && folderId.isNotEmpty) 'bf': folderId,
+                },
         ).toString(),
       );
 
@@ -74,7 +87,10 @@ class MediaQueueSource {
       return MediaQueueSource.author(params['author'] ?? '');
     }
     if (kind == 'bookmarks') {
-      return MediaQueueSource.bookmarks(params['bq'] ?? '');
+      return MediaQueueSource.bookmarks(
+        params['bq'] ?? '',
+        folderId: params['bf'],
+      );
     }
     if (kind == 'pipeline') {
       return MediaQueueSource.pipeline(
@@ -304,9 +320,19 @@ abstract final class MediaQueueResolver {
       case 'bookmarks':
         final state = ref.watch(bookmarkItemsProvider);
         final query = source.parameters['bq'] ?? '';
+        final folderId = source.parameters['bf'];
+        final folderUrls = folderId == null
+            ? null
+            : ref.watch(
+                bookmarkStoreProvider.select(
+                  (store) => store.urlsInFolder(folderId),
+                ),
+              );
         live = MediaQueueData(
           state.items
-              .where((item) => bookmarkMatchesSearch(item, query))
+              .where((item) =>
+                  (folderUrls == null || folderUrls.contains(item.url)) &&
+                  bookmarkMatchesSearch(item, query))
               .toList(),
           loading: state.loading,
         );

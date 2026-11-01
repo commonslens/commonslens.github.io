@@ -64,7 +64,37 @@ Widget _host({VoidCallback? onLocationSelected}) {
   );
 }
 
+Widget _mobileHost() {
+  return ProviderScope(
+    overrides: [
+      commonsBackendProvider.overrideWithValue(_FakeBackend()),
+      commonsAutocompleteProvider.overrideWithValue(_FakeAutocomplete()),
+    ],
+    child: MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          width: 390,
+          height: 800,
+          child: FilterPanelContent(showCloseButton: true),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
+  testWidgets(
+      'mobile filter drawer minimises groups and shows the active panel',
+      (tester) async {
+    await tester.pumpWidget(_mobileHost());
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Expand filter groups'), findsOneWidget);
+    expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
+    expect(find.text('IMAGE CLASSIFICATION'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('docked filter bars fit and autocomplete options stay visible',
       (tester) async {
     await tester.pumpWidget(_host());

@@ -641,6 +641,162 @@ class _QuickBookmarkButton extends ConsumerWidget {
   }
 }
 
+class _FolderAssignmentButton extends ConsumerWidget {
+  final SearchItem item;
+
+  const _FolderAssignmentButton({required this.item});
+
+  Future<void> _openFolderPicker(BuildContext context, WidgetRef ref) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => _FolderPickerDialog(item: item),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final store = ref.watch(bookmarkStoreProvider);
+    final assigned =
+        store.folders.any((folder) => folder.urls.contains(item.url));
+    return Tooltip(
+      message: 'Add to folder',
+      child: Material(
+        color: assigned
+            ? const Color(0xFF3D7EFF).withValues(alpha: 0.9)
+            : Colors.black.withValues(alpha: 0.55),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => _openFolderPicker(context, ref),
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Icon(
+              assigned ? Icons.folder : Icons.create_new_folder_outlined,
+              size: 15,
+              color: Colors.white,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FolderPickerDialog extends ConsumerStatefulWidget {
+  final SearchItem item;
+
+  const _FolderPickerDialog({required this.item});
+
+  @override
+  ConsumerState<_FolderPickerDialog> createState() =>
+      _FolderPickerDialogState();
+}
+
+class _FolderPickerDialogState extends ConsumerState<_FolderPickerDialog> {
+  Future<void> _createFolder() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('Create folder',
+            style: TextStyle(color: Colors.white, fontSize: 18)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLength: 60,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Folder name',
+            labelStyle: TextStyle(color: Color(0xFF888888)),
+          ),
+          onSubmitted: (value) {
+            if (value.trim().isNotEmpty) {
+              FocusScope.of(dialogContext).unfocus();
+              Navigator.of(dialogContext).pop(value.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                FocusScope.of(dialogContext).unfocus();
+                Navigator.of(dialogContext).pop(controller.text.trim());
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    controller.dispose();
+    if (!mounted || name == null || name.isEmpty) return;
+    ref.read(bookmarkStoreProvider).createFolder(name);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = ref.watch(bookmarkStoreProvider);
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1A1A1A),
+      title: const Text('Add to folder',
+          style: TextStyle(color: Colors.white, fontSize: 18)),
+      content: SizedBox(
+        width: 360,
+        child: store.folders.isEmpty
+            ? const Text(
+                'Create a folder to organize this bookmarked media. It will remain in All Bookmarked Media too.',
+                style: TextStyle(color: Color(0xFFB0B0B0), height: 1.4),
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: store.folders.map((folder) {
+                    final checked = folder.urls.contains(widget.item.url);
+                    return CheckboxListTile(
+                      value: checked,
+                      dense: true,
+                      activeColor: const Color(0xFF3D7EFF),
+                      title: Text(folder.name,
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(
+                        '${folder.urls.length} ${folder.urls.length == 1 ? 'item' : 'items'}',
+                        style: const TextStyle(color: Color(0xFF777777)),
+                      ),
+                      onChanged: (value) {
+                        if (value == true) {
+                          store.addToFolder(folder.id, widget.item.url);
+                        } else {
+                          store.removeFromFolder(folder.id, widget.item.url);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+      ),
+      actions: [
+        TextButton.icon(
+          onPressed: _createFolder,
+          icon: const Icon(Icons.create_new_folder_outlined, size: 17),
+          label: const Text('Create folder'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Done'),
+        ),
+      ],
+    );
+  }
+}
+
 /// Shared result grid used anywhere a collection of Commons media is shown.
 ///
 /// The caller owns loading and pagination state. This widget coordinates the
@@ -657,6 +813,10 @@ class MediaResultsGrid extends StatelessWidget {
   final double cacheExtent;
   final VoidCallback? onNearEnd;
   final double nearEndThreshold;
+  final bool showFolderAction;
+  final bool folderSelectionMode;
+  final Set<String> selectedFolderUrls;
+  final ValueChanged<SearchItem>? onFolderSelectionToggle;
 
   const MediaResultsGrid({
     super.key,
@@ -671,6 +831,10 @@ class MediaResultsGrid extends StatelessWidget {
     this.cacheExtent = 150,
     this.onNearEnd,
     this.nearEndThreshold = 400,
+    this.showFolderAction = false,
+    this.folderSelectionMode = false,
+    this.selectedFolderUrls = const <String>{},
+    this.onFolderSelectionToggle,
   });
 
   @override
@@ -716,6 +880,10 @@ class MediaResultsGrid extends StatelessWidget {
             queueSource: source,
             queueItems: items,
             queueHasMore: queueHasMore,
+            showFolderAction: showFolderAction,
+            folderSelectionMode: folderSelectionMode,
+            folderSelected: selectedFolderUrls.contains(item.url),
+            onFolderSelectionToggle: onFolderSelectionToggle,
           ),
         );
       },
@@ -741,6 +909,10 @@ class MediaCard extends ConsumerStatefulWidget {
   final MediaQueueSource queueSource;
   final List<SearchItem> queueItems;
   final bool queueHasMore;
+  final bool showFolderAction;
+  final bool folderSelectionMode;
+  final bool folderSelected;
+  final ValueChanged<SearchItem>? onFolderSelectionToggle;
 
   const MediaCard({
     super.key,
@@ -749,6 +921,10 @@ class MediaCard extends ConsumerStatefulWidget {
     required this.queueSource,
     required this.queueItems,
     this.queueHasMore = false,
+    this.showFolderAction = false,
+    this.folderSelectionMode = false,
+    this.folderSelected = false,
+    this.onFolderSelectionToggle,
   });
 
   @override
@@ -759,6 +935,11 @@ class _MediaCardState extends ConsumerState<MediaCard> {
   bool _hovered = false;
 
   Future<void> _handleTap() async {
+    if (widget.folderSelectionMode) {
+      widget.onFolderSelectionToggle?.call(widget.item);
+      return;
+    }
+
     // 1. Intercept tap if we are in selection mode
     final isSelectionMode = ref.read(selectionModeProvider);
     if (isSelectionMode) {
@@ -786,6 +967,8 @@ class _MediaCardState extends ConsumerState<MediaCard> {
   }
 
   void _handleLongPress() {
+    if (widget.folderSelectionMode) return;
+
     final isSelectionMode = ref.read(selectionModeProvider);
 
     if (!isSelectionMode) {
@@ -829,6 +1012,9 @@ class _MediaCardState extends ConsumerState<MediaCard> {
       selectedItemsProvider.select((items) => items.contains(item)),
     );
     final isSelectionMode = ref.watch(selectionModeProvider);
+    final isFolderSelectionMode = widget.folderSelectionMode;
+    final isCardSelected =
+        isFolderSelectionMode ? widget.folderSelected : isSelected;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -844,8 +1030,8 @@ class _MediaCardState extends ConsumerState<MediaCard> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                   // Draw a thick blue border if selected!
-                  width: isSelected ? 3 : 1,
-                  color: isSelected
+                  width: isCardSelected ? 3 : 1,
+                  color: isCardSelected
                       ? const Color(0xFF3D7EFF)
                       : _hovered
                           ? const Color(0xFF3D7EFF).withValues(alpha: 0.55)
@@ -887,7 +1073,9 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                     ),
                     // Keep quick download available without leaving an
                     // unexplained permanent circle on every card.
-                    if (!isSelectionMode && _hovered)
+                    if (!isSelectionMode &&
+                        !isFolderSelectionMode &&
+                        (_hovered || widget.showFolderAction))
                       Positioned(
                         top: 8,
                         right: 8,
@@ -895,6 +1083,10 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _QuickBookmarkButton(item: item),
+                            if (widget.showFolderAction) ...[
+                              const SizedBox(width: 6),
+                              _FolderAssignmentButton(item: item),
+                            ],
                             const SizedBox(width: 6),
                             _QuickDownloadButton(item: item),
                           ],
@@ -902,7 +1094,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                       ),
                     // Selection state is only shown while CSV selection is
                     // active, so the circle has a single, obvious meaning.
-                    if (isSelectionMode)
+                    if (isFolderSelectionMode || isSelectionMode)
                       Positioned(
                         top: 8,
                         right: 8,
@@ -911,16 +1103,16 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                           height: 28,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: isSelected
+                            color: isCardSelected
                                 ? const Color(0xFF3D7EFF)
                                 : Colors.black.withValues(alpha: 0.62),
                             border: Border.all(
-                              color: isSelected
+                              color: isCardSelected
                                   ? const Color(0xFF79A4FF)
                                   : Colors.white38,
                             ),
                           ),
-                          child: isSelected
+                          child: isCardSelected
                               ? const Icon(Icons.check_rounded,
                                   color: Colors.white, size: 17)
                               : null,
@@ -1041,7 +1233,7 @@ class _MediaPreviewState extends State<MediaPreview> {
 
     final candidateIndex = _candidateIndex;
     final imageUrl = candidates[candidateIndex];
-    return Image.network(imageUrl,
+    final image = Image.network(imageUrl,
         key: ValueKey(imageUrl),
         fit: BoxFit.cover,
         filterQuality: FilterQuality.low,
@@ -1059,8 +1251,20 @@ class _MediaPreviewState extends State<MediaPreview> {
       if (progress == null) return child;
       return const PreviewLoading();
     });
+
+    // SVG thumbnails can have transparent regions. Keep those regions
+    // legible against the same white backing used by the asset viewer.
+    return _isSvgItem(item)
+        ? Container(color: Colors.white, child: image)
+        : image;
   }
 }
+
+bool _isSvgItem(SearchItem item) =>
+    item.isSvg ||
+    item.mediaKind == MediaKind.vector ||
+    item.extension.toLowerCase() == 'svg' ||
+    item.mime.toLowerCase() == 'image/svg+xml';
 
 class PreviewLoading extends StatelessWidget {
   const PreviewLoading({super.key});

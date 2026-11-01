@@ -346,7 +346,7 @@ String _nodeSummary(PipelineNode node) {
     case PipelineNodeType.sourceGeosearch:
       return c['lat'] == null || c['lng'] == null
           ? 'Set a location'
-          : '${c['lat']}, ${c['lng']} - ${c['radiusKm'] ?? 10} km';
+          : '${c['lat']}, ${c['lng']} - ${c['radiusKm'] ?? 2} km';
     case PipelineNodeType.filterLicense:
       return joinedLicenses().isEmpty ? 'Any license' : joinedLicenses();
     case PipelineNodeType.filterFormat:

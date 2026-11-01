@@ -320,7 +320,7 @@ class SearchUrlCodec {
 
     final latitude = double.tryParse(params['lat'] ?? '');
     final longitude = double.tryParse(params['lng'] ?? '');
-    final radius = double.tryParse(params['radius'] ?? '') ?? 10;
+    final radius = double.tryParse(params['radius'] ?? '') ?? 2;
     final nearCoord = latitude == null || longitude == null
         ? null
         : NearCoordFilter(

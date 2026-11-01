@@ -500,14 +500,21 @@ Widget _sectionDivider(String label) {
   return Row(
     children: [
       const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(label,
+      Flexible(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: const TextStyle(
                 color: Color(0xFF3D7EFF),
                 fontSize: 12,
                 letterSpacing: 1.8,
-                fontWeight: FontWeight.w800)),
+                fontWeight: FontWeight.w800),
+          ),
+        ),
       ),
       const Expanded(child: Divider(color: Color(0xFF2A2A2A), thickness: 1.2)),
     ],

@@ -64,7 +64,8 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
             ..style.width = '100%'
             ..style.height = '100%'
             ..style.objectFit = 'contain'
-            ..style.backgroundColor = 'transparent'
+            ..style.backgroundColor =
+                _isSvgAsset(widget.item) ? '#FFFFFF' : 'transparent'
             ..style.outline = 'none';
         } else if (isVideo) {
           return html.VideoElement()
@@ -106,6 +107,12 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
       });
     }
   }
+
+  bool _isSvgAsset(SearchItem item) =>
+      item.isSvg ||
+      item.mediaKind == MediaKind.vector ||
+      item.extension.toLowerCase() == 'svg' ||
+      item.mime.toLowerCase() == 'image/svg+xml';
 
   @override
   Widget build(BuildContext context) {

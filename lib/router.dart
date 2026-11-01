@@ -72,6 +72,7 @@ final GoRouter appRouter = GoRouter(
       path: '/bookmarks',
       builder: (context, state) => BookmarksPage(
         initialQuery: state.uri.queryParameters['bq'] ?? '',
+        initialFolderId: state.uri.queryParameters['bf'],
       ),
     ),
     GoRoute(

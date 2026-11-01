@@ -155,6 +155,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   @override
   void initState() {
     super.initState();
+    // The mobile drawer has limited horizontal space, so keep the primary
+    // filter-group rail minimised while leaving the selected group's panel
+    // open. The docked desktop panel keeps both sections expanded by default.
+    _outerBarExpanded = widget.docked;
     _seedControllers(ref.read(searchControllerProvider).filterState);
   }
 

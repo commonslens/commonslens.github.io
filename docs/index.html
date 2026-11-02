@@ -477,7 +477,7 @@
           <article class="index-card"><span class="index-number">12</span><h3><a href="#pipelines">Pipelines</a></h3><p>Build repeatable visual workflows that fetch, refine, enrich, and export collections.</p><p class="index-topics">Sources · filters · branches · transforms · outputs</p></article>
           <article class="index-card"><span class="index-number">13</span><h3><a href="#sharing">Sharing and local state</a></h3><p>Know what a URL shares, what survives a reload, and how to move local work between devices.</p><p class="index-topics">Search URLs · asset URLs · map views · JSON backups</p></article>
           <article class="index-card"><span class="index-number">14</span><h3><a href="#rights">Privacy, rights, and responsible use</a></h3><p>Understand provider boundaries, local privacy, licensing risk, and respectful use of public infrastructure.</p><p class="index-topics">Storage · providers · sensitive terms · rate limits</p></article>
-          <article class="index-card"><span class="index-number">15</span><h3><a href="#troubleshooting">Troubleshooting</a></h3><p>Diagnose empty results, missing media, unavailable metadata, lost local state, and slow workflows.</p><p class="index-topics">Search · maps · previews · storage · exports · pipelines</p></article>
+          <article class="index-card"><span class="index-number">15</span><h3><a href="#troubleshooting">Troubleshooting</a></h3><p>Diagnose empty results, missing media, unavailable metadata, lost local state, slow workflows, and inspect Wikimedia request statuses.</p><p class="index-topics">Search · maps · previews · storage · exports · pipelines · request log</p></article>
         </div>
         <a class="back-top" href="#top">Back to top</a>
       </section>
@@ -796,6 +796,18 @@
             <tr><td>Location</td><td>Nearby searches and map-based location work.</td><td>Opens the Map workflow. Location is explained in <a href="#map">Search by map</a>.</td></tr>
           </tbody>
         </table>
+
+        <h3>Panel layout and autocomplete behavior</h3>
+        <ul>
+          <li><strong>Image classification is the starting group.</strong> When the filter panel opens, Image classification is selected by default so the primary group list has a predictable starting point.</li>
+          <li><strong>The secondary editor starts minimized.</strong> The group-specific editor stays closed until you select a group or use its expand control. This keeps the group list available on both desktop and mobile instead of opening a large panel over the workspace.</li>
+          <li><strong>Desktop and mobile use the same controls.</strong> On a wide screen the panel is docked; on a phone it opens as a drawer. The primary group list remains available, and selecting a group opens its secondary editor.</li>
+          <li><strong>Suggestions are optional.</strong> Subject, property, category, and template fields can show matching suggestions while you type. Select a suggestion when you need the exact Wikidata Q-code, property/value pair, category, or template name. If suggestions are unavailable, the field displays a connection error and you can still submit the complete search term.</li>
+          <li><strong>Mobile suggestions stay above the keyboard.</strong> If the keyboard covers the lower part of the drawer, the suggestion list is positioned in the available visible space. Dismiss the keyboard or scroll the drawer if the viewport is especially short.</li>
+        </ul>
+
+        <h3>Sidebar navigation and diagnostics</h3>
+        <p>The primary sidebar separates the main filter groups from the additional navigation links with a divider. The links for <strong>All features</strong> and <strong>User guide</strong> are below that divider. A small request-log icon sits at the bottom of the primary sidebar; on the landing page, the same icon is in the top-right corner. These icons open the in-app Wikimedia request log without changing the current search.</p>
 
         <h3>Step-by-step: refine a search</h3>
         <ol>
@@ -1958,6 +1970,29 @@
         <p>Troubleshooting is easiest when you first identify <em>which layer failed</em>. A problem may be in CommonsLens itself, in the Wikimedia API, on Wikimedia’s media host, in a map provider, in your browser’s local storage, or in the search or pipeline configuration. The visible symptom is not always the cause: a broken thumbnail does not necessarily mean that a file is gone, and an empty result does not necessarily mean that Commons has no matching files.</p>
 
         <div class="warning"><strong>Start here:</strong> do not clear all browser data as your first response. That can delete local bookmarks, saved pipelines, cached work, and viewer preferences before you have preserved them. Export a pipeline or CSV first when possible, then simplify the task and retry.</div>
+
+        <h3>Use the Wikimedia request log</h3>
+        <p>When you need to see whether a request was made and what Wikimedia returned, open the request log from the small receipt icon. On the landing page it is in the top-right corner; in the Search filter workspace it is at the bottom of the primary sidebar, including the collapsed sidebar rail.</p>
+        <p>The log groups app-managed Wikimedia requests by operation:</p>
+        <table>
+          <thead><tr><th>Group</th><th>Examples</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Autocomplete</strong></td><td>Subject, property, category, and template suggestions.</td></tr>
+            <tr><td><strong>Search</strong></td><td>Normal Search and filter-result requests.</td></tr>
+            <tr><td><strong>Pipeline</strong></td><td>Pipeline source, pagination, and enrichment requests.</td></tr>
+            <tr><td><strong>Browse</strong></td><td>Category, template, and depicted-subject directory requests.</td></tr>
+            <tr><td><strong>Metadata</strong></td><td>File information and optional metadata requests.</td></tr>
+            <tr><td><strong>Thumbnail / Media</strong></td><td>Preview-sized and other Wikimedia-hosted media requests.</td></tr>
+            <tr><td><strong>Download</strong></td><td>Requests made for an explicit media download.</td></tr>
+          </tbody>
+        </table>
+        <ul>
+          <li>Each entry contains only the request URL and returned status. The category is supplied by the group heading.</li>
+          <li>A <code>NO_RESPONSE</code> entry means the app attempted the request but did not receive an HTTP response.</li>
+          <li>Retries are recorded as separate attempts, so repeated URLs can show how Wikimedia responded across retries.</li>
+          <li>The log updates while it is open. Use <strong>Clear</strong> to remove the current entries.</li>
+          <li>The log is kept in the current page session and is not a saved history or CommonsLens account record. URLs can contain search terms, category names, Q-codes, usernames, or coordinates, so treat the visible log as potentially sensitive.</li>
+        </ul>
 
         <h3>The first 60 seconds</h3>
         <ol class="steps">

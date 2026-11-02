@@ -13,9 +13,6 @@
   <meta property="og:description" content="A user guide to CommonsLens search, map discovery, media reuse, bookmarks, exports, pipelines, and browser-local data.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://commonslens.github.io/docs/">
-  <meta property="og:image" content="https://commonslens.github.io/favicon.png">
-  <meta property="og:image:alt" content="CommonsLens logo">
-  <link rel="icon" type="image/png" href="../favicon.png">
   <style>
     :root {
       color-scheme: dark;
@@ -274,9 +271,6 @@
     .doc-format { margin: 22px 0; padding: 17px 19px; border: 1px solid #29384d; border-radius: 8px; background: #101923; }
     .doc-format strong { color: #e4ecff; }
     .subsection-list { margin-top: 10px; }
-    .image-placeholder { margin: 24px 0; }
-    .image-placeholder figcaption { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .docs-screenshot { display: block; max-width: 100%; max-height: 720px; width: auto; height: auto; margin: 0 auto; border: 1px solid var(--border); border-radius: 8px; background: #0f0f0f; }
     code { padding: 1px 4px; border: 1px solid #2a2a2a; border-radius: 3px; background: #151515; color: #d8e4ff; font-size: .92em; }
     ul, ol { max-width: 800px; padding-left: 23px; }
     li { margin: 7px 0; }
@@ -710,21 +704,6 @@
           <div class="card"><h4>Progressive loading</h4><p>Results arrive in pages as you scroll. The number shown is the number currently loaded, and a trailing <code>+</code> means another page may be available.</p></div>
         </div>
 
-        <figure class="image-placeholder" data-image-slot="search-landing">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/intro_landing_page.png" alt="CommonsLens search landing page with the search field, filter groups, example media shortcuts, and navigation" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>The first screen a new user sees: the search field is centered on the landing workspace while filters and the main navigation remain available around it.</figcaption>
-        </figure>
-
-        <figure class="image-placeholder" data-image-slot="search-autocomplete">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/autocorrect.png" alt="CommonsLens autocomplete suggestions for a Leaning Tower of Pisa search" width="669" height="347" loading="lazy" decoding="async">
-          <figcaption>Autocomplete offers direct file-title suggestions. Select one for a focused file search, or press Enter to search the whole phrase.</figcaption>
-        </figure>
-
-        <figure class="image-placeholder" data-image-slot="search-results">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/pagination.png" alt="CommonsLens image results for the Leaning Tower of Pisa with result cards, filters, result count, and a loading more indicator" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>The results workspace shows the query, media and format scope, result count, Grid/Map switch, cards, and progressive loading. The visible count is the amount currently loaded, not necessarily the final total.</figcaption>
-        </figure>
-
         <h3>Step-by-step: run a useful search</h3>
         <ol>
           <li><strong>Describe the thing.</strong> Type a phrase such as <code>red fox</code>, <code>Apollo 11</code>, or <code>DNA helix</code>. Start broad enough to learn the vocabulary in the results.</li>
@@ -817,11 +796,6 @@
             <tr><td>Location</td><td>Nearby searches and map-based location work.</td><td>Opens the Map workflow. Location is explained in <a href="#map">Search by map</a>.</td></tr>
           </tbody>
         </table>
-
-        <figure class="image-placeholder" data-image-slot="advanced-filters">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/advanced_filters.png" alt="CommonsLens advanced filter panel with image classification, subject chips, category controls, and search results" width="894" height="907" loading="lazy" decoding="async">
-          <figcaption>The filter panel separates filter groups from their controls. This example shows subject values, Intersection/Union choices, categories, templates, and the results area responding to the active filters.</figcaption>
-        </figure>
 
         <h3>Step-by-step: refine a search</h3>
         <ol>
@@ -946,11 +920,6 @@
           </tbody>
         </table>
 
-        <figure class="image-placeholder" data-image-slot="browse-directory">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/browse_categories_etc.png" alt="CommonsLens Browse Directories page showing Categories, Templates, and Depicts tabs with category results" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>Browse Directories exposes Commons vocabulary through Categories, Templates, and Depicts (Q-Codes). Entries show their names and available file counts before you send a selection back to Search.</figcaption>
-        </figure>
-
         <h3>Step-by-step: find and apply a classification</h3>
         <ol>
           <li><strong>Open the right tab.</strong> Choose Categories for filing structure, Templates for page labels, or Depicts for a structured real-world subject.</li>
@@ -1057,10 +1026,6 @@
           <li>Remember that Map uses coordinates you choose or public coordinates attached to Wikimedia media. It does not request your device’s live location.</li>
         </ul>
 
-        <figure class="image-placeholder" data-image-slot="map-workspace">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/map_to_search.png" alt="CommonsLens map search for Eiffel Tower media with a two kilometre search circle, markers, clusters, and result cards" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>Map is an active search surface: the radius control, mapped results, clusters, result cards, map layers, and provider attribution all remain visible together.</figcaption>
-        </figure>
 
         <h3>What you see</h3>
         <table>
@@ -1097,10 +1062,6 @@
 
         <p>A map tap replaces the previous coordinate search and clears a competing nearby-title location if one was present. Panning, zooming, and rotating only change what you see; they do not change the search location until you tap a new point.</p>
 
-        <figure class="image-placeholder" data-image-slot="map-cluster">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/search_to_map.png" alt="CommonsLens map view for London Heathrow media with numbered clusters, individual markers, and result cards" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>Clusters group nearby loaded files at the current zoom. Selecting a cluster lets you inspect the grouped result set before opening one file in the viewer.</figcaption>
-        </figure>
 
         <h3>Change the map layer</h3>
         <p>Use the layer button to cycle through four presentations:</p>
@@ -1162,11 +1123,6 @@
           <li>For a reuse decision, have enough time to inspect the full source page. The viewer summarizes public metadata; it does not replace the original Commons file page.</li>
           <li>If the file matters to a project, compare the displayed creator, uploader, license, source, and dimensions with the information on the source page before downloading or publishing.</li>
         </ul>
-
-        <figure class="image-placeholder" data-image-slot="asset-viewer">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/asset_viewer.png" alt="CommonsLens asset viewer showing a media preview, result position, bookmark control, download actions, metadata, and reuse information" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>The viewer keeps the media, navigation, download actions, metadata inspector, and reuse information in one verification workspace.</figcaption>
-        </figure>
 
         <h3>What you see</h3>
         <table>
@@ -1293,6 +1249,17 @@
           </tbody>
         </table>
 
+        <h3>License versus attribution</h3>
+        <p>These are related, but they are not the same thing:</p>
+        <table>
+          <thead><tr><th>Term</th><th>Simple meaning</th><th>What to look for</th></tr></thead>
+          <tbody>
+            <tr><td><strong>License</strong></td><td>The rules for what you may do with the file.</td><td>The license name, full license link, and conditions such as attribution, share-alike, or non-commercial use.</td></tr>
+            <tr><td><strong>Attribution</strong></td><td>The credit you give to the creator or rightsholder.</td><td>The artist/creator, preferred credit, source link, and whether the available metadata flags credit as required.</td></tr>
+          </tbody>
+        </table>
+        <p>A license can require attribution, but “attribution not flagged as required” does not mean “no credit is needed.” Check the complete license and original Commons file page every time.</p>
+
         <h3>Step-by-step: decide whether a file is ready to reuse</h3>
         <ol>
           <li><strong>Open the reuse panel.</strong> Let rights metadata finish loading if the panel shows a resolving state.</li>
@@ -1325,11 +1292,6 @@
           </tbody>
         </table>
         <p>The generated output is a draft. WikiText in particular is a basic file inclusion, not a complete substitute for any attribution, license, or source requirements that the file carries.</p>
-
-        <figure class="image-placeholder" data-image-slot="reuse-output">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/copy_attribution.png" alt="CommonsLens copy-ready attribution panel with Attribution, HTML, and WikiText formats and source and license links" width="369" height="351" loading="lazy" decoding="async">
-          <figcaption>The reuse panel produces a copy-ready draft beside links to the source file, full license, and reuse guidance. Treat the generated text as a starting point and verify it against the source page.</figcaption>
-        </figure>
 
         <h3>Copy without exposing unrelated clipboard data</h3>
         <p>Choose a format and press its Copy button. CommonsLens writes the generated snippet to the browser clipboard and shows a confirmation. It does not need to read the rest of your clipboard to generate the text. Review the pasted result in the destination before publishing.</p>
@@ -1472,11 +1434,6 @@
         <h2>10. Explore an uploader’s portfolio</h2>
         <p class="section-intro">An author portfolio is a focused view of files uploaded under one Wikimedia username. It is useful when you have found a contributor whose work, institution, collection, or photographic coverage is worth exploring further.</p>
 
-        <figure class="image-placeholder" data-image-slot="author-portfolio">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/author_portfolio_with_downloads.png" alt="CommonsLens author portfolio showing an uploader search, many media cards, selected files, and the CSV download tray" width="1847" height="1081" loading="lazy" decoding="async">
-          <figcaption>An uploader portfolio turns a Wikimedia username into a browsable set of uploads. The same screen also exposes selection and CSV export controls for a focused portfolio workflow.</figcaption>
-        </figure>
-
         <h3>Purpose</h3>
         <p>Use a portfolio to move from one known file to the uploader’s other uploads. It is a discovery and review workspace, not a biography or a complete statement of authorship. The page is keyed to a Wikimedia username and shows the media returned by the public upload index.</p>
 
@@ -1542,11 +1499,6 @@
         <h2>11. Download files and export metadata</h2>
         <p class="section-intro">CommonsLens separates retrieving media from exporting a research manifest. An individual download retrieves verified media bytes; a collection export creates a local CSV of metadata and URLs without downloading the media files.</p>
 
-        <figure class="image-placeholder" data-image-slot="download-controls">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/asset_viewer_downloader.png" alt="CommonsLens asset viewer download controls showing Download Original, Small, Medium, Large, and View Source Page" width="376" height="208" loading="lazy" decoding="async">
-          <figcaption>The viewer separates Download Original from image-size choices and the View Source Page action. A source-page visit is a verification step, not a download.</figcaption>
-        </figure>
-
         <h3>Choose the right output</h3>
         <div class="card-grid">
           <div class="card"><h3>Download an individual file</h3><p>Use the viewer’s <strong>Download Original</strong> action or the quick download control on a result card. For images and vectors, choose a smaller 640px, 1280px, or 1920px derivative when available. Audio, video, and other supported media use the original file path.</p></div>
@@ -1565,8 +1517,8 @@
         </ol>
 
         <h3>Export a CSV manifest</h3>
-        <p>CSV export is intentionally metadata-only. Select the files you want, choose <em>Full-size URL</em> or <em>Web-optimized URL</em>, and download the generated CSV. In pipeline manifests, you can choose the metadata level and whether each row contains the original URL, the web-optimized URL, or both.</p>
-        <p>The browser creates the CSV locally from records already loaded in the app. It does not fetch every image just to make the export. A CSV can therefore be small and fast even when it points to very large originals.</p>
+        <p>CSV export is intentionally metadata-only. Select the files you want, choose <em>Full-size URL</em> or <em>Web-optimized URL</em>, and download the generated CSV. A pipeline Dataset Manifest starts each row with detailed metadata and automatically adds fields requested by upstream pipeline nodes such as Enrich. It can also include the original URL, the web-optimized URL, or both.</p>
+        <p>The browser creates the CSV locally from records already loaded in the app. It does not fetch every image just to make the export. A CSV can therefore be small and fast even when it points to very large originals. The CSV contains links to media; it is not the media itself.</p>
 
         <h3 id="download-security">CommonsLens Download Security: how individual media downloads are screened</h3>
         <p>CommonsLens uses a fail-closed download policy: a file is saved only when the checks that apply to that download agree. The checks reduce common risks in a browser-based downloader, but they are not a replacement for your operating system’s antivirus tools or your own judgement.</p>
@@ -1614,11 +1566,6 @@
         <p class="section-kicker">12 / Pipelines</p>
         <h2>12. Build a visual pipeline</h2>
         <p class="section-intro">A pipeline is CommonsLens’s visual workspace for turning one or more Wikimedia Commons queries into a repeatable collection, transformation, preview, or metadata export. This is the deepest section in the guide because the canvas is not just another search form: the order and shape of the graph determine what Wikimedia is asked for, what is combined in your browser, and what finally becomes an output.</p>
-        <figure class="image-placeholder" data-image-slot="pipeline-canvas">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/pipeline_nodes.png" alt="CommonsLens pipeline canvas with text-query sources, license and format filters, a union node, and a Dataset Manifest CSV sink" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>The pipeline canvas makes source, filter, set-operation, and sink relationships visible. The selected Dataset Manifest inspector shows that the graph ends in a CSV output rather than a media download.</figcaption>
-        </figure>
-
         <h3 id="pipeline-getting-started">GETTING STARTED WITH COMMONSLENS PIPELINES</h3>
         <p>Start with one source node, connect it to the condition or transformation you need, and finish with a preview or Dataset Manifest output. Read the graph from left to right: sources create media sets, filters narrow them, set operations combine branches, transforms shape them, and sinks finish the workflow.</p>
         <p>The fastest first experiment is <strong>Text Query → Format Filter → Dataset Manifest</strong>. Add the source from the palette, select each node to edit its settings in the inspector, connect the nodes in order, and run a preview before exporting. The rest of this section explains what each node means and how to diagnose a graph that does not produce the expected files.</p>
@@ -1638,6 +1585,16 @@
         <p>On a simple source → filter → filter chain, CommonsLens does not fetch every intermediate list. It compiles the source and query-capable filters into one Wikimedia search request, then materializes the branch when a preview, transform, set operation, or sink needs actual records. This usually means fewer requests and more accurate server-side filtering.</p>
         <p>Once a branch has materialized, later work happens against the records already loaded in the browser. That distinction matters. Format, resolution, date, and excluded-term filters can still be evaluated locally from available fields. Licence, quality, language, and colour-depth conditions depend on structured query information that may not be present on each loaded record; if placed after a materialized branch such as Author Uploads or Geosearch Browse, CommonsLens warns and passes those items through rather than pretending the filter succeeded.</p>
 
+        <h3>What a pipeline requests and downloads</h3>
+        <p>There are two different kinds of work in a pipeline: requesting information about files, and downloading the files themselves.</p>
+        <div class="card-grid">
+          <div class="card"><h3>1. Source requests</h3><p>Sources ask Wikimedia for matching file records and metadata. The response includes file information and media URLs; the pipeline does not download every original image.</p></div>
+          <div class="card"><h3>2. Optional metadata</h3><p>Rights/attribution, technical image information, Structured Data, and global usage are additional metadata requests. They add information to rows, not media files to your computer.</p></div>
+          <div class="card"><h3>3. Preview display</h3><p>The preview may load thumbnails so the grid can show images. This is display activity, not a full media download or an image archive.</p></div>
+          <div class="card"><h3>4. CSV export</h3><p>The browser builds the CSV from the records and metadata it has, then downloads that small CSV file locally. The URLs inside it still point back to Wikimedia.</p></div>
+        </div>
+        <p><strong>Only an individual download retrieves media bytes.</strong> Use the viewer’s download action when you actually want an image, audio, video, or document file on your device.</p>
+
         <div class="warning"><strong>The most important set-operation distinction:</strong> use <em>Combine Constraints (AND)</em> when both branches are still query-capable and should become one server-side query. Use <em>Intersect</em> when you already have two materialized lists—such as an author portfolio and a geosearch result—and want the files whose URLs occur in both lists.</div>
 
         <h3>Build a pipeline step by step</h3>
@@ -1647,15 +1604,10 @@
           <li><div><strong>Configure the node before judging its output.</strong> Set the query, Q-codes, usernames, coordinates, filters, limits, or export options in the inspector. The short text inside the node is a summary of its current configuration.</div></li>
           <li><div><strong>Connect outputs to inputs.</strong> Drag from a node’s output to the next node’s input. Ordinary nodes accept one incoming connection; set operations require both an A and a B connection. A source cannot receive input, and a cycle is rejected.</div></li>
           <li><div><strong>Preview early.</strong> Use the Dataset Manifest preview action to inspect up to 100 records in the image grid and raw table. Preview mode is deliberately capped and is for checking logic, not for proving that a large export is complete.</div></li>
-          <li><div><strong>Read node statuses.</strong> The canvas reports running, successful, warning, and error states. Warnings often mean a filter was placed after a materialized branch, enrichment was capped, or a result is intentionally partial.</div></li>
+          <li><div><strong>Read node statuses.</strong> The canvas reports running, successful, warning, and error states. Warnings often mean a filter was placed after a materialized branch, rights metadata is disabled, an optional metadata request failed, or a result is intentionally partial.</div></li>
           <li><div><strong>Run the final export.</strong> Use <em>Run full export</em> on the Dataset Manifest node. This follows continuation pages to build the manifest and downloads a metadata-only CSV; it does not download the media files.</div></li>
           <li><div><strong>Save or move the graph.</strong> Edits autosave to this browser. Rename the graph for the saved-pipelines list, export it as JSON for a portable definition, or import a JSON definition into another browser profile.</div></li>
         </ol>
-
-        <figure class="image-placeholder" data-image-slot="pipeline-run">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/pipeline_preview_csv.png" alt="CommonsLens Dataset Manifest CSV preview showing materialized records in a raw table with metadata and Wikimedia URLs" width="1920" height="1200" loading="lazy" decoding="async">
-          <figcaption>After the graph runs, the Dataset Manifest can be inspected as a raw table. The preview shows metadata and Wikimedia URLs; it does not mean that the media bytes were downloaded.</figcaption>
-        </figure>
 
         <h3>Node reference: sources</h3>
         <p>Sources create a new branch. They have zero inputs and one output.</p>
@@ -1718,7 +1670,7 @@
               <tr><td><strong>Sort</strong></td><td><code>1 → 1</code></td><td>Reorders the materialized set without changing which files are present.</td><td>Relevance, title, newest/oldest edited, or newest/oldest created. Client-side date ordering relies on the timestamp fields available in the loaded records.</td></tr>
               <tr><td><strong>Sample / Limit</strong></td><td><code>1 → 1</code></td><td>Keeps only the first N records after optionally shuffling the incoming list. It is useful for a manageable sample, test run, or bounded downstream export.</td><td>Limit and whether to shuffle before taking the limit. A shuffled sample is not a promise of statistical randomness or reproducibility.</td></tr>
               <tr><td><strong>Field Select</strong></td><td><code>1 → 1</code></td><td>Projects the records used for dataset output down to selected fields. The underlying media items remain available for preview and Search handoff, while export records carry only the chosen columns.</td><td>Fields such as title, URLs, licence, dates, uploader, dimensions, size, checksum, categories, coordinates, enrichment, and usage fields.</td></tr>
-              <tr><td><strong>Enrich (SDC / Usage)</strong></td><td><code>1 → 1</code></td><td>Requests extra Wikimedia data for selected items and adds it to the export records. Technical image information is batched; Structured Data on Commons and global usage are opt-in and cached where possible.</td><td>Technical image metadata, Structured Data, global usage; maximum items to enrich (default 20); batch size (maximum 20); usage pages per item. Enrichment can add requests, time, and warnings.</td></tr>
+              <tr><td><strong>Enrich</strong></td><td><code>1 → 1</code></td><td>Requests extra Wikimedia metadata for every incoming item and adds the returned fields to the export records. It can request technical image information, rights/attribution, Structured Data on Commons, and global usage.</td><td>Choose the metadata bundles you need, the request batch size, and usage pages per item. There is no built-in 20-item enrichment cap; if you want a smaller test run, put a Sample / Limit node before Enrich. Enrichment can add requests, time, and warnings.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1729,7 +1681,7 @@
           <table>
             <thead><tr><th>Node</th><th>Connections</th><th>What it does</th><th>Current user workflow</th></tr></thead>
             <tbody>
-              <tr><td><strong>Dataset Manifest (CSV)</strong></td><td><code>1 → 0</code></td><td>Materializes the incoming branch and turns it into a metadata manifest. It can include essential, detailed, or full available columns and original, web-optimized, or both image URLs. It never downloads image bytes for the CSV.</td><td>Add this node to make a pipeline runnable. Use <em>Preview 100 records</em> to inspect a capped result, or <em>Run full export</em> to follow all available pages and download the CSV.</td></tr>
+              <tr><td><strong>Dataset Manifest (CSV)</strong></td><td><code>1 → 0</code></td><td>Materializes the incoming branch and turns it into a metadata manifest with detailed fields plus any fields requested by upstream pipeline nodes. Choose the original URL, web-optimized URL, or both. It never downloads image bytes for the CSV.</td><td>Add this node to make a pipeline runnable. Rights and attribution metadata is on by default and may increase run time. Use <em>Preview 100 records</em> to inspect a capped result, or <em>Run full export</em> to follow all available pages and download the CSV.</td></tr>
               <tr><td><strong>Export JSON</strong><br><small>Legacy</small></td><td><code>1 → 0</code></td><td>Older graph type retained so existing definitions can be read. It is not the current pipeline-data export path.</td><td>Not available in the palette and read-only in the inspector. Use the pipeline menu’s <em>Export as JSON</em> to export the graph definition itself.</td></tr>
               <tr><td><strong>Export Zip</strong><br><small>Legacy</small></td><td><code>1 → 0</code></td><td>Older archive-oriented graph type retained for compatibility. CommonsLens does not use it as the current media-archive workflow.</td><td>Not available in the palette and read-only in the inspector. Use Dataset Manifest (CSV) for metadata and URLs; individual media downloads remain a separate action.</td></tr>
               <tr><td><strong>Preview</strong><br><small>Legacy</small></td><td><code>1 → 0</code></td><td>Represents the idea of materializing a branch for browsing. Preview is now exposed as a top-level action on the current manifest workflow.</td><td>Not available in the palette. Select a materialized node or use <em>Preview 100 records</em> on Dataset Manifest.</td></tr>
@@ -1737,6 +1689,19 @@
             </tbody>
           </table>
         </div>
+
+        <h3>Dataset Manifest settings</h3>
+        <p>The manifest always starts with detailed metadata for each image. Fields requested by upstream nodes are added automatically. You do not need to choose a column preset. A Field Select node is the one exception: if you add it, it explicitly controls the exported fields.</p>
+        <table>
+          <thead><tr><th>Setting</th><th>What it changes</th><th>Default</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Which image links?</strong></td><td>Choose the original/full-size URL, the web-optimized URL, or both. These are links in the CSV; they are not downloaded media files.</td><td><strong>Both</strong></td></tr>
+            <tr><td><strong>Fetch rights and attribution?</strong></td><td>Requests the Commons metadata used to fill licence, artist/creator, credit, usage, restrictions, and attribution-status fields. The detailed columns remain present if this is turned off, but their values may be unavailable.</td><td><strong>On</strong></td></tr>
+          </tbody>
+        </table>
+        <p>The rights and attribution option is checked by default because every image should be reviewed for reuse terms. Pulling it may increase run time. If you turn it off, the preview and CSV show a warning: a blank licence or attribution field does <strong>not</strong> mean that reuse is unrestricted. Verify the original Commons file page.</p>
+        <p>If an upstream Enrich node requests rights/attribution metadata, the Dataset Manifest rights option stays enabled automatically. An Enrich node is not added automatically: use it only when you need its optional technical, rights, Structured Data, or global-usage bundles. If a Field Select node is upstream, Field Select controls the exported fields.</p>
+        <p>When you add Enrich, <strong>Technical image metadata</strong> starts selected. <strong>Rights &amp; attribution</strong>, <strong>Structured Data on Commons</strong>, and <strong>Global Wikimedia usage</strong> are opt-in bundles. Enrich applies to every item that reaches it; there is no per-item enrichment cap. Put Sample / Limit before Enrich when you want a smaller test run.</p>
 
         <h3>Preview, full export, and run limits</h3>
         <div class="data-table-wrap">
@@ -1771,7 +1736,7 @@
           <div class="card"><h3>Putting a semantic filter too late</h3><p>License, Quality, Language, and Color Depth may pass through after a materialized branch with a warning. Put them directly after a query-capable source whenever possible.</p></div>
           <div class="card"><h3>Assuming preview is complete</h3><p>Preview is deliberately capped. A successful preview proves that the graph can produce records; it does not prove that every match has been fetched.</p></div>
           <div class="card"><h3>Expecting Field Select to change the images</h3><p>Field Select changes export records, not the media bytes or the visual identity of the result items.</p></div>
-          <div class="card"><h3>Adding Enrich to everything</h3><p>Enrichment can create many additional requests. Start with a small cap, enable only the bundles you need, and expand after the base result is correct.</p></div>
+          <div class="card"><h3>Enriching a large result</h3><p>Enrichment can create many additional requests because it can run for every incoming item. Enable only the bundles you need, and put Sample / Limit before Enrich when you intentionally want a smaller test run.</p></div>
           <div class="card"><h3>Confusing graph export with result export</h3><p>Pipeline JSON preserves the recipe. Dataset Manifest CSV preserves metadata and URLs. Neither is a downloaded media archive.</p></div>
         </div>
 
@@ -1785,11 +1750,6 @@
         <p class="section-kicker">13 / Sharing and local state</p>
         <h2>13. Share searches and understand local state</h2>
         <p class="section-intro">CommonsLens has no account or cloud workspace. Sharing happens through URLs and exported files; bookmarks, folders, saved pipelines, caches, and viewer preferences stay in the browser that created them unless you deliberately export something.</p>
-
-        <figure class="image-placeholder" data-image-slot="shared-search-url">
-          <img class="docs-screenshot" src="../assets/assets/docs-images/raw_url_sharer.png" alt="CommonsLens search page with a browser address bar containing a query and document format filters" width="1188" height="492" loading="lazy" decoding="async">
-          <figcaption>The address bar carries the query and selected filters. Copying that URL shares the search recipe, not a frozen copy of the result grid.</figcaption>
-        </figure>
 
         <h3>The central distinction</h3>
         <div class="data-table-wrap">
@@ -1950,7 +1910,7 @@
             <tbody>
               <tr><td>Publish or redistribute a file</td><td>Opened the original page, confirmed the licence, identified the creator, prepared required credit, checked modifications/share-alike terms, and considered rights beyond copyright.</td></tr>
               <tr><td>Share a search or pipeline</td><td>Removed confidential queries, private names, precise sensitive coordinates, and notes that the recipient does not need.</td></tr>
-              <tr><td>Run a large pipeline</td><td>Previewed the graph, limited enrichment, avoided unnecessary branches, allowed for provider load, and planned how to store the resulting manifest.</td></tr>
+              <tr><td>Run a large pipeline</td><td>Previewed the graph, enabled only the enrichment bundles needed, used Sample / Limit for any smaller test run, allowed for provider load, and planned how to store the resulting manifest.</td></tr>
               <tr><td>Use map or location results</td><td>Considered whether showing or publishing the exact coordinates could create a privacy, safety, cultural, or conservation risk.</td></tr>
               <tr><td>Automate research</td><td>Moved to the relevant official API and reviewed its current usage, rate, identification, and licensing requirements.</td></tr>
             </tbody>
@@ -2041,7 +2001,7 @@
               <tr><td><strong>Cycle detected</strong></td><td>The graph loops back into itself, so there is no valid execution order.</td><td>Delete the connection that points toward an earlier node. Build pipelines left to right conceptually: source, constraints/filters, transforms, then sink.</td></tr>
               <tr><td><strong>Combine Constraints does not run</strong></td><td>Its inputs must be pending/query-capable branches. Materialized Author Uploads or Geosearch Browse branches are not interchangeable with pending query branches.</td><td>Use Intersect when you need to combine materialized datasets, or restructure the graph so both inputs are compatible constraint branches before combining them.</td></tr>
               <tr><td><strong>A filter warns that it may be passed through</strong></td><td>Some filters cannot be applied accurately after a materialized branch, so the run may preserve the records and report that the filter was not enforced.</td><td>Move the filter earlier into a query-capable branch where possible. Treat the output as unfiltered for that condition and verify the CSV before using it as a precise dataset.</td></tr>
-              <tr><td><strong>Enrichment is slow or only partly complete</strong></td><td>Structured data and global-usage enrichment add extra Wikimedia requests and can fail independently for some records.</td><td>Preview a smaller set, reduce the enrichment cap, disable optional enrichment, wait between runs, and read the warning. Partial enrichment should be treated as partial data, not as proof that no usage information exists.</td></tr>
+              <tr><td><strong>Enrichment is slow or only partly complete</strong></td><td>Enrichment can make extra Wikimedia requests for every incoming item, and individual metadata bundles can fail independently for some records.</td><td>Use Preview first, put Sample / Limit before Enrich if you need a smaller test run, disable bundles you do not need, wait between runs, and read the warning. Partial enrichment should be treated as partial data, not as proof that no metadata exists.</td></tr>
               <tr><td><strong>Run is slow or appears stuck</strong></td><td>Requests are deliberately serialized and throttled; broad sources, many pages, enrichment, and large output can take time.</td><td>Wait for the current request, use Preview first, add a limit or sample, remove unnecessary enrichment, split a large job, and pause between batches. Do not open many copies of the same expensive pipeline.</td></tr>
               <tr><td><strong>Cancel was pressed</strong></td><td>The current run is incomplete.</td><td>Keep the partial preview only for diagnosis. Re-run the full pipeline when ready and verify that the final manifest has the expected number of records.</td></tr>
               <tr><td><strong>Export says to run the pipeline first</strong></td><td>There is no completed output available for the requested export.</td><td>Connect a Dataset Manifest sink, run or preview the pipeline, wait for it to finish, then export the resulting manifest.</td></tr>

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:commonslens/csv_export_tray.dart';
+import 'download_queue.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -316,7 +316,11 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                             horizontal: isMobile ? 0 : 18)),
                     onPressed: () =>
                         widget.onSearch(_fieldController?.text ?? ''),
-                    child: const Icon(Icons.search_rounded, size: 18, color: Colors.white,),
+                    child: const Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -945,19 +949,13 @@ class _MediaCardState extends ConsumerState<MediaCard> {
       return;
     }
 
-    // 1. Intercept tap if we are in selection mode
+    final queue = ref.read(downloadQueueProvider);
     final isSelectionMode = ref.read(selectionModeProvider);
-    if (isSelectionMode) {
-      final selectedItems = ref.read(selectedItemsProvider);
-      final isSelected = selectedItems.contains(widget.item);
-
-      if (isSelected) {
-        ref.read(selectedItemsProvider.notifier).state = {...selectedItems}
-          ..remove(widget.item);
-      } else {
-        ref.read(selectedItemsProvider.notifier).state = {...selectedItems}
-          ..add(widget.item);
-      }
+    // A restored queue item is still actionable even when the transient
+    // selection-mode flag was reset by a page reload. Tapping its blue card
+    // removes it instead of trapping the user in an uneditable queue.
+    if (isSelectionMode || queue.contains(widget.item.url)) {
+      _toggleQueueSelection();
       return;
     }
 
@@ -974,17 +972,21 @@ class _MediaCardState extends ConsumerState<MediaCard> {
   void _handleLongPress() {
     if (widget.folderSelectionMode) return;
 
-    final isSelectionMode = ref.read(selectionModeProvider);
-
-    if (!isSelectionMode) {
-      // 1. Turn on selection mode
+    if (!ref.read(selectionModeProvider)) {
       ref.read(selectionModeProvider.notifier).state = true;
+    }
+    _toggleQueueSelection();
+    HapticFeedback.lightImpact();
+  }
 
-      // 2. Add this specific item to the selection immediately
-      ref.read(selectedItemsProvider.notifier).state = {widget.item};
-
-      // 3. Trigger a tiny physical buzz on mobile devices! (Requires flutter/services.dart)
-      HapticFeedback.lightImpact();
+  void _toggleQueueSelection() {
+    final queue = ref.read(downloadQueueProvider);
+    queue.toggle(
+      widget.item,
+      source: widget.queueSource.kind,
+    );
+    if (queue.isEmpty) {
+      ref.read(selectionModeProvider.notifier).state = false;
     }
   }
 
@@ -1014,10 +1016,12 @@ class _MediaCardState extends ConsumerState<MediaCard> {
     // membership changes. Watching the full set rebuilt every visible card
     // for each click, which becomes expensive in Chrome on dense grids.
     final isSelected = ref.watch(
-      selectedItemsProvider.select((items) => items.contains(item)),
+      downloadQueueProvider.select((queue) => queue.contains(item.url)),
     );
     final isSelectionMode = ref.watch(selectionModeProvider);
     final isFolderSelectionMode = widget.folderSelectionMode;
+    final showSelectionControls =
+        isFolderSelectionMode || isSelectionMode || isSelected;
     final isCardSelected =
         isFolderSelectionMode ? widget.folderSelected : isSelected;
 
@@ -1078,8 +1082,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                     ),
                     // Keep quick download available without leaving an
                     // unexplained permanent circle on every card.
-                    if (!isSelectionMode &&
-                        !isFolderSelectionMode &&
+                    if (!showSelectionControls &&
                         (_hovered || widget.showFolderAction))
                       Positioned(
                         top: 8,
@@ -1097,9 +1100,10 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                           ],
                         ),
                       ),
-                    // Selection state is only shown while CSV selection is
-                    // active, so the circle has a single, obvious meaning.
-                    if (isFolderSelectionMode || isSelectionMode)
+                    // Restored queue items also show the selection affordance;
+                    // otherwise persistence would create blue cards with no
+                    // visible way to remove an individual item.
+                    if (showSelectionControls)
                       Positioned(
                         top: 8,
                         right: 8,

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'bookmark_service.dart';
-import 'csv_export_tray.dart';
+import 'download_queue.dart';
 import 'media_queue.dart';
 import 'search_components.dart';
 import 'search_models.dart';
@@ -194,7 +194,6 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
       _selectFolder(null);
     }
     ref.read(selectionModeProvider.notifier).state = false;
-    ref.read(selectedItemsProvider.notifier).state = {};
     setState(() => _folderSelectionMode = true);
   }
 
@@ -743,10 +742,6 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
                         selectedFolderId,
                         folderUrls,
                       ),
-                    ),
-                    CsvExportTray(
-                      availableItems: visibleItems,
-                      fileName: 'commonslens_bookmarks',
                     ),
                   ],
                 ),

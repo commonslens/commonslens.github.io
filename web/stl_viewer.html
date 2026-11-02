@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; connect-src https://upload.wikimedia.org; img-src 'self' data:;">
+  <meta name="referrer" content="no-referrer">
   <title>CommonsLens 3D viewer</title>
   <style>
     :root {
@@ -215,18 +217,47 @@
     const statTriangles = document.querySelector('#stat-triangles');
     const statDimensions = document.querySelector('#stat-dimensions');
     const statLoadTime = document.querySelector('#stat-load-time');
+    const maxModelBytes = 256 * 1024 * 1024;
     const modelParams = new URLSearchParams(window.location.search);
-    const modelUrl = modelParams.get('url');
+    const suppliedModelUrl = modelParams.get('url');
+
+    const trustedStlUrl = (value) => {
+      if (!value) return null;
+      try {
+        const parsed = new URL(value, window.location.href);
+        const trustedPort = !parsed.port || parsed.port === '443';
+        const trustedPath = parsed.pathname.startsWith('/wikipedia/commons/');
+        const stlPath = parsed.pathname.toLowerCase().endsWith('.stl');
+        if (parsed.protocol !== 'https:' ||
+            parsed.hostname.toLowerCase() !== 'upload.wikimedia.org' ||
+            parsed.username || parsed.password || !trustedPort ||
+            !trustedPath || !stlPath) {
+          return null;
+        }
+        return parsed.href;
+      } catch (_) {
+        return null;
+      }
+    };
+
+    const modelUrl = trustedStlUrl(suppliedModelUrl);
+    const declaredModelSize = Number.parseInt(modelParams.get('size') || '0', 10) || 0;
 
     const showError = (message) => {
       status.classList.add('error');
       statusText.textContent = message;
       sourceLink.hidden = !modelUrl;
-      if (modelUrl) sourceLink.href = modelUrl;
+      if (modelUrl) {
+        sourceLink.href = modelUrl;
+      } else {
+        sourceLink.removeAttribute('href');
+      }
     };
 
     if (!modelUrl) {
-      showError('No STL file was supplied.');
+      showError('No trusted Wikimedia STL file was supplied.');
+    } else if (declaredModelSize > maxModelBytes) {
+      showError('This STL exceeds the browser safety size limit.');
     } else {
       const scene = new THREE.Scene();
       scene.background = new THREE.Color(0x070707);
@@ -256,7 +287,7 @@
       let modelRadius = 1;
       let modelTarget = new THREE.Vector3();
       let modelDimensions = new THREE.Vector3();
-      let modelFileBytes = Number.parseInt(modelParams.get('size') || '0', 10) || 0;
+      let modelFileBytes = declaredModelSize;
       let disposed = false;
       let animationFrame;
       const loadStartedAt = performance.now();
@@ -345,7 +376,8 @@
       });
 
       const loader = new STLLoader();
-      loader.load(
+      let modelRequest;
+      modelRequest = loader.load(
         modelUrl,
         (geometry) => {
           if (disposed) {
@@ -412,6 +444,11 @@
           stats.hidden = false;
         },
         (progress) => {
+          if (progress.loaded > maxModelBytes) {
+            modelRequest?.abort();
+            showError('This STL exceeds the browser safety size limit.');
+            return;
+          }
           if (!progress.lengthComputable || progress.total <= 0) return;
           modelFileBytes = progress.total;
           const percent = Math.round((progress.loaded / progress.total) * 100);

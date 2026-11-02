@@ -53,9 +53,9 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     final shouldRenderPdf = widget.item.mediaKind == MediaKind.document &&
         _shouldRenderPdfInBrowser();
 
-    // PDFs are safe to inline in Chrome/Web, but Safari does not reliably
-    // render cross-origin PDFs inside a browser iframe. DjVu remains blocked
-    // because the browser fallback is unreliable there.
+    // PDFs are only inlined in a restricted iframe on browsers that render
+    // them reliably. DjVu remains blocked because the browser fallback is
+    // unreliable there. Download verification is a separate boundary.
     if (isVideo || isAudio || isImage || shouldRenderPdf || shouldRenderStl) {
       _isNativeHtml = true;
 
@@ -64,6 +64,11 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
           return html.IFrameElement()
             ..src = _stlViewerUrl(widget.item.url, widget.item.fileSizeBytes)
             ..title = 'Interactive 3D model viewer'
+            ..setAttribute('referrerpolicy', 'no-referrer')
+            // Keep the viewer's JavaScript in an opaque origin, separate from
+            // the main Flutter document. It only needs scripts and network
+            // access to the validated Wikimedia model URL.
+            ..setAttribute('sandbox', 'allow-scripts')
             ..allow = 'fullscreen'
             ..setAttribute('allowfullscreen', '')
             ..style.width = '100%'
@@ -74,6 +79,7 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
         } else if (isImage) {
           return html.ImageElement()
             ..src = widget.imageUrl
+            ..setAttribute('referrerpolicy', 'no-referrer')
             ..style.width = '100%'
             ..style.height = '100%'
             ..style.objectFit = 'contain'
@@ -83,6 +89,7 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
         } else if (isVideo) {
           return html.VideoElement()
             ..src = widget.item.url
+            ..setAttribute('referrerpolicy', 'no-referrer')
             ..controls = true
             ..autoplay = false
             ..style.width = '100%'
@@ -93,6 +100,11 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
         } else if (shouldRenderPdf) {
           return html.IFrameElement()
             ..src = widget.item.url
+            // Do not grant an embedded provider PDF scripts, forms, or top
+            // navigation privileges. Complex files remain user-open-at-own-
+            // risk content even inside this restricted preview.
+            ..setAttribute('sandbox', 'allow-downloads')
+            ..setAttribute('referrerpolicy', 'no-referrer')
             ..style.width = '100%'
             ..style.height = '100%'
             ..style.border = 'none'
@@ -109,6 +121,7 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
 
           final audio = html.AudioElement()
             ..src = widget.item.url
+            ..setAttribute('referrerpolicy', 'no-referrer')
             ..controls = true
             ..autoplay = false
             ..style.width = '80%'
@@ -132,9 +145,12 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
       item.mime.toLowerCase() == 'application/sla';
 
   bool _isSafeWikimediaUploadUrl(String value) {
-    final uri = Uri.tryParse(value);
-    return uri?.scheme == 'https' &&
-        uri?.host.toLowerCase() == 'upload.wikimedia.org';
+    try {
+      final uri = DownloadSecurityPolicy.requireTrustedMediaUri(value);
+      return DownloadSecurityPolicy.extensionFromUri(uri) == 'stl';
+    } on DownloadSecurityException {
+      return false;
+    }
   }
 
   String _stlViewerUrl(String modelUrl, int fileSizeBytes) => Uri(

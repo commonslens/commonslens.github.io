@@ -5,6 +5,7 @@ import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:go_router/go_router.dart';
 
 import 'seo_service.dart';
+import 'csv_export_tray.dart';
 
 void main() {
   GoRouter.optionURLReflectsImperativeAPIs = true;
@@ -45,6 +46,15 @@ class WikiSearchApp extends StatelessWidget {
           behavior: SnackBarBehavior.floating,
           width: 280,
         ),
+      ),
+      builder: (context, child) => Stack(
+        fit: StackFit.expand,
+        children: [
+          if (child != null) child,
+          const Positioned.fill(
+            child: DownloadQueueTray(),
+          ),
+        ],
       ),
     );
   }

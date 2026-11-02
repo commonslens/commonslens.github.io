@@ -33,6 +33,7 @@ class DownloadService {
         expectedMime: isOriginal ? item.mime : null,
         expectedSha1: isOriginal ? item.sha1 : null,
         expectedLength: isOriginal ? item.fileSizeBytes : null,
+        revalidateTitle: isOriginal ? item.title : null,
       );
 
       if (payload == null) {

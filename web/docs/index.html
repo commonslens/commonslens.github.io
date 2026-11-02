@@ -700,7 +700,7 @@
           <div class="card"><h4>Search landing page</h4><p>The starting screen offers the search field and example searches. Examples are shortcuts into real workflows, not a separate sample dataset.</p></div>
           <div class="card"><h4>Autocomplete suggestions</h4><p>Suggestions are direct file-title matches from Wikimedia. Selecting one opens that file search immediately; pressing Enter searches the full phrase.</p></div>
           <div class="card"><h4>Search workspace</h4><p>After a search, the workspace exposes media scopes, format chips, filter controls, sort order, result count, Grid/Map view, and the query preview.</p></div>
-          <div class="card"><h4>Result cards</h4><p>Each card gives you a preview, title, media type, and quick actions. Select a card to inspect it, bookmark it, download it, or include it in a CSV selection workflow.</p></div>
+          <div class="card"><h4>Result cards</h4><p>Each card gives you a preview, title, media type, and quick actions. Select a card to inspect it, bookmark it, add it to the persistent download queue, or download it individually.</p></div>
           <div class="card"><h4>Progressive loading</h4><p>Results arrive in pages as you scroll. The number shown is the number currently loaded, and a trailing <code>+</code> means another page may be available.</p></div>
         </div>
 
@@ -1340,7 +1340,7 @@
         <p class="section-intro">Bookmarks are a browser-local reference library for files you want to revisit. They are deliberately lightweight: CommonsLens saves the public file URL and reloads current metadata from Wikimedia when you open the Bookmarks page.</p>
 
         <h3>Purpose</h3>
-        <p>Use Bookmarks to keep a shortlist while researching, separate useful files into folders, revisit files without repeating a search, or export a metadata manifest for another workflow. Bookmarks are not a private media archive and do not download or duplicate the files.</p>
+        <p>Use Bookmarks to keep a shortlist while researching, separate useful files into folders, revisit files without repeating a search, or add selected files to the persistent download queue. Bookmarks themselves are not a private media archive and do not download or duplicate files automatically.</p>
 
         <h3>Before you begin</h3>
         <ul>
@@ -1357,7 +1357,7 @@
             <tr><td>Folders</td><td>Shows named subsets of bookmarks. One file can belong to multiple folders and remains in All Bookmarked Media.</td></tr>
             <tr><td>Bookmark search</td><td>Matches the current loaded metadata and URL against title, description, object name, uploader, categories, and other searchable text.</td></tr>
             <tr><td>Media cards</td><td>Open the viewer, remove the bookmark, add/remove the file from folders, or start a download from the card actions.</td></tr>
-            <tr><td>CSV export tray</td><td>Appears during CSV selection and lets you choose full-size or web-optimized URLs before downloading metadata.</td></tr>
+            <tr><td>Download queue tray</td><td>Persists metadata-only selections across routes and lets you download verified ZIP parts or export a metadata CSV.</td></tr>
           </tbody>
         </table>
 
@@ -1386,12 +1386,12 @@
         <p>Type in the Bookmarks search field to filter the currently loaded collection. Search is case-insensitive and can match the file title, public file URL, description/snippet, object name, uploader, or categories. Clear the field to restore the selected album’s full list.</p>
         <p>The visible count can be smaller than the saved URL count because the search text, selected folder, unavailable metadata, or a failed provider request may limit what can be displayed.</p>
 
-        <h3>Use CSV selection and export</h3>
+        <h3>Use the persistent download queue</h3>
         <ol>
-          <li><strong>Enter selection mode.</strong> Long-press a media card, or use the CSV selection control where it is shown. Selected cards receive a clear selection state.</li>
-          <li><strong>Select files.</strong> Tap additional cards, or choose Select All in the export tray to select the currently available collection.</li>
-          <li><strong>Choose the URL type.</strong> Select Full-size URL when the manifest should point to the original media, or Web-optimized URL for a smaller display-oriented derivative.</li>
-          <li><strong>Download the CSV.</strong> The browser creates a metadata manifest with one media URL per row. CommonsLens does not download the image, audio, video, or document bytes as part of CSV export.</li>
+          <li><strong>Enter selection mode.</strong> Long-press a media card. Selected cards receive a clear selection state and are added to the persistent queue.</li>
+          <li><strong>Select files.</strong> Tap additional cards to add or remove them from the queue. The queue is URL-keyed, so selecting the same file from another route does not create a duplicate.</li>
+          <li><strong>Choose an output.</strong> Download ZIP retrieves and verifies the selected media locally, splitting large jobs into bounded parts when needed. Export CSV creates a metadata manifest with Wikimedia URLs and no media bytes.</li>
+          <li><strong>Move between pages.</strong> The queue remains available while you switch between Search, Map, Bookmarks, and author portfolios. Clear it explicitly when you are finished.</li>
           <li><strong>Keep the export with its source context.</strong> URLs and metadata can change, so retain the source file links and re-check rights before publication.</li>
         </ol>
 
@@ -1448,7 +1448,7 @@
             <tr><td>Upload count</td><td>The number of items currently loaded into the grid. A trailing <code>+</code> means another page may be available.</td><td>Use it as a progress indicator, not as a guaranteed total.</td></tr>
             <tr><td>Media grid</td><td>The current page or pages of public uploads, ordered newest first by upload time.</td><td>Scroll to request more; open individual files for full context.</td></tr>
             <tr><td>File controls</td><td>The same card actions used in other result lists.</td><td>Open the viewer, bookmark, select, or download where the card offers those actions.</td></tr>
-            <tr><td>CSV export tray</td><td>A temporary selection workspace for the files currently loaded.</td><td>Choose records and download a metadata CSV with one image URL per row.</td></tr>
+            <tr><td>Download queue tray</td><td>A persistent metadata-only selection workspace across media views.</td><td>Download verified ZIP parts or export a metadata CSV with Wikimedia URLs.</td></tr>
           </tbody>
         </table>
 
@@ -1463,7 +1463,7 @@
           <li><div><strong>Review the newest uploads first.</strong> Start with the visible grid, remembering that upload order is not creation order. Open a file in the viewer when the thumbnail or filename is not enough context.</div></li>
           <li><div><strong>Scroll to load more.</strong> Additional pages are requested automatically as you approach the end of the grid. Continue until the loading indicator stops or the count no longer has a <code>+</code>.</div></li>
           <li><div><strong>Inspect and collect.</strong> Open promising files, then verify creator, license, source, dates, and contextual metadata file by file. Bookmark or download individual items when you want to keep working with them.</div></li>
-          <li><div><strong>Export a selection if needed.</strong> Enter selection mode, choose files from the currently loaded portfolio, choose full-size or web-optimized URLs, and download the CSV. The export contains metadata and URLs, not media bytes.</div></li>
+          <li><div><strong>Export a selection if needed.</strong> Enter selection mode and add portfolio files to the persistent queue. Choose Download ZIP for verified media parts or Export CSV for metadata and URLs.</div></li>
         </ol>
 
         <h3>What the username does—and does not—tell you</h3>
@@ -1473,7 +1473,7 @@
         <p>The username and pagination requests are sent from your browser to Wikimedia services. CommonsLens requests the public upload list first, then requests the file metadata and preview information needed to display each page. Opening a file requests that file’s media and metadata. Exporting creates a CSV download in your browser; CommonsLens does not receive a private copy of the exported file.</p>
 
         <h3>What is saved locally</h3>
-        <p>The current portfolio view and temporary selection are interface state in the browser. A portfolio does not automatically create bookmarks, a folder, or a saved pipeline. Bookmark files explicitly if you want them in your local collection. If you open a file and move through the viewer queue, that queue belongs to the current browsing session rather than becoming a permanent portfolio.</p>
+        <p>The current portfolio view is interface state in the browser, while the download queue persists public file metadata until you clear it. A portfolio does not automatically create bookmarks, a folder, or a saved pipeline. Bookmark files explicitly if you want them in your local collection. If you open a file and move through the viewer queue, that viewer queue remains separate from the download queue.</p>
 
         <h3>What is sent to external services</h3>
         <p>Wikimedia receives the username, continuation/pagination requests, metadata requests, and media or thumbnail requests required to display the portfolio. If you export a CSV, it can contain Wikimedia URLs and metadata that you later share with another tool or person. The selected files are not uploaded to a CommonsLens account or to a private CommonsLens server.</p>
@@ -1497,12 +1497,25 @@
       <section class="section" id="downloads">
         <p class="section-kicker">11 / Download and export</p>
         <h2>11. Download files and export metadata</h2>
-        <p class="section-intro">CommonsLens separates retrieving media from exporting a research manifest. An individual download retrieves verified media bytes; a collection export creates a local CSV of metadata and URLs without downloading the media files.</p>
+        <p class="section-intro">CommonsLens separates retrieving media from exporting a research manifest. The persistent download queue lets you collect files while you browse, then either create one or more locally verified ZIP parts or export a metadata-only CSV.</p>
+
+        <div class="warning"><strong>Important safety boundary:</strong> CommonsLens verifies transport, metadata consistency, file structure, and available Wikimedia integrity values before it creates a download. It is not an antivirus scanner, malware-removal service, sandbox, rights clearance service, or guarantee that a file is harmless to open. Your safety remains your responsibility.</div>
+
+        <h3>Understand the download queue</h3>
+        <p>The queue is a browser-local, metadata-only collection of public Wikimedia file references. It is mounted once at the application shell, so it remains available while you move between Search, Map, Bookmarks, folders, author portfolios, viewers, and other media views. It also survives a page reload when the browser retains site storage. No media bytes are fetched merely because a file was selected.</p>
+        <ul>
+          <li>Long-press a media card to enter selection mode, then tap cards to add or remove them.</li>
+          <li>The queue is keyed by the canonical media URL. Selecting the same file from another page does not create a duplicate; the source context is retained as metadata.</li>
+          <li>The queue is bounded at 500 entries. This limits browser-local state and prevents an accidental selection from becoming an unbounded job.</li>
+          <li>Clear removes an idle queue. Minimize only collapses the tray into a floating button; it does not remove the selection or stop a job.</li>
+          <li>Cancel stops an active ZIP job, prevents the current incomplete part from being emitted, and clears the queue. ZIP parts already handed to the browser cannot be recalled.</li>
+        </ul>
 
         <h3>Choose the right output</h3>
         <div class="card-grid">
-          <div class="card"><h3>Download an individual file</h3><p>Use the viewer’s <strong>Download Original</strong> action or the quick download control on a result card. For images and vectors, choose a smaller 640px, 1280px, or 1920px derivative when available. Audio, video, and other supported media use the original file path.</p></div>
-          <div class="card"><h3>Export a collection manifest</h3><p>Select files from Search, Bookmarks, or an author portfolio and download a CSV. The CSV contains metadata and one chosen image URL per row; it is not a ZIP, image archive, or backup of the media bytes.</p></div>
+          <div class="card"><h3>Download an individual file</h3><p>Use the viewer’s <strong>Download Original</strong> action or a card’s download control. Images and vectors may offer smaller derivatives. Individual downloads are validated before the browser is asked to save them.</p></div>
+          <div class="card"><h3>Download a selection</h3><p>Build the persistent queue across any supported media view, then choose <strong>Download ZIP</strong>. The browser receives numbered ZIP parts containing only media that passed the archive verification path.</p></div>
+          <div class="card"><h3>Export a collection manifest</h3><p>Choose <strong>Export CSV</strong> when you want metadata and Wikimedia URLs without fetching media bytes. The CSV is a research manifest, not a media archive.</p></div>
           <div class="card"><h3>Export a pipeline definition</h3><p>Use the pipeline’s JSON export when you want to move or back up the graph itself. This describes nodes and settings; it does not package the media returned by the pipeline.</p></div>
           <div class="card"><h3>Open the source page</h3><p>Use the source-page action when you need the canonical Wikimedia description, complete licence text, revision context, or a file type CommonsLens does not download directly.</p></div>
         </div>
@@ -1516,42 +1529,58 @@
           <li><div><strong>Check the source before reuse.</strong> Download security does not establish copyright permission. Open the source page and verify the licence, attribution, creator, source, and any restrictions before publishing or redistributing the file.</div></li>
         </ol>
 
+        <h3>Download a selected collection as verified ZIP parts</h3>
+        <ol class="steps">
+          <li><div><strong>Build the queue.</strong> Select files from Search, Map, Bookmarks, folders, author portfolios, or another media view. The queue stores metadata and URLs only; the original bytes are fetched later.</div></li>
+          <li><div><strong>Start Download ZIP.</strong> CommonsLens takes a queue snapshot and revalidates each selected file against fresh Wikimedia metadata immediately before fetching its bytes. A stale or changed queue record is not trusted by itself.</div></li>
+          <li><div><strong>Wait for each file’s checks.</strong> The archive path requires a trusted HTTPS Wikimedia media URL, a successful bounded response, matching extension/MIME/signature information, matching byte length when available, and a matching Wikimedia SHA-1 when available. Only the verified byte buffer enters a ZIP.</div></li>
+          <li><div><strong>Expect numbered parts for large selections.</strong> Each part contains at most 100 media entries and uses a 256 MiB archive target with a smaller media-payload budget reserved for ZIP metadata. Parts are named like <code>commonslens_media.part-001.zip</code>. The old part is handed to the browser before the next batch is assembled.</div></li>
+          <li><div><strong>Read every part’s manifest.</strong> Each ZIP contains <code>commonslens_verification_manifest.csv</code> and <code>README.txt</code>. The manifest records status, ZIP entry, source page, verified URL, MIME/type observations, checks performed, expected and observed sizes, SHA-1 values, licence/attribution fields, and failure reasons for skipped files.</div></li>
+          <li><div><strong>Review complex files carefully.</strong> Recognised SVG, PDF, DjVu, XCF, STL, and other complex formats may be included as opaque bytes for the archive workflow. CommonsLens does not unpack, execute, render, malware-scan, or promise that these files are harmless to open.</div></li>
+          <li><div><strong>Watch the browser downloads panel.</strong> One action can produce multiple ZIP downloads. Chrome or another browser may ask permission for multiple downloads, and the browser—not CommonsLens—controls the destination and final file lifecycle.</div></li>
+        </ol>
+
+        <h3>Why ZIP parts exist</h3>
+        <p>A browser-based ZIP builder must temporarily retain verified media while it calculates checksums, writes ZIP headers, and creates the browser Blob. A count-only limit would be unsafe because 100 small images and 100 large videos have very different memory costs. CommonsLens therefore rotates a part when it reaches either 100 media entries or its byte budget. The completed batch is handed to the browser, its object URL is released, and the next batch is started after the event loop yields.</p>
+        <p>This reduces peak application memory and keeps verification cooperative so the interface can continue repainting, but it cannot force the browser or operating system to release a download immediately. Keep an eye on available disk space and the browser’s download state when exporting many large parts.</p>
+
         <h3>Export a CSV manifest</h3>
-        <p>CSV export is intentionally metadata-only. Select the files you want, choose <em>Full-size URL</em> or <em>Web-optimized URL</em>, and download the generated CSV. A pipeline Dataset Manifest starts each row with detailed metadata and automatically adds fields requested by upstream pipeline nodes such as Enrich. It can also include the original URL, the web-optimized URL, or both.</p>
-        <p>The browser creates the CSV locally from records already loaded in the app. It does not fetch every image just to make the export. A CSV can therefore be small and fast even when it points to very large originals. The CSV contains links to media; it is not the media itself.</p>
+        <p>CSV export is intentionally metadata-only. The queue CSV contains detailed public metadata and original Wikimedia URLs; it does not fetch the selected media and it does not upload the queue to CommonsLens. Pipeline Dataset Manifest exports remain CSV-only and never download media bytes.</p>
+        <p>CSV fields are quoted and values beginning like spreadsheet formulas are neutralised, but a CSV is still untrusted data. Review it before opening it in a spreadsheet or passing it to another pipeline. A CSV link can lead to a file that has changed since the row was created, so re-check the source page before downloading from it elsewhere.</p>
 
         <h3 id="download-security">CommonsLens Download Security: how individual media downloads are screened</h3>
-        <p>CommonsLens uses a fail-closed download policy: a file is saved only when the checks that apply to that download agree. The checks reduce common risks in a browser-based downloader, but they are not a replacement for your operating system’s antivirus tools or your own judgement.</p>
+        <p>CommonsLens uses a fail-closed client-side policy: a file is saved or placed in a ZIP only when the checks that apply to that path agree. The queue itself is not a trust boundary; it stores public URLs and metadata until the download action takes a fresh snapshot and verifies the response.</p>
         <table>
           <thead><tr><th>Check</th><th>What CommonsLens verifies</th><th>Why it matters</th></tr></thead>
           <tbody>
-            <tr><td>Transport and origin</td><td>The media URL uses HTTPS, has the exact <code>upload.wikimedia.org</code> host, uses the expected Commons media path, and has no embedded credentials or unexpected port.</td><td>Prevents a result or redirect from turning the download into an arbitrary third-party request.</td></tr>
-            <tr><td>Redirects</td><td>The final response remains on the trusted Wikimedia media origin and keeps the expected file type.</td><td>A trusted starting URL cannot silently become an unrelated host or a different kind of file.</td></tr>
-            <tr><td>Format policy</td><td>The downloader allows a defined set of passive image, audio, and video formats. Active-document formats such as SVG, PDF, and DjVu are refused by the direct media downloader.</td><td>These formats can carry active or complex content that this client does not perform server-side malware/CDR scanning for.</td></tr>
-            <tr><td>Response shape</td><td>The response must be a successful, non-empty media response—not HTML or JSON—and must not use an unexpected content encoding.</td><td>A login page, error page, API response, or malformed response is not treated as media.</td></tr>
-            <tr><td>Size and length</td><td>The response is capped at 256 MiB for an individual file, and declared byte counts must agree with the received bytes when available.</td><td>Limits memory and resource abuse and catches truncated or mismatched responses.</td></tr>
-            <tr><td>File signature and MIME</td><td>The bytes are inspected for a supported signature, then compared with the URL extension, Wikimedia’s Content-Type, and available file metadata.</td><td>A renamed executable, archive, or mismatched payload is not accepted as an image, audio, or video file.</td></tr>
-            <tr><td>Executable/archive rejection</td><td>Known executable, script, archive, Java, WebAssembly, and similar signatures are rejected before saving.</td><td>A file that looks like a passive media download but begins like executable or archive content is blocked.</td></tr>
-            <tr><td>Integrity</td><td>When Wikimedia metadata provides a SHA-1 or expected length, the received bytes are checked against it.</td><td>Detects corruption or content substitution when a provider integrity value is available.</td></tr>
-            <tr><td>Filename safety</td><td>Path separators, control characters, hidden-file prefixes, reserved device names, and executable double extensions are neutralized. The final extension is taken from the verified response.</td><td>The downloaded name cannot use the file picker as a path or disguise itself with a dangerous suffix.</td></tr>
-            <tr><td>CSV safety</td><td>CSV fields are quoted according to CSV rules and values beginning with spreadsheet formula characters are neutralized.</td><td>Opening a metadata export in a spreadsheet is less likely to turn an untrusted title or field into a formula.</td></tr>
+            <tr><td>Trusted transport and origin</td><td>The media request must use HTTPS, the exact <code>upload.wikimedia.org</code> host, the expected Commons media path, no embedded credentials, and no unexpected port. Redirects are checked against the same boundary.</td><td>A result cannot silently turn the download into an arbitrary third-party request.</td></tr>
+            <tr><td>Fresh provider metadata</td><td>Original archive downloads re-request current Wikimedia file metadata immediately before the byte request, including the current URL, MIME, size, and SHA-1 when available.</td><td>A long-lived local queue cannot silently substitute stale URL or integrity metadata for the current file.</td></tr>
+            <tr><td>Response shape</td><td>The response must be successful, non-empty media—not HTML, JSON, a login page, or an unexpected content-encoded response.</td><td>Error pages and API responses are not accidentally saved as media.</td></tr>
+            <tr><td>Size and length</td><td>Each individual response is bounded at 256 MiB. ZIP parts are bounded at 100 media entries and a 256 MiB archive target, with a smaller media-payload budget reserved for metadata. Declared lengths must agree with received bytes when available.</td><td>Limits resource use and catches truncated, oversized, or mismatched responses.</td></tr>
+            <tr><td>Extension, signature, and MIME</td><td>The bytes are inspected for a recognised signature and compared with the trusted URL extension, Wikimedia’s Content-Type, and available file metadata.</td><td>A renamed executable, archive, HTML response, or mismatched payload is not accepted as the advertised media type.</td></tr>
+            <tr><td>Executable and archive rejection</td><td>Known executable, script, archive, Java, WebAssembly, and similar signatures are rejected before saving. The archive path may allow recognised complex media as opaque bytes, but it does not execute or unpack them.</td><td>Recognised file labels do not override the byte-level safety gate.</td></tr>
+            <tr><td>Integrity</td><td>When Wikimedia supplies a SHA-1 or expected length, the complete received bytes are checked against it. Hashing and ZIP CRC work yield cooperatively so large files do not monopolise the UI thread.</td><td>Detects corruption or content substitution when provider integrity metadata is available while keeping the interface responsive.</td></tr>
+            <tr><td>Archive admission</td><td>Only a payload returned by the verified download client can enter a ZIP. The ZIP writer stores the bytes without decompressing, transforming, or executing them; every part carries the checks and warnings for its own entries.</td><td>The archive is a packaging step after verification, not a second source of unvalidated bytes.</td></tr>
+            <tr><td>Filename safety</td><td>Path separators, control characters, hidden-file prefixes, reserved device names, executable double extensions, and unsafe archive names are neutralised. Part names are generated as safe <code>.zip</code> downloads.</td><td>A title cannot turn the browser download into a path or disguise the output as an executable.</td></tr>
+            <tr><td>CSV safety</td><td>Manifest fields are quoted according to CSV rules and values beginning with spreadsheet formula characters are neutralised.</td><td>Opening a metadata export in a spreadsheet is less likely to evaluate an untrusted title or field as a formula.</td></tr>
           </tbody>
         </table>
 
         <h3>What happens when a download is blocked</h3>
-        <p>The bytes are discarded and no browser file is created. Common reasons include an unsupported or active format, a non-Wikimedia URL, a failed signature or MIME check, a size or length mismatch, an executable/archive signature, or an integrity failure. For formats the direct downloader refuses, export the verified Commons URL in a manifest or use <em>View Source Page</em> and make an independent decision in the browser or on your device.</p>
+        <p>The bytes are discarded and are not added to the ZIP. If another file is included in that part, the verification manifest records the skipped item and its failure reason. If nothing passes, CommonsLens does not create an empty media archive. Common reasons include an untrusted URL, unavailable current metadata, unsupported or complex direct-download format, a failed signature/MIME/length/SHA-1 check, an executable/archive signature, or a part-size limit.</p>
+        <p>Complex formats are not automatically evidence of malware. They are handled more conservatively because browser-side CommonsLens does not perform server-side malware scanning or content disarm and reconstruction. If a file is refused, use the source page and apply your own device or organisation scanning procedure rather than changing its extension or bypassing the refusal.</p>
 
         <h3>What security screening does not guarantee</h3>
         <ul>
-          <li>Screening is a download-integrity and browser-safety boundary, not a complete antivirus service or a guarantee that media is harmless.</li>
-          <li>The checks apply to downloads handled by CommonsLens. If you click a source-page link, open a URL from a CSV, or download elsewhere, that external site and your browser/operating system control the download.</li>
-          <li>A file can pass technical checks and still contain unwanted material, misleading metadata, privacy-sensitive information, or rights restrictions.</li>
-          <li>CSV and pipeline JSON are generated locally and are not scanned as media. Review imported pipeline files before trusting their settings or URLs.</li>
-          <li>Keep your browser and operating system updated, and use your device’s malware scanner for files you plan to open—especially large or unfamiliar downloads.</li>
+          <li>Verification is not antivirus scanning, sandboxing, CDR, a vulnerability scan of the application that opens the file, or a guarantee that the media is harmless.</li>
+          <li>A file can pass technical checks and still contain unwanted material, misleading metadata, privacy-sensitive information, a parser exploit, or rights restrictions.</li>
+          <li>The checks cover downloads initiated through CommonsLens. If you open a source-page link, click a URL from a CSV, or download elsewhere, that external page and your browser/operating system control the new request.</li>
+          <li>The warning in every manifest and README is intentional: your safety, device security, licence review, and decision to open a complex file remain your responsibility.</li>
+          <li>Keep your browser, operating system, document viewers, media players, and 3D tools updated. Use your device or organisation’s malware scanner for files you plan to open, especially unfamiliar or complex files.</li>
         </ul>
 
         <h3>What happens to your data</h3>
-        <p>For an individual file, your browser requests the media from Wikimedia, holds the response temporarily while CommonsLens validates it, and then creates a local browser download. CommonsLens does not upload the media to a CommonsLens server. For a CSV or pipeline JSON export, the browser constructs a file from local app state and downloads it directly. Browser caches, download history, and the final file are controlled by your browser and device.</p>
+        <p>For an individual file or ZIP part, your browser requests media directly from Wikimedia, holds verified bytes temporarily while CommonsLens validates and packages them, and then creates a local browser download. CommonsLens does not upload selected media to a CommonsLens server, does not keep a cloud copy, and does not require an account. The browser, its caches, its download history, and the final files remain under your browser and device controls. For CSV or pipeline JSON, the browser constructs the file locally from app state.</p>
 
         <h3>Rights and provenance remain your responsibility</h3>
         <p>Security screening does not verify that you may reuse a file. Wikimedia Commons licences, creator requests, personality rights, trademarks, cultural restrictions, and local law can still apply. Use the original file page as the authority for licence and attribution information; treat the downloaded filename and CSV row as convenience data, not as a replacement for source verification.</p>
@@ -1787,12 +1816,12 @@
           <table>
             <thead><tr><th>Storage area</th><th>What CommonsLens uses it for</th><th>What happens if it is cleared or unavailable</th></tr></thead>
             <tbody>
-              <tr><td><strong>Local storage</strong></td><td>Bookmark URLs and folder membership; the viewer’s Web-optimized vs. Full-resolution image preference.</td><td>Bookmarks, folders, and the saved viewer preference disappear or return to their defaults. Private browsing or storage restrictions can prevent persistence while leaving the current session usable.</td></tr>
+              <tr><td><strong>Local storage</strong></td><td>Bookmark URLs and folder membership; the metadata-only download queue; the viewer’s Web-optimized vs. Full-resolution image preference.</td><td>Bookmarks, folders, the download queue, and the saved viewer preference disappear or return to their defaults. Private browsing or storage restrictions can prevent persistence while leaving the current session usable. Media bytes are never stored in the queue.</td></tr>
               <tr><td><strong>IndexedDB</strong></td><td>Saved pipeline graphs plus pipeline query and enrichment caches. Query results are treated as fresh for about one hour; enrichment metadata is treated as fresh for about seven days.</td><td>Saved pipelines and cached pipeline data can disappear when site data is cleared. The pipeline’s Clear Cache action removes cached results while preserving saved graphs.</td></tr>
               <tr><td><strong>Session storage</strong></td><td>Temporary media queues used by the viewer so a loaded list can survive navigation or a reload in the same browser tab. The store keeps a bounded number of recent queues.</td><td>Viewer navigation may fall back to refetching the source or opening only the requested file. It is not cross-device or cross-browser storage.</td></tr>
               <tr><td><strong>Runtime memory</strong></td><td>Current Search state, active result pages, transient selections, loading status, and temporary UI state.</td><td>Reloading or closing the page can remove it unless the URL or a browser-local store can reconstruct it.</td></tr>
               <tr><td><strong>Browser/provider caches</strong></td><td>The browser and service worker may cache application files, previews, media, map tiles, or API responses under normal browser and provider cache rules.</td><td>Cache eviction or a hard refresh may cause requests again. CommonsLens does not treat these caches as a portable backup.</td></tr>
-              <tr><td><strong>Downloads folder</strong></td><td>Individual media files, CSV manifests, and pipeline JSON files created through browser downloads.</td><td>The browser and operating system own these files. Clearing CommonsLens site data does not normally delete files already downloaded to your device.</td></tr>
+              <tr><td><strong>Downloads folder</strong></td><td>Individual media files, numbered verified ZIP parts with their per-part manifests, CSV manifests, and pipeline JSON files created through browser downloads.</td><td>The browser and operating system own these files. Clearing CommonsLens site data does not normally delete files already downloaded to your device.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1802,10 +1831,10 @@
           <table>
             <thead><tr><th>Situation</th><th>Usually available</th><th>Usually not available</th></tr></thead>
             <tbody>
-              <tr><td>Reload the same page</td><td>Search state encoded in the URL; bookmarks; saved pipelines; viewer preference; some temporary viewer queues.</td><td>Runtime-only result state that cannot be reconstructed, such as an unshared external result list or a transient selection.</td></tr>
-              <tr><td>Open the same URL in another tab</td><td>The query, filter, file, author username, or map presentation encoded in the URL.</td><td>Your local bookmarks, saved pipeline list, and the original tab’s temporary queue unless the new tab can refetch it.</td></tr>
-              <tr><td>Use another browser or device</td><td>Copied search, asset, author, or map URLs; imported pipeline JSON; opened CSV files.</td><td>Local bookmarks, folders, saved graphs, caches, viewer preference, and session queues.</td></tr>
-              <tr><td>Clear site data</td><td>External files already downloaded; anything you exported or copied elsewhere.</td><td>Browser-local bookmarks, folders, pipelines, caches, and preferences stored by CommonsLens.</td></tr>
+              <tr><td>Reload the same page</td><td>Search state encoded in the URL; bookmarks; saved pipelines; the metadata-only download queue; viewer preference; some temporary viewer queues.</td><td>Runtime-only result state that cannot be reconstructed, such as an unshared external result list or a transient selection. A media download that was in progress is not resumed.</td></tr>
+              <tr><td>Open the same URL in another tab</td><td>The query, filter, file, author username, or map presentation encoded in the URL; browser-local stores may load in the new app instance.</td><td>Live UI state from the original tab, including an active download. Reload the tab if it was open before a queue change.</td></tr>
+              <tr><td>Use another browser or device</td><td>Copied search, asset, author, or map URLs; imported pipeline JSON; opened CSV files; downloaded ZIP parts transferred separately.</td><td>Local bookmarks, folders, saved graphs, the metadata-only download queue, caches, viewer preference, and active/session work.</td></tr>
+              <tr><td>Clear site data</td><td>External files already downloaded; anything you exported or copied elsewhere.</td><td>Browser-local bookmarks, folders, download queue, pipelines, caches, and preferences stored by CommonsLens.</td></tr>
             </tbody>
           </table>
         </div>
@@ -1956,8 +1985,10 @@
               <tr><td><strong>The viewer says it could not load the file</strong></td><td>File availability, browser support, external media host, or format</td><td>Open the original page and confirm that the file is still present. Try a different preview size or reload without a blocking extension. Documents and unusual formats may rely on browser support or a fallback; use the source page when the browser cannot render the format.</td></tr>
               <tr><td><strong>The file opens, but structured data, related media, or usage information is missing</strong></td><td>Separate optional metadata requests</td><td>Read the file’s core metadata and source link first. A failed related-data panel does not necessarily mean that the file is invalid. Retry later, check the source page, or continue without that optional panel if the file itself is available.</td></tr>
               <tr><td><strong>Metadata or rights information is blank</strong></td><td>Incomplete or changing Commons metadata</td><td>Open the original file page and read the complete description, creator, source, and licence sections. Missing metadata is a reason to verify or ask for permission, not evidence that the file is free to use.</td></tr>
-              <tr><td><strong>A download is refused</strong></td><td>CommonsLens safety screening</td><td>Read the refusal. CommonsLens only accepts HTTPS Wikimedia Commons media URLs, checks the expected file type and content, enforces a 256 MiB limit, rejects unsafe or executable/archive content, and checks integrity when metadata is available. Use <em>View Source Page</em> or an export URL when the file is a document or another format that the direct downloader intentionally does not fetch.</td></tr>
-              <tr><td><strong>The download starts but the browser does not save it</strong></td><td>Browser download permission or local device settings</td><td>Check the browser’s downloads panel, blocked-download notice, default download folder, available disk space, and permission to download multiple files. Do not repeatedly trigger a large download without checking whether the first one is still in progress.</td></tr>
+              <tr><td><strong>A download is refused</strong></td><td>CommonsLens safety screening</td><td>Read the refusal and check the ZIP manifest if another part was created. CommonsLens accepts only trusted HTTPS Wikimedia media paths, revalidates current metadata for archive downloads, applies a 256 MiB individual-file limit, checks type/length/signature/MIME and available SHA-1 integrity, and rejects unsafe signatures. Complex formats may be allowed as opaque archive entries but are never guaranteed safe to open.</td></tr>
+              <tr><td><strong>The download starts but the browser does not save it</strong></td><td>Browser download permission or local device settings</td><td>Check the browser’s downloads panel, blocked-download notice, default download folder, available disk space, and permission to download multiple files. A large queue may produce numbered ZIP parts; do not repeatedly trigger another job while the first browser download is still pending.</td></tr>
+              <tr><td><strong>The download tray is still visible after Minimize</strong></td><td>Tray state or an active download</td><td>Minimize collapses the tray into a floating download button; it does not clear the queue or cancel work. Use the floating button to restore it. Use Cancel during an active ZIP job, or Clear when idle, to remove the queue.</td></tr>
+              <tr><td><strong>The page becomes slow during verification</strong></td><td>Large media, hashing, ZIP finalization, or browser memory pressure</td><td>CommonsLens yields during hashing and ZIP CRC work, rotates at 100 entries or its byte budget, and releases each completed batch before starting the next. The browser may still need time to release a large download; reduce the selection or use CSV if the device is memory-constrained.</td></tr>
               <tr><td><strong>The CSV is empty, too small, or missing media bytes</strong></td><td>Export scope or misunderstanding of the format</td><td>Confirm what was selected and whether the current view has loaded all intended records. A CSV is a metadata manifest containing fields and URLs; it is not an image, audio, video, document, or media archive. Open it in a text editor or spreadsheet and inspect the header and first rows.</td></tr>
               <tr><td><strong>Bookmarks disappeared</strong></td><td>Browser storage, site origin, private browsing, or cleared site data</td><td>Return to the same CommonsLens origin and browser profile. Check that you are not in private browsing and that site storage is allowed. Clearing site data, browser eviction, or storage restrictions can remove local bookmarks. If you exported a CSV, it preserves metadata and URLs but does not recreate folder membership automatically.</td></tr>
               <tr><td><strong>A saved pipeline disappeared</strong></td><td>Browser-local saved graph data</td><td>Check the Saved Pipelines area in the same browser and site origin. Private browsing, browser storage eviction, or clearing site data can remove saved graphs. Export pipeline JSON after building important work; pipeline JSON preserves the graph definition, not its previous results.</td></tr>

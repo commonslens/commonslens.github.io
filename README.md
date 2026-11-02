@@ -93,7 +93,7 @@ CommonsLens provides a visual frontend for Wikimedia Commons and CirrusSearch.
 - Creation, upload, or revision date fallback.
 - Licence summary.
 - One-click original-file download.
-- Long-press selection for metadata CSV export.
+- Long-press selection for a persistent cross-page download queue.
 - Full asset viewer on click.
 
 ## Semantic and metadata filters
@@ -331,17 +331,24 @@ The reuse panel is an aid, not legal advice. Users should verify the file page, 
 ### Result collections
 
 - Long-press a media card to enter selection mode.
-- Select individual files or all currently loaded files.
-- Download one comprehensive CSV for the selected results.
-- Choose a full-size or web-optimized image URL for each row.
-- No image bytes are fetched, zipped, or downloaded for a collection export.
+- Select individual files from any media view.
+- Keep selections while moving between Search, Map, Bookmarks, author portfolios,
+  and other media views.
+- Download the selected media as one or more bounded locally-created ZIP parts
+  after each file passes origin, type, size, signature, and available Wikimedia
+  integrity checks. Each part is limited to 100 media entries and a 256 MiB
+  archive budget to avoid unbounded browser memory use.
+- Include a verification manifest and warning inside every media ZIP part.
+- Export one comprehensive metadata CSV when a data-only output is preferred.
+- Pipeline Dataset Manifest exports remain metadata-only and never fetch media.
 
 ### Metadata manifest
 
-Each CSV includes fields covering:
+Collection and pipeline CSV manifests include fields covering:
 
 - Commons title and source page.
-- The selected full-size or web-optimized image URL, plus Commons and description URLs.
+- The selected media URL, plus Commons and description URLs. Image-oriented
+  records may also include a web-optimized derivative URL when available.
 - Description, object name, and search snippet.
 - MIME type, dimensions, and SVG status.
 - Creator and uploader.
@@ -617,6 +624,8 @@ commonslens/
 │   ├── pipeline_page.dart            # Visual pipeline editor
 │   ├── features_page.dart            # Public feature catalogue
 │   ├── download_service.dart         # Individual downloads and metadata CSV export
+│   ├── download_queue.dart           # Persistent cross-route metadata-only queue
+│   ├── media_archive_service.dart    # Verified client-side ZIP creation and manifest
 │   ├── seo_service.dart              # Route-aware document metadata
 │   └── router.dart                   # Application routes and SEO metadata sync
 ├── packages/commonslens_core/

@@ -109,6 +109,38 @@ class WikimediaRequestGate {
     return future;
   }
 
+  /// Starts a media request without buffering its body or retrying a response
+  /// whose bytes may be invalid. The caller owns the returned stream and must
+  /// either consume or cancel it. The request gate is released after headers
+  /// arrive; media-byte limits are enforced by the download client while the
+  /// body is read.
+  static Future<http.StreamedResponse> getStream(
+    http.Client client,
+    Uri uri, {
+    Duration timeout = const Duration(seconds: 20),
+    bool Function()? cancelled,
+  }) async {
+    if (cancelled?.call() == true) {
+      throw http.ClientException('Request cancelled', uri);
+    }
+
+    await _acquire();
+    try {
+      if (cancelled?.call() == true) {
+        throw http.ClientException('Request cancelled', uri);
+      }
+      final request = http.Request('GET', uri)
+        ..followRedirects = uri.host.toLowerCase() != 'upload.wikimedia.org';
+      final response = await client.send(request).timeout(timeout);
+      return response;
+    } finally {
+      // This gate limits request starts. The media client applies the body
+      // limit and cancels the stream itself, so holding this permit until a
+      // potentially large body finishes would deadlock unrelated API work.
+      _release();
+    }
+  }
+
   static Future<http.Response> _getWithClearance(
     http.Client client,
     Uri uri, {

@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import 'search_models.dart';
 import 'search_controller.dart';
 import 'search_components.dart';
-import 'csv_export_tray.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
 
@@ -35,10 +34,6 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.username != widget.username) {
       _authorCtrl.text = widget.username;
-      // Switching authors — a CSV selection from the previous grid
-      // shouldn't silently carry over into the new one.
-      ref.read(selectionModeProvider.notifier).state = false;
-      ref.read(selectedItemsProvider.notifier).state = {};
     }
   }
 
@@ -147,10 +142,6 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
         children: [
           _buildAuthorSearchBar(),
           Expanded(child: _buildBody(session)),
-          CsvExportTray(
-            availableItems: session.items,
-            fileName: '${widget.username}_portfolio',
-          ),
         ],
       ),
     );
@@ -173,8 +164,7 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(session.error!,
-                style: const TextStyle(
-                    color: Color(0xFFFF9B91), fontSize: 14)),
+                style: const TextStyle(color: Color(0xFFFF9B91), fontSize: 14)),
             const SizedBox(height: 8),
             const DocsSectionLink(
               section: 'troubleshooting',
@@ -190,8 +180,7 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('No uploads found for "${widget.username}".',
-                style:
-                    const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14)),
+                style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14)),
             const SizedBox(height: 8),
             const DocsSectionLink(
               section: 'author-portfolios',

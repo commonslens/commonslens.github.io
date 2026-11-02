@@ -2,7 +2,7 @@ import 'package:commonslens_core/commonslens_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:test/test.dart';
 
-class _DownloadFixtureTransport implements WikimediaTransport {
+class _DownloadFixtureTransport implements WikimediaMediaTransport {
   _DownloadFixtureTransport(this.handler);
 
   final http.Response Function(Uri uri) handler;
@@ -20,6 +20,24 @@ class _DownloadFixtureTransport implements WikimediaTransport {
   }) async {
     requests.add(uri);
     return handler(uri);
+  }
+
+  @override
+  Future<http.StreamedResponse> getStream(
+    Uri uri, {
+    Duration timeout = const Duration(seconds: 20),
+    bool Function()? cancelled,
+  }) async {
+    requests.add(uri);
+    final response = handler(uri);
+    return http.StreamedResponse(
+      Stream<List<int>>.value(response.bodyBytes),
+      response.statusCode,
+      contentLength:
+          int.tryParse(response.headers['content-length'] ?? '') ?? -1,
+      headers: response.headers,
+      request: http.Request('GET', uri),
+    );
   }
 }
 
@@ -73,6 +91,77 @@ void main() {
     expect(payload!.bytes, bytes);
     expect(payload.contentType, 'image/jpeg');
     expect(payload.extension, 'jpg');
+  });
+
+  test('revalidates current Wikimedia metadata before an original download',
+      () async {
+    final bytes = <int>[0xff, 0xd8, 0xff, 0x00, 0xff, 0xd9];
+    final transport = _DownloadFixtureTransport((uri) {
+      if (uri.queryParameters['formatversion'] == '2') {
+        return http.Response('''
+          {
+            "query": {
+              "pages": [{
+                "title": "File:Example.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/wikipedia/commons/example.jpg",
+                  "mime": "image/jpeg",
+                  "size": ${bytes.length},
+                  "sha1": ""
+                }]
+              }]
+            }
+          }
+        ''', 200);
+      }
+      return http.Response.bytes(
+        bytes,
+        200,
+        headers: {
+          'content-type': 'image/jpeg',
+          'content-length': '${bytes.length}',
+        },
+      );
+    });
+    final client = WikimediaDownloadClient(transport: transport);
+
+    final payload = await client.fetchMedia(
+      'https://upload.wikimedia.org/wikipedia/commons/stale.jpg',
+      revalidateTitle: 'Example.jpg',
+    );
+
+    expect(payload, isNotNull);
+    expect(
+      payload!.verifiedUrl,
+      'https://upload.wikimedia.org/wikipedia/commons/example.jpg',
+    );
+    expect(payload.expectedMime, 'image/jpeg');
+    expect(payload.expectedLength, bytes.length);
+    expect(
+      payload.verificationChecks,
+      contains(
+        'fresh Wikimedia imageinfo metadata was fetched immediately before download',
+      ),
+    );
+    expect(transport.requests, hasLength(2));
+  });
+
+  test('stops reading a streamed response at the hard byte limit', () async {
+    final transport = _DownloadFixtureTransport(
+      (_) => http.Response.bytes(
+        <int>[0xff, 0xd8, 0xff, 0x00, 0xff, 0xd9],
+        200,
+        headers: {'content-type': 'image/jpeg'},
+      ),
+    );
+    final client = WikimediaDownloadClient(transport: transport);
+
+    final payload = await client.fetchMedia(
+      'https://upload.wikimedia.org/wikipedia/commons/large.jpg',
+      maxBytes: 4,
+    );
+    expect(payload, isNull);
+    expect(transport.requests, hasLength(1));
   });
 
   test('rejects error documents and prevents work after close', () async {

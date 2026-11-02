@@ -68,6 +68,20 @@ void main() {
       );
     });
 
+    test('cooperative SHA-1 matches the regular digest', () async {
+      final bytes = Uint8List.fromList(
+        List<int>.generate(1024 * 3 + 17, (index) => index & 0xff),
+      );
+
+      expect(
+        await DownloadSecurityPolicy.sha1Cooperatively(
+          bytes,
+          chunkBytes: 257,
+        ),
+        crypto.sha1.convert(bytes).toString(),
+      );
+    });
+
     test('rejects executable, archive, MIME, extension, and hash mismatches',
         () {
       final cases = <void Function()>[
@@ -124,6 +138,63 @@ void main() {
         startsWith('"\'='));
     expect(DownloadSecurityPolicy.safeCsvField('+cmd'), "'+cmd");
     expect(DownloadSecurityPolicy.safeCsvField('ordinary'), 'ordinary');
+  });
+
+  test('archive verification accepts complex media as opaque bytes', () {
+    final uri = DownloadSecurityPolicy.requireTrustedMediaUri(
+      'https://upload.wikimedia.org/wikipedia/commons/a/a1/Guide.pdf',
+    );
+    expect(
+      DownloadSecurityPolicy.requireArchiveDownloadExtension(uri),
+      'pdf',
+    );
+
+    final result = DownloadSecurityPolicy.verifyMedia(
+      bytes: Uint8List.fromList(const [
+        0x25,
+        0x50,
+        0x44,
+        0x46,
+        0x2d,
+        0x31,
+        0x2e,
+        0x37,
+        0x0a,
+      ]),
+      declaredContentType: 'application/pdf',
+      expectedExtension: 'pdf',
+      allowComplex: true,
+    );
+
+    expect(result.riskLevel, DownloadRiskLevel.complex);
+    expect(result.detectedType, 'pdf');
+    expect(result.sha1, hasLength(40));
+    expect(
+      () => DownloadSecurityPolicy.requireSafeDownloadExtension(uri),
+      throwsA(isA<DownloadSecurityException>()),
+    );
+  });
+
+  test('archive verification recognizes SVG and binary STL containers', () {
+    final svg = DownloadSecurityPolicy.verifyMedia(
+      bytes: Uint8List.fromList(
+          '<svg xmlns="http://www.w3.org/2000/svg"></svg>'.codeUnits),
+      declaredContentType: 'image/svg+xml',
+      expectedExtension: 'svg',
+      allowComplex: true,
+    );
+    expect(svg.detectedType, 'svg');
+    expect(svg.riskLevel, DownloadRiskLevel.complex);
+
+    final stl = Uint8List(134);
+    stl[80] = 1;
+    final stlResult = DownloadSecurityPolicy.verifyMedia(
+      bytes: stl,
+      declaredContentType: 'application/sla',
+      expectedExtension: 'stl',
+      allowComplex: true,
+    );
+    expect(stlResult.detectedType, 'stl');
   });
 
   test('safe filenames cannot create paths or executable double extensions',

@@ -18,12 +18,25 @@ class DownloadSecurityException implements Exception {
 class VerifiedMedia {
   final String extension;
   final String contentType;
+  final String detectedType;
+  final DownloadRiskLevel riskLevel;
+  final List<String> checks;
+  final String sha1;
 
   const VerifiedMedia({
     required this.extension,
     required this.contentType,
+    required this.detectedType,
+    required this.riskLevel,
+    required this.checks,
+    required this.sha1,
   });
 }
+
+/// Describes what the verifier can say about a file. This is deliberately not
+/// named "safe": a verified PDF, SVG, codec container, or STL can still expose
+/// a vulnerability in the program that later opens it.
+enum DownloadRiskLevel { passive, complex }
 
 /// Fail-closed policy for every media byte stream CommonsLens saves.
 ///
@@ -34,7 +47,15 @@ class DownloadSecurityPolicy {
   DownloadSecurityPolicy._();
 
   static const int maxFileBytes = 256 * 1024 * 1024;
-  static const int maxZipBytes = 1024 * 1024 * 1024;
+  // A browser ZIP job retains verified payloads until its Blob is handed to
+  // the browser. Keep each part bounded by both count and bytes so a large
+  // queue cannot turn into an unbounded in-tab allocation.
+  static const int maxZipEntries = 100;
+  static const int maxZipBytes = 256 * 1024 * 1024;
+  // Leave room for the ZIP directory, manifest, README, and metadata overhead.
+  // The media payload budget is the limit used while deciding when to rotate
+  // to the next part.
+  static const int maxZipPayloadBytes = maxZipBytes - 4 * 1024 * 1024;
 
   static const Set<String> _activeExtensions = {'svg', 'pdf', 'djvu'};
   static const Set<String> _allowedExtensions = {
@@ -52,6 +73,21 @@ class DownloadSecurityPolicy {
     'ogv',
     'webm',
     'mp4',
+  };
+  static const Set<String> _archiveExtensions = {
+    ..._allowedExtensions,
+    'svg',
+    'pdf',
+    'djvu',
+    'xcf',
+    'ogx',
+    'opus',
+    'flac',
+    'midi',
+    'mid',
+    'mpg',
+    'mpeg',
+    'stl',
   };
 
   /// Accepts only HTTPS media objects from Wikimedia Commons' upload origin.
@@ -108,6 +144,21 @@ class DownloadSecurityPolicy {
     return extension;
   }
 
+  /// Archive admission is intentionally broader than direct browser media
+  /// download admission. Complex but recognised formats are allowed into a
+  /// locally-created ZIP as opaque bytes; they are never rendered or executed
+  /// by the archive builder.
+  static String requireArchiveDownloadExtension(Uri uri) {
+    final extension = extensionFromUri(uri);
+    if (!_archiveExtensions.contains(extension)) {
+      throw DownloadSecurityException(
+        'unsupported_archive_type',
+        'Archive entry blocked: .$extension is not a recognised Commons media format.',
+      );
+    }
+    return extension;
+  }
+
   static String extensionFromUri(Uri uri) {
     final name = uri.pathSegments.isEmpty ? '' : uri.pathSegments.last;
     final dot = name.lastIndexOf('.');
@@ -124,6 +175,30 @@ class DownloadSecurityPolicy {
     String? expectedSha1,
     int? expectedLength,
     int maxBytes = maxFileBytes,
+    bool allowComplex = false,
+  }) {
+    return _verifyMedia(
+      bytes: bytes,
+      declaredContentType: declaredContentType,
+      expectedExtension: expectedExtension,
+      expectedMime: expectedMime,
+      expectedSha1: expectedSha1,
+      expectedLength: expectedLength,
+      maxBytes: maxBytes,
+      allowComplex: allowComplex,
+    );
+  }
+
+  static VerifiedMedia _verifyMedia({
+    required Uint8List bytes,
+    required String declaredContentType,
+    required String expectedExtension,
+    String? expectedMime,
+    String? expectedSha1,
+    int? expectedLength,
+    int maxBytes = maxFileBytes,
+    bool allowComplex = false,
+    String? observedSha1,
   }) {
     if (bytes.isEmpty) {
       throw const DownloadSecurityException(
@@ -155,7 +230,22 @@ class DownloadSecurityPolicy {
       );
     }
 
-    final expected = _typeForExtension(expectedExtension.toLowerCase());
+    final expectedExtensionLower = expectedExtension.toLowerCase();
+    if (!allowComplex &&
+        const {'svg', 'pdf', 'djvu', 'xcf', 'stl'}
+            .contains(expectedExtensionLower)) {
+      throw DownloadSecurityException(
+        'active_content',
+        'Download blocked: .$expectedExtensionLower requires archive-only handling.',
+      );
+    }
+    if (allowComplex && !_archiveExtensions.contains(expectedExtensionLower)) {
+      throw const DownloadSecurityException(
+        'unsupported_archive_type',
+        'Archive entry blocked: the format is not recognised.',
+      );
+    }
+    final expected = _typeForExtension(expectedExtensionLower);
     if (expected == null || expected != detected) {
       throw const DownloadSecurityException(
         'extension_mismatch',
@@ -179,9 +269,12 @@ class DownloadSecurityPolicy {
     }
 
     final expectedHash = (expectedSha1 ?? '').trim().toLowerCase();
+    // The browser client computes this cooperatively before calling this
+    // synchronous validator. Keeping the fallback preserves the pure-Dart
+    // API for small callers and tests.
+    final observedHash = observedSha1 ?? crypto.sha1.convert(bytes).toString();
     if (expectedHash.isNotEmpty) {
-      final digest = crypto.sha1.convert(bytes);
-      final hex = digest.toString();
+      final hex = observedHash;
       final base36 = BigInt.parse(hex, radix: 16).toRadixString(36);
       final hashMatches = RegExp(r'^[0-9a-f]{40}$').hasMatch(expectedHash)
           ? expectedHash == hex
@@ -195,9 +288,97 @@ class DownloadSecurityPolicy {
       }
     }
 
+    final complex = const {'svg', 'pdf', 'djvu', 'xcf', 'stl'}
+        .contains(expectedExtensionLower);
     return VerifiedMedia(
       extension: _canonicalExtension(detected, expectedExtension),
       contentType: _canonicalMime(detected),
+      detectedType: detected,
+      riskLevel:
+          complex ? DownloadRiskLevel.complex : DownloadRiskLevel.passive,
+      sha1: observedHash,
+      checks: [
+        'HTTPS Wikimedia Commons media origin',
+        'response was non-empty and within the byte limit',
+        'response length matched when declared',
+        'executable and archive signatures were rejected',
+        'file signature matched the extension',
+        'Content-Type matched the detected format',
+        if (metadataMime.isNotEmpty) 'Wikimedia MIME metadata matched',
+        if (expectedLength != null && expectedLength > 0)
+          'Wikimedia byte-length metadata matched',
+        if (expectedHash.isNotEmpty) 'Wikimedia SHA-1 metadata matched',
+      ],
+    );
+  }
+
+  /// Computes the same SHA-1 used by [verifyMedia], but yields to the browser
+  /// event loop between chunks. This keeps rendering and input responsive while
+  /// retaining byte-for-byte verification; it does not weaken the hash check.
+  static Future<String> sha1Cooperatively(
+    Uint8List bytes, {
+    int chunkBytes = 256 * 1024,
+    bool Function()? cancelled,
+  }) async {
+    if (chunkBytes <= 0) {
+      throw ArgumentError.value(chunkBytes, 'chunkBytes', 'must be positive');
+    }
+
+    final digestSink = _DigestSink();
+    final hash = crypto.sha1.startChunkedConversion(digestSink);
+    for (var offset = 0; offset < bytes.length; offset += chunkBytes) {
+      if (cancelled?.call() == true) {
+        throw const DownloadSecurityException(
+          'cancelled',
+          'Download cancelled before verification completed.',
+        );
+      }
+      final end = offset + chunkBytes > bytes.length
+          ? bytes.length
+          : offset + chunkBytes;
+      hash.add(Uint8List.view(
+        bytes.buffer,
+        bytes.offsetInBytes + offset,
+        end - offset,
+      ));
+      if (end < bytes.length) {
+        // A zero-duration timer gives the browser a paint/input opportunity;
+        // a microtask would keep the event loop occupied.
+        await Future<void>.delayed(Duration.zero);
+      }
+    }
+    hash.close();
+    return digestSink.value.toString();
+  }
+
+  /// Full media verification with cooperative hashing for browser callers.
+  /// The observed digest is kept private to this policy so callers cannot
+  /// accidentally bypass the byte-to-digest calculation.
+  static Future<VerifiedMedia> verifyMediaCooperatively({
+    required Uint8List bytes,
+    required String declaredContentType,
+    required String expectedExtension,
+    String? expectedMime,
+    String? expectedSha1,
+    int? expectedLength,
+    int maxBytes = maxFileBytes,
+    bool allowComplex = false,
+    bool Function()? cancelled,
+  }) async {
+    final observedSha1 = await sha1Cooperatively(
+      bytes,
+      cancelled: cancelled,
+    );
+    return _verifyMedia(
+      bytes: bytes,
+      declaredContentType: declaredContentType,
+      expectedExtension: expectedExtension,
+      expectedMime: expectedMime,
+      expectedSha1: expectedSha1,
+      expectedLength: expectedLength,
+      maxBytes: maxBytes,
+      allowComplex: allowComplex,
+      observedSha1: observedSha1,
     );
   }
 
@@ -213,8 +394,7 @@ class DownloadSecurityPolicy {
           '',
         );
     if (safeExtension.isEmpty ||
-        (!_allowedExtensions.contains(safeExtension) &&
-            !_activeExtensions.contains(safeExtension) &&
+        (!_archiveExtensions.contains(safeExtension) &&
             !const {'csv', 'json', 'py', 'zip'}.contains(safeExtension))) {
       throw const DownloadSecurityException(
         'unsafe_filename',
@@ -331,6 +511,21 @@ class DownloadSecurityPolicy {
     if (_startsWithAscii(bytes, 'OggS')) return 'ogg';
     if (_startsWith(bytes, const [0x1a, 0x45, 0xdf, 0xa3])) return 'webm';
     if (bytes.length >= 12 && _asciiAt(bytes, 4, 'ftyp')) return 'mp4';
+    if (_startsWithAscii(bytes, 'fLaC')) return 'flac';
+    if (_startsWithAscii(bytes, 'MThd')) return 'midi';
+    if (_startsWithAscii(bytes, '%PDF-')) return 'pdf';
+    if (_startsWithAscii(bytes, 'gimp xcf ')) return 'xcf';
+    if (bytes.length >= 8 &&
+        _asciiAt(bytes, 0, 'AT&TFORM') &&
+        (_asciiAt(bytes, 12, 'DJVU') || _asciiAt(bytes, 12, 'DJVM'))) {
+      return 'djvu';
+    }
+    if (_looksLikeSvg(bytes)) return 'svg';
+    if (_looksLikeStl(bytes)) return 'stl';
+    if (_startsWith(bytes, const [0x00, 0x00, 0x01, 0xba]) ||
+        _startsWith(bytes, const [0x00, 0x00, 0x01, 0xb3])) {
+      return 'mpeg';
+    }
     return null;
   }
 
@@ -342,8 +537,6 @@ class DownloadSecurityPolicy {
       case 'tif':
       case 'tiff':
         return 'tiff';
-      case 'oga':
-      case 'ogv':
       case 'ogg':
         return 'ogg';
       case 'png':
@@ -354,6 +547,24 @@ class DownloadSecurityPolicy {
       case 'webm':
       case 'mp4':
         return extension;
+      case 'svg':
+      case 'pdf':
+      case 'djvu':
+      case 'xcf':
+      case 'flac':
+      case 'midi':
+      case 'stl':
+        return extension;
+      case 'mid':
+        return 'midi';
+      case 'ogx':
+      case 'opus':
+      case 'oga':
+      case 'ogv':
+        return 'ogg';
+      case 'mpg':
+      case 'mpeg':
+        return 'mpeg';
       default:
         return null;
     }
@@ -385,6 +596,26 @@ class DownloadSecurityPolicy {
         return mime == 'video/mp4' ||
             mime == 'audio/mp4' ||
             mime == 'application/mp4';
+      case 'svg':
+        return mime == 'image/svg+xml';
+      case 'pdf':
+        return mime == 'application/pdf';
+      case 'djvu':
+        return mime == 'image/vnd.djvu' ||
+            mime == 'image/x-djvu' ||
+            mime == 'application/vnd.djvu';
+      case 'xcf':
+        return mime == 'image/x-xcf' || mime == 'application/x-xcf';
+      case 'flac':
+        return mime == 'audio/flac';
+      case 'midi':
+        return mime == 'audio/midi' || mime == 'audio/x-midi';
+      case 'stl':
+        return mime == 'application/sla' ||
+            mime == 'model/stl' ||
+            mime == 'application/vnd.ms-pki.stl';
+      case 'mpeg':
+        return mime == 'video/mpeg' || mime == 'audio/mpeg';
       default:
         return false;
     }
@@ -394,7 +625,14 @@ class DownloadSecurityPolicy {
     if (type == 'jpeg') return 'jpg';
     if (type == 'tiff') return 'tiff';
     if (type == 'ogg' &&
-        const {'oga', 'ogv', 'ogg'}.contains(expectedExtension)) {
+        const {'oga', 'ogv', 'ogg', 'ogx', 'opus'}
+            .contains(expectedExtension)) {
+      return expectedExtension;
+    }
+    if (type == 'midi' && const {'mid', 'midi'}.contains(expectedExtension)) {
+      return expectedExtension;
+    }
+    if (type == 'mpeg' && const {'mpg', 'mpeg'}.contains(expectedExtension)) {
       return expectedExtension;
     }
     return type;
@@ -419,6 +657,22 @@ class DownloadSecurityPolicy {
         return 'video/webm';
       case 'mp4':
         return 'video/mp4';
+      case 'svg':
+        return 'image/svg+xml';
+      case 'pdf':
+        return 'application/pdf';
+      case 'djvu':
+        return 'image/vnd.djvu';
+      case 'xcf':
+        return 'image/x-xcf';
+      case 'flac':
+        return 'audio/flac';
+      case 'midi':
+        return 'audio/midi';
+      case 'stl':
+        return 'model/stl';
+      case 'mpeg':
+        return 'video/mpeg';
       default:
         return 'application/octet-stream';
     }
@@ -446,5 +700,43 @@ class DownloadSecurityPolicy {
     return true;
   }
 
+  static bool _looksLikeSvg(Uint8List bytes) {
+    final length = bytes.length < 4096 ? bytes.length : 4096;
+    final text = String.fromCharCodes(bytes.sublist(0, length))
+        .replaceFirst('\uFEFF', '')
+        .trimLeft()
+        .toLowerCase();
+    return text.startsWith('<svg') ||
+        (text.startsWith('<?xml') && text.contains('<svg'));
+  }
+
+  static bool _looksLikeStl(Uint8List bytes) {
+    if (bytes.length >= 84) {
+      final triangles =
+          bytes[80] | (bytes[81] << 8) | (bytes[82] << 16) | (bytes[83] << 24);
+      if (triangles > 0 && 84 + triangles * 50 == bytes.length) return true;
+    }
+    final length = bytes.length < 8192 ? bytes.length : 8192;
+    final text =
+        String.fromCharCodes(bytes.sublist(0, length)).trimLeft().toLowerCase();
+    return text.startsWith('solid ') &&
+        text.contains('facet') &&
+        text.contains('endsolid');
+  }
+
   static int _mib(int bytes) => bytes ~/ (1024 * 1024);
+}
+
+class _DigestSink implements Sink<crypto.Digest> {
+  crypto.Digest? _digest;
+
+  crypto.Digest get value => _digest!;
+
+  @override
+  void add(crypto.Digest value) {
+    _digest = value;
+  }
+
+  @override
+  void close() {}
 }

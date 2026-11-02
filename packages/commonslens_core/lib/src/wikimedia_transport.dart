@@ -18,9 +18,22 @@ abstract interface class WikimediaTransport {
   });
 }
 
+/// Streaming transport required by the media-download boundary.
+///
+/// Search and metadata operations can use a buffered [WikimediaTransport]
+/// response. Media downloads must use this interface so the caller can stop
+/// reading as soon as the hard byte limit is reached.
+abstract interface class WikimediaMediaTransport implements WikimediaTransport {
+  Future<http.StreamedResponse> getStream(
+    Uri uri, {
+    Duration timeout = const Duration(seconds: 20),
+    bool Function()? cancelled,
+  });
+}
+
 /// Production transport that applies the global Wikimedia concurrency,
 /// identification, maxlag, deduplication, and retry policy.
-class GatedWikimediaTransport implements WikimediaTransport {
+class GatedWikimediaTransport implements WikimediaMediaTransport {
   GatedWikimediaTransport({http.Client? client})
       : _client = client ?? http.Client(),
         _ownsClient = client == null;
@@ -47,6 +60,20 @@ class GatedWikimediaTransport implements WikimediaTransport {
       deduplicate: deduplicate,
       cancelled: cancelled,
       acceptResponse: acceptResponse,
+    );
+  }
+
+  @override
+  Future<http.StreamedResponse> getStream(
+    Uri uri, {
+    Duration timeout = const Duration(seconds: 20),
+    bool Function()? cancelled,
+  }) {
+    return WikimediaRequestGate.getStream(
+      _client,
+      uri,
+      timeout: timeout,
+      cancelled: cancelled,
     );
   }
 

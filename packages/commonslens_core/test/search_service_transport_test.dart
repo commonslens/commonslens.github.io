@@ -444,6 +444,7 @@ void main() {
   test('browse extensions use the same injected transport', () async {
     final transport = _FixtureTransport((uri) async {
       expect(uri.queryParameters['list'], 'allcategories');
+      expect(uri.queryParameters['acmin'], isNull);
       return http.Response('''
         {
           "continue": {"accontinue": "Museums"},
@@ -462,5 +463,103 @@ void main() {
     expect(transport.requests, hasLength(1));
     expect(result.items, [(name: 'Architecture', size: 42)]);
     expect(result.nextCursor, 'Museums');
+  });
+
+  test('category tree follows immediate subcategories', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['generator'], 'categorymembers');
+      expect(uri.queryParameters['gcmtitle'], 'Category:Topics');
+      expect(uri.queryParameters['gcmtype'], 'subcat');
+      expect(uri.queryParameters['formatversion'], '2');
+      return http.Response('''
+        {
+          "continue": {"gcmcontinue": "next-child"},
+          "query": {
+            "pages": [
+              {
+                "title": "Category:Main topics",
+                "categoryinfo": {"files": 12, "subcats": 3}
+              }
+            ]
+          }
+        }
+      ''', 200);
+    });
+    final service = SearchService(transport: transport);
+
+    final result = await service.browseCategoryChildren(category: 'Topics');
+
+    expect(result.items, [
+      (name: 'Main topics', files: 12, subcategories: 3),
+    ]);
+    expect(result.nextCursor, 'next-child');
+  });
+
+  test('template browse lists actual namespace-10 prefix matches', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['list'], 'allpages');
+      expect(uri.queryParameters['apnamespace'], '10');
+      expect(uri.queryParameters['apprefix'], 'institution:');
+      return http.Response('''
+        {
+          "continue": {"apcontinue": "Institution:next"},
+          "query": {"allpages": [
+              {"title": "Template:Institution:art"},
+            {"title": "Template:Institution source"},
+            {"title": "Template:Institution/doc"}
+          ]}
+        }
+      ''', 200);
+    });
+    final service = SearchService(transport: transport);
+
+    final result = await service.browseTemplates(prefix: 'institution:');
+
+    expect(result.items, ['Institution:art', 'Institution source']);
+    expect(result.nextCursor, 'Institution:next');
+  });
+
+  test('deep category search stays on one server-side query', () async {
+    final transport = _FixtureTransport((uri) async {
+      final categoryQuery = uri.queryParameters['gsrsearch'] ?? '';
+      expect(uri.queryParameters['generator'], 'search');
+      expect(categoryQuery, contains('deepcat:"Topics"'));
+      final title = 'File:Topic.jpg';
+      return http.Response('''
+        {"warnings":{"search":{"*":"Deep category search timed out"}},
+         "query":{"pages":{"1":{"title":"$title","imageinfo":[
+            {"url":"https://upload.wikimedia.org/$title","mime":"image/jpeg"}
+         ]}}}}
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(categories: {'Topics'}, deepCategoryMode: true),
+      continueParams: null,
+      includeThumbWidth: false,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.items, hasLength(1));
+    expect(result.warning, contains('timed out'));
+  });
+
+  test('template autocomplete uses the same prefix contract', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['list'], 'allpages');
+      expect(uri.queryParameters['apnamespace'], '10');
+      expect(uri.queryParameters['apprefix'], 'institution:');
+      expect(uri.queryParameters['aplimit'], '8');
+      return http.Response('''
+        {
+          "query": {"allpages": [{"title": "Template:Institution:museum"}]}
+        }
+      ''', 200);
+    });
+    final service = SearchService(transport: transport);
+
+    final result = await service.searchTemplates('institution:');
+
+    expect(result, ['Institution:museum']);
   });
 }

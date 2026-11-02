@@ -1,2 +1,7 @@
 export 'package:commonslens_core/commonslens_core.dart'
-    show BrowseExtensions, BrowseResult, CategoryItem, SearchService;
+    show
+        BrowseExtensions,
+        BrowseResult,
+        CategoryItem,
+        CategoryTreeItem,
+        SearchService;

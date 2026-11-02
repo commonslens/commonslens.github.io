@@ -545,6 +545,21 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
     // Same fan-out pattern for category union mode — deepCategoryMode,
     // excludeCategories, and everything else carry over unchanged onto
     // each single-category branch.
+    // Deep category searches are deliberately one server-side CirrusSearch
+    // request. The previous client-side expansion turned one category into
+    // dozens of serial API calls because Wikimedia's request gate is global.
+    // That made the image grid wait minutes before it received its first page.
+    if (state.deepCategoryMode) {
+      return _fetchPageForDepicts(
+        state,
+        continueParams: continueParams,
+        includeThumbWidth: includeThumbWidth,
+        includeExtmetadata: includeExtmetadata,
+        pageSize: pageSize,
+        skipFailedPages: skipFailedPages,
+      );
+    }
+
     final includeCategories = state.categories
         .map((c) => c.trim())
         .where((c) => c.isNotEmpty)
@@ -765,6 +780,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       Map<String, dynamic>? nextContinue;
       int? totalHits;
       String? suggestion;
+      String? searchWarning;
 
       for (var propertyPage = 0;; propertyPage++) {
         final requestParams = <String, String>{...params};
@@ -813,6 +829,16 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         }
 
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawSearchWarning = (data['warnings'] as Map?)?['search'];
+        if (rawSearchWarning is Map) {
+          final fallbackWarning = rawSearchWarning.values.isEmpty
+              ? null
+              : rawSearchWarning.values.first;
+          searchWarning =
+              rawSearchWarning['*']?.toString() ?? fallbackWarning?.toString();
+        } else if (rawSearchWarning != null) {
+          searchWarning = rawSearchWarning.toString();
+        }
         final apiError = data['error'] as Map<String, dynamic>?;
         if (apiError != null) {
           final errorCode = apiError['code'] as String?;
@@ -987,6 +1013,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       return SearchResponse(
         items: filteredItems,
         continueParams: nextContinue,
+        warning: searchWarning,
         totalHits: totalHits,
         suggestion: suggestion,
       );

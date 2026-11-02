@@ -327,6 +327,17 @@ class CommonsBackend {
         limit: limit,
       );
 
+  Future<BrowseResult<CategoryTreeItem>> browseCategoryChildren({
+    required String category,
+    String? cursor,
+    int limit = 500,
+  }) =>
+      _service.browseCategoryChildren(
+        category: category,
+        cursor: cursor,
+        limit: limit,
+      );
+
   Future<BrowseResult<String>> browseTemplates({
     String? prefix,
     String? cursor,

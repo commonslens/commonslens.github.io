@@ -17,6 +17,7 @@ import 'search_models.dart';
 import 'search_controller.dart';
 import 'backend_providers.dart';
 import 'media_queue.dart';
+import 'legal_pages.dart';
 
 part 'asset_media_renderer.dart';
 part 'asset_metadata_panel.dart';
@@ -364,8 +365,18 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
           ),
         ),
         body: const Center(
-          child: Text('Media not found.',
-              style: TextStyle(color: Color(0xFF555555))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Media not found.',
+                  style: TextStyle(color: Color(0xFFAAAAAA))),
+              SizedBox(height: 8),
+              DocsSectionLink(
+                section: 'troubleshooting',
+                label: 'Troubleshoot this file',
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -408,6 +419,10 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
         ),
         centerTitle: true,
         actions: [
+          const DocsSectionIconButton(
+            section: 'inspect',
+            tooltip: 'Inspect a file guide',
+          ),
           IconButton(
             tooltip: isBookmarked ? 'Remove bookmark' : 'Bookmark media',
             icon: Icon(

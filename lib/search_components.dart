@@ -12,6 +12,7 @@ import 'backend_providers.dart';
 import 'download_service.dart';
 import 'bookmark_service.dart';
 import 'autocomplete_request_coordinator.dart';
+import 'legal_pages.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // -----------------------------------------------------------------------------
@@ -315,7 +316,7 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                             horizontal: isMobile ? 0 : 18)),
                     onPressed: () =>
                         widget.onSearch(_fieldController?.text ?? ''),
-                    child: const Icon(Icons.search_rounded, size: 18),
+                    child: const Icon(Icons.search_rounded, size: 18, color: Colors.white,),
                   ),
                 ),
               ),
@@ -565,6 +566,7 @@ class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
   Future<void> _download() async {
     if (_busy) return;
     setState(() => _busy = true);
+    final securityNotice = showDownloadSecurityNotice(context);
     try {
       final failure = await DownloadService.downloadSingleFile(widget.item);
       if (failure != null && mounted) {
@@ -576,6 +578,7 @@ class _QuickDownloadButtonState extends State<_QuickDownloadButton> {
         );
       }
     } finally {
+      securityNotice.close();
       if (mounted) setState(() => _busy = false);
     }
   }

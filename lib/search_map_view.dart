@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'search_models.dart';
 import 'search_components.dart';
 import 'media_queue.dart';
+import 'legal_pages.dart';
 
 const _mapBackground = Color(0xFF0B0B0B);
 const _mapPanel = Color(0xFF141414);
@@ -415,12 +416,21 @@ class _SearchMapViewState extends State<SearchMapView> {
             Positioned(
               top: 12,
               left: showResultsPreview ? 330 : null,
-              right: showResultsPreview ? null : 12,
+              right: showResultsPreview ? null : 64,
               child: _MapControlButton(
                 icon: _style.icon,
                 text: _style == _SearchMapStyle.englishStreet ? 'EN' : null,
                 tooltip: '${_style.label} map — switch to ${_style.next.label}',
                 onTap: () => setState(() => _style = _style.next),
+              ),
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: _MapControlButton(
+                icon: Icons.info_outline_rounded,
+                tooltip: 'Open the map usage guide',
+                onTap: () => openDocsSection('map'),
               ),
             ),
             Positioned(
@@ -879,16 +889,46 @@ class MapResultsPreview extends StatelessWidget {
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(18),
-                      child: Text(
-                        session.error!,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Color(0xFFFF9B91),
-                          fontSize: 12,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            session.error!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xFFFF9B91),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const DocsSectionLink(
+                            section: 'troubleshooting',
+                            label: 'Troubleshoot this map search',
+                          ),
+                        ],
                       ),
                     ),
                   )
+                : session.items.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'No results to show on the map.',
+                              style: TextStyle(
+                                color: Color(0xFFA0A0A0),
+                                fontSize: 12,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            DocsSectionLink(
+                              section: 'troubleshooting',
+                              label: 'Troubleshoot no results',
+                            ),
+                          ],
+                        ),
+                      )
                 : MediaResultsGrid(
                     items: session.items,
                     loadingMore: session.loadingMore,

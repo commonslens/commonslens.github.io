@@ -107,6 +107,13 @@ void main() {
     expect(find.text('Visual ETL pipelines'), findsOneWidget);
     expect(find.text('Bookmarks'), findsOneWidget);
     expect(find.text('QUALITY'), findsOneWidget);
+    expect(find.byTooltip('Minimize filter groups'), findsOneWidget);
+    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
+    expect(find.byTooltip('Minimize feature panel'), findsNothing);
+
+    await tester.tap(find.text('IMAGE CLASSIFICATION'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
 
     final depictsField = find.byWidgetPredicate(
       (widget) =>
@@ -140,7 +147,12 @@ void main() {
 
     expect(find.byTooltip('Expand filter groups'), findsOneWidget);
     expect(find.byTooltip('More Pages'), findsOneWidget);
-    expect(find.byTooltip('Expand feature panel'), findsNothing);
+    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Expand feature panel'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -163,7 +175,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 130));
     expect(tester.takeException(), isNull);
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Expand feature panel'), findsNothing);
+    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.tap(find.text('LICENSE'));

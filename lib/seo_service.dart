@@ -80,6 +80,15 @@ abstract final class SeoService {
       );
     }
 
+    if (path == '/docs') {
+      return const _SeoMetadata(
+        title: 'CommonsLens Docs — Search, Understand, and Reuse Wikimedia Media',
+        description:
+            'Learn how to search, filter, map, inspect, bookmark, export, and reuse Wikimedia Commons media with CommonsLens, including what happens to your data.',
+        canonical: '$_origin/docs/',
+      );
+    }
+
     if (path == '/terms') {
       return const _SeoMetadata(
         title: 'Terms of Use | CommonsLens',

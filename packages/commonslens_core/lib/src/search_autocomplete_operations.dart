@@ -107,22 +107,26 @@ mixin _SearchAutocompleteOperations {
     }
   }
 
-  /// Same shape as [searchCategories] — `list=allpages` restricted to
-  /// namespace 10 (Template:) instead of `list=allcategories` — for the
-  /// Templates picker's hastemplate: autocomplete. Titles come back as
-  /// "Template:Foo"; stripped to "Foo" to match how template names are
-  /// already stored everywhere else in [SearchState.templates] /
-  /// [SearchState.excludeTemplates] and embedded in hastemplate: clauses
-  /// (see [buildQuery]) — bare, no namespace prefix.
+  /// Template-name autocomplete for the Templates picker's hastemplate:
+  /// filter. This is deliberately an actual namespace-10 prefix lookup, not
+  /// full-text search: documentation and sandbox pages are not templates a
+  /// file can transclude, and returning them makes a selected hastemplate:
+  /// filter misleading. Titles come back as "Template:Foo"; stripped to
+  /// "Foo" to match [SearchState.templates].
   Future<List<String>> searchTemplates(String query) async {
     final clean = query.trim();
     if (clean.isEmpty) return [];
+    final searchTerm = clean
+        .replaceFirst(RegExp(r'^Template:\s*', caseSensitive: false), '')
+        .trim();
+    if (searchTerm.isEmpty) return [];
     try {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', {
         'action': 'query',
         'list': 'allpages',
         'apnamespace': '10',
-        'apprefix': clean,
+        'apprefix': searchTerm,
+        'aplimit': '8',
         'format': 'json',
         'origin': '*',
       });
@@ -138,6 +142,7 @@ mixin _SearchAutocompleteOperations {
           .map((p) => ((p as Map<String, dynamic>)['title'] as String? ?? '')
               .replaceFirst('Template:', '')
               .trim())
+          .where(_isPrimaryTemplatePage)
           .where((t) => t.isNotEmpty)
           .toList();
     } catch (_) {

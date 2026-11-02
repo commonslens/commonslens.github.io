@@ -5,6 +5,7 @@ import 'download_service.dart';
 import 'pipeline_manifest.dart';
 import 'search_models.dart';
 import 'wikimedia_download_client.dart';
+import 'legal_pages.dart';
 
 final selectionModeProvider = StateProvider<bool>((ref) => false);
 final selectedItemsProvider = StateProvider<Set<SearchItem>>((ref) => {});
@@ -128,6 +129,11 @@ class _CsvExportTrayState extends ConsumerState<CsvExportTray> {
                 fontWeight: FontWeight.w800,
                 letterSpacing: 0.5,
               ),
+            ),
+            const SizedBox(height: 2),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: CommonsLensDownloadSecurityButton(),
             ),
             const SizedBox(height: 9),
             Row(

@@ -69,6 +69,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const FeaturesPage(),
     ),
     GoRoute(
+      path: '/docs',
+      builder: (context, state) => const DocsRedirectPage(),
+    ),
+    GoRoute(
       path: '/bookmarks',
       builder: (context, state) => BookmarksPage(
         initialQuery: state.uri.queryParameters['bq'] ?? '',

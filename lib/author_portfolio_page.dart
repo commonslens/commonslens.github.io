@@ -7,6 +7,7 @@ import 'search_controller.dart';
 import 'search_components.dart';
 import 'csv_export_tray.dart';
 import 'media_queue.dart';
+import 'legal_pages.dart';
 
 class AuthorPortfolioPage extends ConsumerStatefulWidget {
   final String username;
@@ -134,6 +135,13 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
               fontWeight: FontWeight.w700),
         ),
         centerTitle: true,
+        actions: const [
+          DocsSectionIconButton(
+            section: 'author-portfolios',
+            tooltip: 'Author portfolio guide',
+          ),
+          SizedBox(width: 4),
+        ],
       ),
       body: Column(
         children: [
@@ -161,14 +169,36 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
     }
     if (session.error != null && session.items.isEmpty) {
       return Center(
-        child: Text(session.error!,
-            style: const TextStyle(color: Color(0xFF484848), fontSize: 14)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(session.error!,
+                style: const TextStyle(
+                    color: Color(0xFFFF9B91), fontSize: 14)),
+            const SizedBox(height: 8),
+            const DocsSectionLink(
+              section: 'troubleshooting',
+              label: 'Troubleshoot this portfolio',
+            ),
+          ],
+        ),
       );
     }
     if (session.items.isEmpty) {
       return Center(
-        child: Text('No uploads found for "${widget.username}".',
-            style: const TextStyle(color: Color(0xFF404040), fontSize: 14)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('No uploads found for "${widget.username}".',
+                style:
+                    const TextStyle(color: Color(0xFFAAAAAA), fontSize: 14)),
+            const SizedBox(height: 8),
+            const DocsSectionLink(
+              section: 'author-portfolios',
+              label: 'Learn about author portfolios',
+            ),
+          ],
+        ),
       );
     }
 

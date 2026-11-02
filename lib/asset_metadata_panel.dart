@@ -1105,6 +1105,11 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
               label: 'Reuse guidance',
               onTap: () => _launch(_reuseGuidanceUrl),
             ),
+            _ReuseReferenceButton(
+              icon: Icons.menu_book_outlined,
+              label: 'CommonsLens attribution guide',
+              onTap: () => openDocsSection('reuse'),
+            ),
           ],
         ),
         const SizedBox(height: 12),
@@ -1344,6 +1349,11 @@ class _DownloadSection extends StatelessWidget {
             'View Source Page',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
+        ),
+        const SizedBox(height: 4),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: CommonsLensDownloadSecurityButton(),
         ),
       ],
     );

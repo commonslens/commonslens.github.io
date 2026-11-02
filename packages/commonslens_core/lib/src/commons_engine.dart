@@ -72,6 +72,7 @@ class CommonsSearchSession {
       loading: false,
       loadingMore: false,
       error: result.error,
+      warning: result.warning,
       totalHits: result.totalHits,
       suggestion: result.suggestion,
     );
@@ -164,6 +165,7 @@ class CommonsSearchSession {
       continueParams: result.continueToken,
       hasMore: result.hasMore,
       loadingMore: false,
+      warning: result.warning ?? current.warning,
       totalHits: result.totalHits,
       suggestion: result.suggestion,
     );

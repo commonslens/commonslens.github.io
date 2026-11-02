@@ -137,7 +137,9 @@ Save as docs/images/search-results.png and uncomment:
 - Multiple included and excluded categories.
 - Intersection/AND or union/OR matching.
 - Strict mode for exact categories.
-- Deep mode for recursively nested subcategories.
+- Nested mode using Commons' server-side deep-category search; broad roots may be incomplete or time out.
+- Search chips distinguish `Category: name` (direct) from `Category + subcategories: name` (nested).
+- If nested mode warns about too many categories or times out, no images may be returned; narrow the categories or turn nested mode off before treating it as an image-loading problem.
 
 ### MediaWiki templates
 
@@ -188,20 +190,25 @@ The `/browse` interface makes Commons classification systems directly explorable
 
 ### Categories
 
-- Paginated directory browsing.
-- Prefix and jump search.
-- File counts for directory entries.
-- One-click transfer into the main search.
+- Starts at Commons' topical category roots instead of an alphabetical dump.
+- Breadcrumb navigation through immediate subcategories, with file and child-category counts where Commons provides them.
+- Prefix jump search for categories that are easier to reach directly.
+- Zero-direct-file container categories remain browseable; nested searching is an explicit option rather than an automatic fan-out.
+- Selecting a category starts a direct/strict search; enabling `Include nested subcategories` sends one server-side deep-category search instead of expanding the tree in the browser.
+- Browse rows are directory metadata, not thumbnail cards. File thumbnails load after a category is sent to the main Search view.
+- Multi-select categories while browsing, remove choices from the selected-chip list, and apply the set once.
+- A wide `Open` action enters a category branch without accidentally selecting it.
 
 ### Templates
 
-- Paginated MediaWiki template directory.
-- Prefix and jump search.
+- Search-first tree of actual namespace-10 template pages.
+- Colon-separated names are grouped only when those template pages really exist; a value such as `Institution:Metropolitan Museum of Art` is not treated as a template automatically.
+- Selecting a leaf keeps the exact full template name; family nodes are only navigation.
 - One-click transfer into the main search.
 
 ### Depicted subjects
 
-- Wikidata entity search with up to 50 matches.
+- Wikidata entity search with up to 50 matches, by label or Q-code.
 - Labels, Q-codes, and descriptions.
 - One-click transfer into the main search.
 
@@ -493,8 +500,8 @@ CommonsLens is a Flutter web application backed by a reusable plain-Dart core pa
 
 All application-managed Wikimedia requests share one coordination layer:
 
-- Maximum of two concurrent requests.
-- Minimum spacing between request starts.
+- Maximum of one concurrent request.
+- Minimum spacing of 400 milliseconds between request starts.
 - Duplicate in-flight Action API GET requests are coalesced.
 - Wikimedia `maxlag` support.
 - API identification headers.
@@ -503,6 +510,13 @@ All application-managed Wikimedia requests share one coordination layer:
 - Retry handling for throttling, server failures, timeouts, and rejected responses.
 - Global cooldown after a throttling response.
 - Cancellation support for long-running work.
+
+For a normal single-category Search, CommonsLens sends one search request and
+then any image metadata/thumbnail continuation requests needed to complete the
+page. Nested category mode uses one server-side deep-category request; it does
+not recursively fetch every subcategory in the browser. Multiple category
+Union branches, `+`-separated text searches, and other multi-value branches can
+still fan out into separate requests and merge their results locally.
 
 ### Performance choices
 

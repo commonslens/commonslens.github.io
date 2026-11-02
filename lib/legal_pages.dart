@@ -1,3 +1,6 @@
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -28,6 +31,138 @@ Future<void> _openExternal(String url) async {
   );
 }
 
+/// Opens the static, crawlable documentation page instead of routing it
+/// through Flutter's canvas UI. This keeps the user guide readable to search
+/// engines and no-JavaScript browsers as well as normal app users.
+void openDocs() {
+  html.window.location.assign(Uri.base.resolve('docs/index.html').toString());
+}
+
+/// Opens one specific section of the static documentation guide.
+void openDocsSection(String section) {
+  final docsUri = Uri.base.resolve('docs/index.html');
+  html.window.location.assign(docsUri.replace(fragment: section).toString());
+}
+
+/// Compact help affordance for app surfaces that have a matching guide
+/// section. The link leaves Flutter's canvas UI and opens the crawlable guide
+/// at the requested anchor.
+class DocsSectionIconButton extends StatelessWidget {
+  const DocsSectionIconButton({
+    super.key,
+    required this.section,
+    required this.tooltip,
+    this.icon = Icons.menu_book_outlined,
+  });
+
+  final String section;
+  final String tooltip;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      icon: Icon(icon, color: const Color(0xFF9AB9FF)),
+      onPressed: () => openDocsSection(section),
+    );
+  }
+}
+
+/// Text link used inside empty/error states where the next useful action is
+/// an explanation rather than another retry.
+class DocsSectionLink extends StatelessWidget {
+  const DocsSectionLink({
+    super.key,
+    required this.section,
+    required this.label,
+    this.icon = Icons.menu_book_outlined,
+  });
+
+  final String section;
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => openDocsSection(section),
+      icon: Icon(icon, size: 16),
+      label: Text(label),
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFF9AB9FF),
+        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Link shown beside download/export actions while CommonsLens is preparing a
+/// browser file. The guide explains the checks and the limits of screening.
+class CommonsLensDownloadSecurityButton extends StatelessWidget {
+  const CommonsLensDownloadSecurityButton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: () => openDocsSection('download-security'),
+      icon: const Icon(Icons.shield_outlined, size: 15),
+      label: const Text('CommonsLens Download Security'),
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFF9AB9FF),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+/// Keeps the security link visible while a compact card download is active.
+ScaffoldFeatureController<SnackBar, SnackBarClosedReason>
+    showDownloadSecurityNotice(BuildContext context) {
+  return ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      duration: Duration(minutes: 1),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Downloading media…'),
+          CommonsLensDownloadSecurityButton(),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Local/deep-link handoff for servers that send `/docs/` to the Flutter
+/// application shell instead of resolving the static directory index.
+class DocsRedirectPage extends StatefulWidget {
+  const DocsRedirectPage({super.key});
+
+  @override
+  State<DocsRedirectPage> createState() => _DocsRedirectPageState();
+}
+
+class _DocsRedirectPageState extends State<DocsRedirectPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) openDocs();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
 /// Shared footer for public, indexable pages and the main landing page.
 class SiteFooter extends StatelessWidget {
   const SiteFooter({super.key, this.showDivider = true});
@@ -48,6 +183,10 @@ class SiteFooter extends StatelessWidget {
             spacing: 6,
             runSpacing: 4,
             children: [
+              _FooterLink(
+                label: 'User guide',
+                onPressed: openDocs,
+              ),
               _FooterLink(
                 label: 'Terms of Use',
                 onPressed: () => context.go('/terms'),

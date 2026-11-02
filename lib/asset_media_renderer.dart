@@ -230,6 +230,8 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                 ),
               ),
+              const SizedBox(height: 8),
+              const CommonsLensDownloadSecurityButton(),
             ],
           ),
         ),

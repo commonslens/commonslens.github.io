@@ -518,6 +518,10 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                   : null,
             ),
           ),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: CommonsLensDownloadSecurityButton(),
+          ),
         ];
       case PipelineNodeType.sinkJsonExport:
       case PipelineNodeType.sinkZipExport:

@@ -67,6 +67,7 @@ flutter:
 
   assets:
     - assets/landing_background/
+    - assets/docs-images/
 
   # arcane_nodes 1.0.2 still requests its pre-fork package shader key.
   shaders:

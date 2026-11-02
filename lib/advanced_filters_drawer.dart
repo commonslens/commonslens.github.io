@@ -8,6 +8,7 @@ import 'search_models.dart';
 import 'search_controller.dart';
 import 'backend_providers.dart';
 import 'autocomplete_request_coordinator.dart';
+import 'legal_pages.dart';
 
 part 'advanced_filter_pickers.dart';
 
@@ -128,11 +129,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   static const double _outerExpandedWidth = 200;
   static const double _innerExpandedWidth = 400;
   static const double _collapsedRailWidth = 52;
+  static const double _collapsedInnerRailWidth = 32;
 
-  _FilterGroup _activeGroup = _FilterGroup.imageClassification;
+  _FilterGroup? _activeGroup;
   _FilterGroup _innerGroup = _FilterGroup.imageClassification;
   bool _outerBarExpanded = true;
-  bool _innerPanelExpanded = true;
+  bool _innerPanelExpanded = false;
 
   late TextEditingController _minWidthCtrl;
   late TextEditingController _minHeightCtrl;
@@ -156,9 +158,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   void initState() {
     super.initState();
     // The mobile drawer has limited horizontal space, so keep the primary
-    // filter-group rail minimised while leaving the selected group's panel
-    // open. The docked desktop panel keeps both sections expanded by default.
+    // filter-group rail minimised while leaving the initial group's panel
+    // open. The docked desktop panel starts with the group rail open and the
+    // feature panel closed until a group is selected.
     _outerBarExpanded = widget.docked;
+    _innerPanelExpanded = !widget.docked;
     _seedControllers(ref.read(searchControllerProvider).filterState);
   }
 
@@ -248,7 +252,9 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   double get _preferredPanelWidth {
     final outerWidth =
         _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
-    return outerWidth + (_innerPanelExpanded ? _innerExpandedWidth : 0);
+    final innerWidth =
+        _innerPanelExpanded ? _innerExpandedWidth : _collapsedInnerRailWidth;
+    return outerWidth + innerWidth;
   }
 
   void _toggleOuterBar() {
@@ -279,7 +285,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       // Location opens the map instead of owning a feature panel. Keep the
       // last advanced-filter group mounted in the secondary panel so map and
       // filters remain usable side by side.
-      setState(() => _activeGroup = group);
+      setState(() {
+        _activeGroup = group;
+        _innerPanelExpanded = true;
+      });
       widget.onLocationSelected?.call();
       if (widget.showCloseButton) _closeFilters();
       return;
@@ -747,6 +756,29 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     );
   }
 
+  Widget _buildCollapsedInnerPanel() {
+    return Container(
+      width: _collapsedInnerRailWidth,
+      decoration: const BoxDecoration(
+        color: Color(0xFF111111),
+        border: Border(
+          left: BorderSide(color: Color(0xFF242424)),
+          right: BorderSide(color: Color(0xFF1E1E1E)),
+        ),
+      ),
+      child: Center(
+        child: IconButton(
+          icon:
+              const Icon(Icons.chevron_right, color: Colors.white54, size: 18),
+          tooltip: 'Expand feature panel',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          onPressed: _toggleInnerPanel,
+        ),
+      ),
+    );
+  }
+
   // ---- Resolution / file size / color depth ----
 
   void _applyResolutionAndSize() {
@@ -1208,7 +1240,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Include subcategories',
+                              'Include nested subcategories',
                               style: TextStyle(
                                 color: state.deepCategoryMode
                                     ? Colors.white
@@ -1220,8 +1252,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                             const SizedBox(height: 3),
                             Text(
                               state.deepCategoryMode
-                                  ? 'Deep: also pulls files from every subcategory nested beneath the categories above.'
-                                  : 'Strict: only files filed directly in these exact categories. Nested subcategories are skipped.',
+                                  ? 'Also searches files in nested categories using Commons’ deep search. Very broad roots may be incomplete or time out.'
+                                  : 'Direct only: searches files filed in these exact categories. Nested categories are skipped.',
                               style: const TextStyle(
                                   color: Color(0xFF888888),
                                   fontSize: 11,
@@ -1611,11 +1643,20 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                     'Apply Resolution & Size', _applyResolutionAndSize),
                 const SizedBox(height: 24),
               ],
+              const SizedBox(height: 8),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: DocsSectionLink(
+                  section: 'advanced-filters',
+                  label: 'User Guide to Advanced Filters',
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
           );
 
           double outerWidth;
-          double innerWidth = 0;
+          double innerWidth = _collapsedInnerRailWidth;
 
           if (widget.docked) {
             outerWidth = availableWidth
@@ -1653,15 +1694,15 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           }
 
           final outer = _buildOuterBar(state, width: outerWidth);
-          final Widget? inner = _innerPanelExpanded
+          final inner = _innerPanelExpanded
               ? _buildInnerPanel(featureContent, width: innerWidth)
-              : null;
+              : _buildCollapsedInnerPanel();
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               outer,
-              if (inner != null) inner,
+              inner,
             ],
           );
         },

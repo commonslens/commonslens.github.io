@@ -8,84 +8,128 @@ class FeaturesPage extends StatelessWidget {
 
   static const _groups = <_FeatureGroup>[
     _FeatureGroup(
-      title: 'SEARCH & DISCOVERY',
-      description:
-          'Build precise Wikimedia Commons searches without learning CirrusSearch syntax.',
-      features: [
-        'Search images, SVG and vector graphics, audio, video, PDFs, DjVu files, and other documents.',
-        'Combine unrelated text searches with +, run filter-only searches, and use direct file-title autocomplete.',
-        'Filter exact formats, sort by relevance, title, creation date, or edit date, and keep loading results as you scroll.',
-        'Share complete searches as URLs, remove active filters individually, and inspect the generated CirrusSearch query.',
+      title: 'FIND & REFINE',
+      description: 'Start with a broad idea, then make the result set precise.',
+      links: [
+        _FeatureLink(
+            'Search',
+            'Find Wikimedia Commons media by phrase, title, type, or format.',
+            'search',
+            route: '/'),
+        _FeatureLink(
+            'Advanced filters',
+            'Narrow by subjects, categories, rights, quality, dates, and technical metadata.',
+            'advanced-filters'),
+        _FeatureLink(
+            'Browse classifications',
+            'Discover categories, templates, and Wikidata subjects when words are not enough.',
+            'browse',
+            route: '/browse'),
+        _FeatureLink('Map discovery',
+            'Find geotagged media near a place, radius, or point.', 'map',
+            route: '/map'),
       ],
     ),
     _FeatureGroup(
-      title: 'SEMANTIC & METADATA FILTERS',
+      title: 'UNDERSTAND & REUSE',
       description:
-          'Use Commons categories and structured Wikidata metadata as first-class search controls.',
-      features: [
-        'Include or exclude Wikidata depicts subjects and combine several subjects with AND or OR logic.',
-        'Search arbitrary Wikidata property-value statements with independent include and exclude rules.',
-        'Include or exclude multiple Commons categories, switch between AND and OR, and recursively include subcategories.',
-        'Filter by MediaWiki templates, language, content model, creation and edit dates, resolution, file size, and color depth.',
-        'Restrict results to standard Creative Commons, GFDL, Free Art, and public-domain statuses, plus attribution status or Commons quality assessments.',
+          'Move from a promising result to a defensible reuse decision.',
+      links: [
+        _FeatureLink(
+            'Inspect a file',
+            'Read the viewer’s metadata, source context, related media, and usage information.',
+            'inspect'),
+        _FeatureLink(
+            'Reuse and attribution',
+            'Review reported rights and generate an attribution draft to verify.',
+            'reuse'),
+        _FeatureLink(
+            'Author portfolios',
+            'Explore an uploader’s public file collection and export its metadata.',
+            'author-portfolios'),
       ],
     ),
     _FeatureGroup(
-      title: 'MAP & LOCATION SEARCH',
+      title: 'SAVE & EXPORT',
       description:
-          'Discover geotagged Commons media spatially instead of relying only on words.',
-      features: [
-        'Search by tapping a map, choosing a circular radius, or searching near a named place.',
-        'Plot the current search on a map, cluster thumbnail markers, inspect clusters, and open results in a split-screen grid.',
-        'Use multilingual street, English-labelled street, satellite, and hybrid layers with zoom, rotation, north reset, camera fitting, and responsive mobile controls.',
-        'Carry search context into the map, apply license, quality, and attribution filters, or send a map query back to Search.',
+          'Keep useful references local and move metadata into your next tool.',
+      links: [
+        _FeatureLink(
+            'Bookmarks and folders',
+            'Save public file references, organize them into folders, and search the local collection.',
+            'bookmarks',
+            route: '/bookmarks'),
+        _FeatureLink(
+            'Download and export',
+            'Download supported media or export metadata and URLs as a CSV manifest.',
+            'downloads'),
+        _FeatureLink(
+            'Download security',
+            'See how direct media downloads are screened before a browser file is created.',
+            'download-security'),
       ],
     ),
     _FeatureGroup(
-      title: 'MEDIA VIEWER & REUSE',
+      title: 'BUILD WORKFLOWS',
       description:
-          'Inspect, understand, credit, and download a Commons file from one viewer.',
-      features: [
-        'View images, vectors, audio, video, and supported PDFs natively, with browser fallbacks for DjVu and unsupported files.',
-        'Navigate result galleries by swipe, buttons, or keyboard and switch images between a web-optimized and full-resolution preview.',
-        'Read creator, uploader, dates, dimensions, categories, assessments, coordinates, Structured Data on Commons, and global usage.',
-        'Find related files, explore nearby geotagged media, and browse every upload from a contributor portfolio.',
-        'Generate copy-ready plain-text attribution, HTML, and WikiText with links to the source, license, and official reuse guidance.',
+          'Turn a one-off search into a repeatable visual research process.',
+      links: [
+        _FeatureLink(
+            'Pipelines',
+            'Connect sources, filters, set operations, transforms, and export nodes on a canvas.',
+            'pipelines',
+            route: '/pipeline'),
+        _FeatureLink(
+            'Getting started with pipelines',
+            'Build a first graph, preview its output, and understand what each node contributes.',
+            'pipeline-getting-started',
+            route: '/pipeline'),
       ],
     ),
     _FeatureGroup(
-      title: 'DOWNLOADS & DATA EXPORT',
+      title: 'DATA, SHARING & PRIVACY',
       description:
-          'Move from discovery to a reusable metadata manifest without mass media transfers.',
-      features: [
-        'Download originals or 640px, 1280px, and 1920px derivatives when available.',
-        'Long-press result cards, select any subset or all loaded files, and download one comprehensive CSV.',
-        'Choose whether each CSV row contains a full-size or web-optimized image URL.',
-        'CSV exports include the requested metadata, rights, attribution, dates, categories, assessments, coordinates, and image URL without downloading image files.',
+          'Know what the browser keeps, what URLs reveal, and which providers are contacted.',
+      links: [
+        _FeatureLink(
+            'How your data moves',
+            'Understand requests, browser storage, caches, clipboard use, and downloads.',
+            'your-data'),
+        _FeatureLink(
+            'Sharing and local state',
+            'Share searches and viewer context while keeping local work and sensitive terms in mind.',
+            'sharing'),
+        _FeatureLink(
+            'Rights, privacy, and responsible use',
+            'Read the boundaries around licensing, privacy, providers, and public infrastructure.',
+            'rights',
+            route: '/privacy'),
       ],
     ),
     _FeatureGroup(
-      title: 'VISUAL DATA PIPELINES',
+      title: 'HELP & POLICIES',
       description:
-          'Create repeatable, no-code Wikimedia research and export workflows on a node canvas.',
-      features: [
-        'Start from text, categories, depicted subjects, Wikidata statements, templates, geosearch, author uploads, or a related file.',
-        'Filter license, quality, format, resolution, size, color depth, dates, language, and excluded terms.',
-        'Combine branches with query constraints, union, intersection, or difference; then deduplicate, sort, sample, select fields, or enrich metadata.',
-        'Export filtered datasets as CSV manifests containing metadata and one direct media URL per row.',
-        'Preview intermediate results, download metadata-only CSV output, or send results to the main Search grid.',
-        'Autosave pipelines in IndexedDB, reopen saved graphs, import or export portable JSON, preview capped runs, cache queries, and clear cached results.',
-      ],
-    ),
-    _FeatureGroup(
-      title: 'WEB, SHARING & RELIABILITY',
-      description:
-          'A responsive, open-source web application designed to work directly with Wikimedia services.',
-      features: [
-        'Use clean deep links for searches, assets, authors, maps, directories, pipelines, and this feature guide.',
-        'Install CommonsLens as a standalone web app on supported devices and use desktop or mobile-specific layouts.',
-        'Benefit from lazy metadata loading, staggered result rendering, request deduplication, Wikimedia-aware throttling, retries, and cancellable transfers.',
-        'No Commons account is required, and CommonsLens does not host or claim ownership of the media it displays.',
+          'Find the right starting point when something is unclear or fails.',
+      links: [
+        _FeatureLink(
+            'Start here',
+            'Follow the shortest complete path from discovery to inspection and reuse.',
+            'start',
+            route: '/'),
+        _FeatureLink(
+            'Troubleshooting',
+            'Diagnose empty results, failed providers, missing previews, storage issues, and exports.',
+            'troubleshooting'),
+        _FeatureLink(
+            'Terms of Use',
+            'Read the CommonsLens rules, provider boundaries, and responsibility limits.',
+            'rights',
+            route: '/terms'),
+        _FeatureLink(
+            'Privacy Policy',
+            'Read what CommonsLens stores locally and what external services receive.',
+            'your-data',
+            route: '/privacy'),
       ],
     ),
   ];
@@ -111,6 +155,13 @@ class FeaturesPage extends StatelessWidget {
             letterSpacing: 1.6,
           ),
         ),
+        actions: const [
+          DocsSectionLink(
+            section: 'index',
+            label: 'User Guide',
+          ),
+          SizedBox(width: 4),
+        ],
       ),
       body: SelectionArea(
         child: SingleChildScrollView(
@@ -201,12 +252,26 @@ class _FeatureGroup {
   const _FeatureGroup({
     required this.title,
     required this.description,
-    required this.features,
+    required this.links,
   });
 
   final String title;
   final String description;
-  final List<String> features;
+  final List<_FeatureLink> links;
+}
+
+class _FeatureLink {
+  const _FeatureLink(
+    this.title,
+    this.summary,
+    this.docsSection, {
+    this.route,
+  });
+
+  final String title;
+  final String summary;
+  final String docsSection;
+  final String? route;
 }
 
 class _FeatureCard extends StatelessWidget {
@@ -248,30 +313,60 @@ class _FeatureCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          ...group.features.map(
-            (feature) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
+          ...group.links.map(
+            (link) => Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 7),
-                    child: Icon(
-                      Icons.circle,
-                      size: 5,
-                      color: Color(0xFF3D7EFF),
+                  Text(
+                    link.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      feature,
-                      style: const TextStyle(
-                        color: Color(0xFFAAAAAA),
-                        fontSize: 13,
-                        height: 1.5,
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    link.summary,
+                    style: const TextStyle(
+                      color: Color(0xFFAAAAAA),
+                      fontSize: 12.5,
+                      height: 1.45,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 4,
+                    runSpacing: 0,
+                    children: [
+                      if (link.route != null)
+                        TextButton(
+                          onPressed: () {
+                            if (link.route == '/') {
+                              context.go('/');
+                            } else {
+                              context.push(link.route!);
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF7AABFF),
+                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: Text(
+                            link.route == '/'
+                                ? 'Open Search'
+                                : 'Open ${link.title}',
+                            style: const TextStyle(fontSize: 11.5),
+                          ),
+                        ),
+                      DocsSectionLink(
+                        section: link.docsSection,
+                        label: 'User guide',
+                      ),
+                    ],
                   ),
                 ],
               ),

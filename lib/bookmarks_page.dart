@@ -7,6 +7,7 @@ import 'csv_export_tray.dart';
 import 'media_queue.dart';
 import 'search_components.dart';
 import 'search_models.dart';
+import 'legal_pages.dart';
 
 class BookmarksPage extends ConsumerStatefulWidget {
   final String initialQuery;
@@ -709,6 +710,13 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
           ),
         ),
         centerTitle: true,
+        actions: const [
+          DocsSectionLink(
+            section: 'bookmarks',
+            label: 'User Guide to Bookmarks',
+          ),
+          SizedBox(width: 4),
+        ],
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {

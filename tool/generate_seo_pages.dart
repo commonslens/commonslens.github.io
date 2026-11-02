@@ -648,6 +648,7 @@ $items
       <a href="/map/">Search Wikimedia Commons by location</a>
       <a href="/pipeline/">Build visual Wikimedia data pipelines</a>
       <a href="/features/">Explore all CommonsLens features</a>
+      <a href="/docs/">Read the CommonsLens user guide</a>
       <a href="/terms/">Terms of Use</a>
       <a href="/privacy/">Privacy Policy</a>
       <a href="https://github.com/commonslens/commonslens.github.io">Source code on GitHub</a>

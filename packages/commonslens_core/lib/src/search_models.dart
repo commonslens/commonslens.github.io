@@ -1643,6 +1643,7 @@ class SearchSession {
   final bool loading;
   final bool loadingMore;
   final String? error;
+  final String? warning;
   final double scrollOffset;
 
   /// See [SearchResponse.totalHits] — carried through here so a
@@ -1659,6 +1660,7 @@ class SearchSession {
     this.loading = false,
     this.loadingMore = false,
     this.error,
+    this.warning,
     this.scrollOffset = 0,
     this.totalHits,
     this.suggestion,
@@ -1672,11 +1674,13 @@ class SearchSession {
     bool? loading,
     bool? loadingMore,
     String? error,
+    String? warning,
     double? scrollOffset,
     int? totalHits,
     String? suggestion,
     bool clearContinueParams = false,
     bool clearError = false,
+    bool clearWarning = false,
   }) {
     return SearchSession(
       items: items ?? this.items,
@@ -1687,6 +1691,7 @@ class SearchSession {
       loading: loading ?? this.loading,
       loadingMore: loadingMore ?? this.loadingMore,
       error: clearError ? null : (error ?? this.error),
+      warning: clearWarning ? null : (warning ?? this.warning),
       scrollOffset: scrollOffset ?? this.scrollOffset,
       totalHits: totalHits ?? this.totalHits,
       suggestion: suggestion ?? this.suggestion,
@@ -1701,6 +1706,7 @@ class SearchSession {
         'loading': loading,
         'loadingMore': loadingMore,
         'error': error,
+        'warning': warning,
         'scrollOffset': scrollOffset,
         'totalHits': totalHits,
         'suggestion': suggestion,
@@ -1724,6 +1730,7 @@ class SearchSession {
       loading: json['loading'] as bool? ?? false,
       loadingMore: json['loadingMore'] as bool? ?? false,
       error: json['error'] as String?,
+      warning: json['warning'] as String?,
       scrollOffset: (json['scrollOffset'] as num?)?.toDouble() ?? 0,
       totalHits: (json['totalHits'] as num?)?.toInt(),
       suggestion: json['suggestion'] as String?,

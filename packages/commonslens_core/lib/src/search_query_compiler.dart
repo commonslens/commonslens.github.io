@@ -135,10 +135,10 @@ class SearchQueryCompiler {
     }
 
     // Union mode (OR) for categories works exactly like statementsUnion
-    // below: this join is just an honest preview of intent for the display
-    // query / chips. The actual OR execution — same precedence problem as
-    // statements have when mixed into one big AND'd query string — happens
-    // via per-category fan-out in _fetchPageForCategory further down.
+    // below: this join is an honest preview of intent for the display query
+    // and chips. Direct-category union is executed by per-category fan-out;
+    // deep-category mode stays as one server-side deepcat request so it does
+    // not expand a large tree into a long serial queue in the browser.
     final includeCategories = (state.categories.toList()..sort())
         .map((c) => c.trim())
         .where((c) => c.isNotEmpty)
@@ -158,7 +158,9 @@ class SearchQueryCompiler {
     for (final c in includeCategories) {
       chips.add(QueryChipData(
         id: 'category:$c',
-        label: state.deepCategoryMode ? 'Deep category: $c' : 'Category: $c',
+        label: state.deepCategoryMode
+            ? 'Category + subcategories: $c'
+            : 'Category: $c',
       ));
     }
 

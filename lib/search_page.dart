@@ -498,6 +498,16 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       ),
     ),
     _SearchExample(
+      category: '3D',
+      label: 'Anatomy',
+      tooltip: 'Explore 3D anatomy models from BodyParts3D',
+      icon: Icons.view_in_ar_outlined,
+      state: SearchState(
+        queryText: 'BodyParts3D',
+        tab: MediaTabType.threeD,
+      ),
+    ),
+    _SearchExample(
       category: 'GLAM',
       label: 'The Met collection',
       tooltip: 'Explore media contributed by The Metropolitan Museum of Art',
@@ -1082,6 +1092,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 child: IntrinsicHeight(
                   child: Column(
                     children: [
+                      // Center the search experience between the top actions
+                      // and the footer while leaving the footer at the bottom.
                       const Spacer(),
                       const SizedBox(height: 32),
 
@@ -1122,7 +1134,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                           child: FittedBox(
                             fit: BoxFit.scaleDown,
                             child: Text(
-                              'Search Wikimedia Commons media — open source and free.',
+                              'Search Wikimedia Commons media. Open source and free.',
                               textAlign: TextAlign.center,
                               softWrap: false,
                               maxLines: 1,
@@ -1175,18 +1187,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                               .toList(),
                         ),
 
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 20),
                       ],
 
-                      TextButton.icon(
-                        onPressed: () => context.push('/features'),
-                        icon: const Icon(Icons.auto_awesome_mosaic_outlined,
-                            size: 17),
-                        label: const Text('Explore every CommonsLens feature'),
-                        style: TextButton.styleFrom(
-                          foregroundColor: const Color(0xFF9AB9FF),
-                        ),
-                      ),
+                      _buildLandingOrientationLinks(context),
 
                       const Spacer(),
                       if (isMobile)
@@ -1235,6 +1239,48 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
+  Widget _buildLandingOrientationLinks(BuildContext context) {
+    final topLinkStyle = OutlinedButton.styleFrom(
+      foregroundColor: Colors.grey,
+      minimumSize: Size.zero,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 16,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+
+    return Center(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => context.push('/features'),
+              icon: const Icon(
+                Icons.auto_awesome_mosaic_outlined,
+                size: 17,
+              ),
+              label: const Text('Explore every CommonsLens feature'),
+              style: topLinkStyle,
+            ),
+            const SizedBox(width: 12),
+            OutlinedButton.icon(
+              onPressed: openDocs,
+              icon: const Icon(Icons.menu_book_outlined, size: 17),
+              label: const Text('Read the user guide'),
+              style: topLinkStyle,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildMobileFiltersButton() {
     return Builder(
       builder: (context) => SafeArea(
@@ -1273,32 +1319,101 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               height: 22,
               child: CircularProgressIndicator(
                   strokeWidth: 1.5, color: Color(0xFF3D7EFF))));
-    if (session.error != null)
+    if (session.error != null) {
       return Center(
-          child: Text(session.error!,
-              style: const TextStyle(color: Color(0xFFFF9B91), fontSize: 14)));
-    if (session.items.isEmpty)
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (session.warning != null) _buildSearchWarning(session.warning!),
+            Text(
+              session.error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFFF9B91), fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const DocsSectionLink(
+              section: 'troubleshooting',
+              label: 'Troubleshoot this search',
+            ),
+          ],
+        ),
+      );
+    }
+    if (session.items.isEmpty) {
       return Center(
-          child: Text(configForTab(filterState.tab).emptyMessage,
-              style: const TextStyle(color: Color(0xFFA0A0A0), fontSize: 14)));
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (session.warning != null) _buildSearchWarning(session.warning!),
+            Text(
+              configForTab(filterState.tab).emptyMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFFA0A0A0), fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const DocsSectionLink(
+              section: 'troubleshooting',
+              label: 'Troubleshoot no results',
+            ),
+          ],
+        ),
+      );
+    }
 
-    return MediaResultsGrid(
-      controller: _scrollController,
-      items: session.items,
-      loadingMore: session.loadingMore,
-      queueSource:
-          ref.read(searchControllerProvider).externalQueueNodeId == null
-              ? MediaQueueSource.search(filterState)
-              : MediaQueueSource.pipeline(
-                  ref.read(searchControllerProvider).externalQueueNodeId!,
-                  returnUrl: '/',
-                ),
-      queueHasMore: session.hasMore,
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 280,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
+    return Column(
+      children: [
+        if (session.warning != null) _buildSearchWarning(session.warning!),
+        Expanded(
+          child: MediaResultsGrid(
+            controller: _scrollController,
+            items: session.items,
+            loadingMore: session.loadingMore,
+            queueSource:
+                ref.read(searchControllerProvider).externalQueueNodeId == null
+                    ? MediaQueueSource.search(filterState)
+                    : MediaQueueSource.pipeline(
+                        ref.read(searchControllerProvider).externalQueueNodeId!,
+                        returnUrl: '/',
+                      ),
+            queueHasMore: session.hasMore,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 280,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.85,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchWarning(String warning) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2A2112),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: const Color(0xFF6C5227)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 16, color: Color(0xFFFFD994)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              warning,
+              style: const TextStyle(
+                color: Color(0xFFFFD994),
+                fontSize: 11,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

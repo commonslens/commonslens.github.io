@@ -48,6 +48,7 @@ import 'search_models.dart';
 import 'backend_providers.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'pipeline_preview_page.dart';
+import 'legal_pages.dart';
 
 part 'pipeline_editor_widgets.dart';
 part 'pipeline_inspector.dart';
@@ -968,6 +969,8 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
                       style: const TextStyle(
                           color: Colors.white70, fontSize: 11.5)),
                 ),
+                if (!state.preview)
+                  const CommonsLensDownloadSecurityButton(),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   tooltip: state.isPaused ? 'Resume run' : 'Pause run',
@@ -1183,6 +1186,39 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
     });
   }
 
+  Widget _buildPipelineDocsBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+      decoration: const BoxDecoration(
+        color: _kPanelBg,
+        border: Border(bottom: BorderSide(color: _kBorder)),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.start,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 2,
+        children: [
+          const Icon(Icons.menu_book_outlined, color: _kAccent, size: 16),
+          const Text(
+            'GETTING STARTED WITH COMMONSLENS PIPELINES',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.7,
+            ),
+          ),
+          const DocsSectionLink(
+            section: 'pipeline-getting-started',
+            label: 'Open guide',
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(pipelineControllerProvider);
@@ -1250,6 +1286,9 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
                 case 'export':
                   _exportGraphJson();
                   break;
+                case 'download_security':
+                  openDocsSection('download-security');
+                  break;
                 case 'import':
                   _importGraphJson();
                   break;
@@ -1273,6 +1312,10 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
                   child: Text('Export as JSON',
                       style: TextStyle(color: Colors.white, fontSize: 13))),
               PopupMenuItem(
+                  value: 'download_security',
+                  child: Text('CommonsLens Download Security',
+                      style: TextStyle(color: Colors.white, fontSize: 13))),
+              PopupMenuItem(
                   value: 'import',
                   child: Text('Import from JSON',
                       style: TextStyle(color: Colors.white, fontSize: 13))),
@@ -1289,6 +1332,7 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
       body: Column(
         children: [
           if (state.isRunning) _buildRunProgress(state, controller),
+          _buildPipelineDocsBanner(),
           Expanded(
             child: Row(
               children: [

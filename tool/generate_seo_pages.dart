@@ -3,6 +3,102 @@ import 'dart:io';
 
 const _siteUrl = 'https://commonslens.github.io';
 
+// Keep the public feature catalogue aligned with the numbered sections in
+// web/docs/index.html. The guide is the detailed source of truth; this list is
+// intentionally only its compact, linked overview.
+const _guideFeatureSections = <_SeoSection>[
+  _SeoSection(
+    heading: 'Start here',
+    intro:
+        'Build the correct mental model and complete your first search from discovery to reuse.',
+    items: ['What CommonsLens is · first search · four main workflows'],
+  ),
+  _SeoSection(
+    heading: 'How your data moves',
+    intro:
+        'See what leaves the browser, what stays local, what goes into URLs, and what clearing data removes.',
+    items: ['Requests · local storage · cache · clipboard · downloads'],
+  ),
+  _SeoSection(
+    heading: 'Search Wikimedia Commons',
+    intro:
+        'Turn a phrase, file title, or broad idea into a useful Commons result set.',
+    items: ['Media scopes · formats · sorting · result cards · sharing'],
+  ),
+  _SeoSection(
+    heading: 'Use advanced filters',
+    intro:
+        'Use subjects, categories, rights, quality, dates, technical fields, and location to make a precise query.',
+    items: ['Include/exclude · AND/OR · Q-codes · filter glossary'],
+  ),
+  _SeoSection(
+    heading: 'Browse categories, templates, and subjects',
+    intro:
+        'Find Commons vocabulary when you do not yet know the right category, template, or Wikidata subject.',
+    items: ['Categories · templates · depicted subjects · file counts'],
+  ),
+  _SeoSection(
+    heading: 'Search by map',
+    intro:
+        'Use geographic context to find media near a point, place, radius, or drawn area.',
+    items: ['Markers · clusters · layers · map-to-search workflows'],
+  ),
+  _SeoSection(
+    heading: 'Inspect a file',
+    intro:
+        'Read the file’s context, metadata, structured data, related media, and source page.',
+    items: ['Viewer · creator · dates · coordinates · preview quality'],
+  ),
+  _SeoSection(
+    heading: 'Check reuse and create attribution',
+    intro:
+        'Interpret the reported rights information and produce a starting point for attribution.',
+    items: ['Licenses · attribution · HTML · WikiText · verification'],
+  ),
+  _SeoSection(
+    heading: 'Save bookmarks and folders',
+    intro:
+        'Keep references to files you want to revisit without pretending to mirror the Commons catalogue.',
+    items: ['Local collections · folders · search · export · recovery'],
+  ),
+  _SeoSection(
+    heading: 'Explore an uploader’s portfolio',
+    intro:
+        'Explore an uploader’s files, inspect them, and export a portfolio-sized metadata set.',
+    items: ['Uploader · portfolio search · viewer · export'],
+  ),
+  _SeoSection(
+    heading: 'Download files and export metadata',
+    intro:
+        'Separate downloading media files from exporting metadata and URLs for research.',
+    items: ['Originals · derivatives · CSV · selection · file fallbacks'],
+  ),
+  _SeoSection(
+    heading: 'Build a visual pipeline',
+    intro:
+        'Build repeatable visual workflows that fetch, refine, enrich, and export collections.',
+    items: ['Sources · filters · branches · transforms · outputs'],
+  ),
+  _SeoSection(
+    heading: 'Share searches and understand local state',
+    intro:
+        'Know what a URL shares, what survives a reload, and how to move local work between devices.',
+    items: ['Search URLs · asset URLs · map views · JSON backups'],
+  ),
+  _SeoSection(
+    heading: 'Rights, privacy, and responsible use',
+    intro:
+        'Understand provider boundaries, local privacy, licensing risk, and respectful use of public infrastructure.',
+    items: ['Storage · providers · sensitive terms · rate limits'],
+  ),
+  _SeoSection(
+    heading: 'Troubleshooting',
+    intro:
+        'Diagnose empty results, missing media, unavailable metadata, lost local state, and slow workflows.',
+    items: ['Search · maps · previews · storage · exports · pipelines'],
+  ),
+];
+
 const _pages = <_SeoPage>[
   _SeoPage(
     path: 'browse',
@@ -215,110 +311,11 @@ const _pages = <_SeoPage>[
     path: 'features',
     title: 'CommonsLens Features — Wikimedia Search, Map & Export',
     description:
-        'Explore every CommonsLens feature: advanced Wikimedia search, Wikidata and license filters, map discovery, attribution tools, bulk downloads, and visual data pipelines.',
+        'Explore the CommonsLens features documented in the user guide: search, filters, maps, file inspection, reuse, bookmarks, exports, pipelines, sharing, privacy, and troubleshooting.',
     heading: 'Everything you can do with CommonsLens',
     intro:
-        'CommonsLens combines advanced Commons search, semantic metadata, geographic discovery, responsible reuse, bulk export, and visual data pipelines in one free browser application.',
-    sections: [
-      _SeoSection(
-        heading: 'Advanced Wikimedia Commons search',
-        intro:
-            'Search large Commons collections visually without writing CirrusSearch syntax.',
-        items: [
-          'Search all media, images, SVG and vector graphics, audio, video, PDFs, DjVu files, and documents.',
-          'Use direct file autocomplete, multi-term OR queries with +, or run a search entirely from filters.',
-          'Filter 17 exact formats and sort by relevance, title, creation date, or edit date.',
-          'Use infinite pagination, removable filter chips, query preview, responsive result grids, and shareable search URLs.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Semantic, rights, and technical filters',
-        intro:
-            'Search the descriptive structure and rights metadata attached to Commons files.',
-        items: [
-          'Include or exclude Wikidata depicts entities and property-value statements with AND or OR logic.',
-          'Include or exclude categories and templates, with category union, intersection, and recursive subcategories.',
-          'Filter CC0, CC BY 4.0, CC BY-SA 4.0, Public Domain, attribution requirement, and quality assessment.',
-          'Filter language, content model, creation and edit dates, resolution, file size, color depth, and geographic proximity.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Directories, authors, and related discovery',
-        intro:
-            'Move between structured directories, contributors, and connected media.',
-        items: [
-          'Browse paginated category and template directories or search Wikidata subject Q-codes.',
-          'Open every upload from a contributor and search another author from the portfolio view.',
-          'Find related files through Commons similarity search and discover media near a geotagged asset.',
-          'Check where a file is used across Wikimedia languages and projects.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Interactive geographic search',
-        intro:
-            'Search and inspect geotagged Commons media on a responsive world map.',
-        items: [
-          'Search by map tap, coordinates and radius, named place, or a two-point bounding box.',
-          'Plot the current search, cluster thumbnail markers, browse cluster grids, and fit the camera to results.',
-          'Use multilingual street, English-labelled street, satellite, or hybrid layers with zoom, rotation, and north-reset controls.',
-          'Refine map results by license, quality, and attribution or continue the query in main Search.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Native media viewer and detailed metadata',
-        intro:
-            'Inspect a file in its search, map, author, or pipeline gallery context.',
-        items: [
-          'View images, vectors, audio, video, and supported PDFs with fallbacks for DjVu and unsupported documents.',
-          'Navigate by swipe, buttons, or keyboard and choose a 1920px or full-resolution image preview.',
-          'Read title, creator, uploader, descriptions, dates, MIME type, dimensions, categories, assessments, and GPS coordinates.',
-          'Lazily inspect complete Structured Data on Commons, related media, and global Wikimedia usage.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'License understanding and reusable attribution',
-        intro:
-            'Turn machine-readable Commons rights fields into practical reuse information without pretending missing metadata is permission.',
-        items: [
-          'Review the license, attribution status, creator, preferred credit, usage terms, copyright status, permission, and restrictions.',
-          'See warnings when machine-readable rights information is incomplete.',
-          'Copy plain-text attribution, an HTML figure, or a WikiText file embed.',
-          'Open the original Commons page, complete license, and official Wikimedia reuse guidance.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Individual, bulk, and dataset downloads',
-        intro: 'Export files and research metadata entirely in the browser.',
-        items: [
-          'Download an original file or available 640px, 1280px, and 1920px derivatives.',
-          'Select any subset or all loaded results and export originals or 1280px files as ZIP archives.',
-          'Track, cancel, and run multiple jobs while large collections are split into manageable archive parts.',
-          'Receive a data.csv manifest containing source links, descriptions, technical metadata, rights, attribution, dates, classifications, and coordinates.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'No-code visual Wikimedia pipelines',
-        intro:
-            'Connect 31 source, filter, set-operation, transform, and output nodes into a repeatable workflow.',
-        items: [
-          'Source media from text, categories, subjects, statements, templates, locations, authors, or related files.',
-          'Combine branches with constraints, union, intersection, or difference and transform them with dedupe, sort, sample, field selection, and enrichment.',
-          'Preview intermediate results or export CSV, JSON, original media ZIPs, and web-optimized ZIPs.',
-          'Autosave graphs, reopen saved pipelines, import or export JSON, cache queries, and send results to Search.',
-        ],
-      ),
-      _SeoSection(
-        heading: 'Responsive, shareable, and Wikimedia-friendly',
-        intro:
-            'CommonsLens is an open-source client that works directly with official Wikimedia services.',
-        items: [
-          'Use desktop and mobile layouts, clean deep links, and installable web-app metadata.',
-          'No Commons account is required, and CommonsLens does not host or claim ownership of displayed media.',
-          'Lazy loading, request deduplication, global concurrency limits, throttling cooldowns, retries, and cancellation protect the user experience and Wikimedia infrastructure.',
-          'Route-specific static pages, canonical URLs, structured data, and a sitemap make the public tools understandable to search engines.',
-        ],
-      ),
-    ],
+        'CommonsLens is a visual research workspace for discovering Wikimedia Commons media, checking its context and reuse information, organizing files, and exporting the metadata you need.',
+    sections: _guideFeatureSections,
   ),
   _SeoPage(
     path: 'terms',

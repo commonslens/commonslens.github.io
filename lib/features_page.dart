@@ -8,25 +8,42 @@ class FeaturesPage extends StatelessWidget {
 
   static const _groups = <_FeatureGroup>[
     _FeatureGroup(
+      title: 'GET STARTED',
+      description: 'Build the right mental model before you begin.',
+      links: [
+        _FeatureLink(
+            'Start here',
+            'Build the correct mental model and complete your first search from discovery to reuse.',
+            'start',
+            route: '/'),
+        _FeatureLink(
+            'How your data moves',
+            'See what leaves the browser, what stays local, what goes into URLs, and what clearing data removes.',
+            'your-data'),
+      ],
+    ),
+    _FeatureGroup(
       title: 'FIND & REFINE',
       description: 'Start with a broad idea, then make the result set precise.',
       links: [
         _FeatureLink(
-            'Search',
-            'Find Wikimedia Commons media by phrase, title, type, or format.',
+            'Search Wikimedia Commons',
+            'Turn a phrase, file title, or broad idea into a useful Commons result set.',
             'search',
             route: '/'),
         _FeatureLink(
-            'Advanced filters',
-            'Narrow by subjects, categories, rights, quality, dates, and technical metadata.',
+            'Use advanced filters',
+            'Use subjects, categories, rights, quality, dates, technical fields, and location to make a precise query.',
             'advanced-filters'),
         _FeatureLink(
-            'Browse classifications',
-            'Discover categories, templates, and Wikidata subjects when words are not enough.',
+            'Browse categories, templates, and subjects',
+            'Find Commons vocabulary when you do not yet know the right category, template, or Wikidata subject.',
             'browse',
             route: '/browse'),
-        _FeatureLink('Map discovery',
-            'Find geotagged media near a place, radius, or point.', 'map',
+        _FeatureLink(
+            'Search by map',
+            'Use geographic context to find media near a point, place, radius, or drawn area.',
+            'map',
             route: '/map'),
       ],
     ),
@@ -37,16 +54,12 @@ class FeaturesPage extends StatelessWidget {
       links: [
         _FeatureLink(
             'Inspect a file',
-            'Read the viewer’s metadata, source context, related media, and usage information.',
+            'Read the file’s context, metadata, structured data, related media, and source page.',
             'inspect'),
         _FeatureLink(
-            'Reuse and attribution',
-            'Review reported rights and generate an attribution draft to verify.',
+            'Check reuse and create attribution',
+            'Interpret the reported rights information and produce a starting point for attribution.',
             'reuse'),
-        _FeatureLink(
-            'Author portfolios',
-            'Explore an uploader’s public file collection and export its metadata.',
-            'author-portfolios'),
       ],
     ),
     _FeatureGroup(
@@ -55,18 +68,18 @@ class FeaturesPage extends StatelessWidget {
           'Keep useful references local and move metadata into your next tool.',
       links: [
         _FeatureLink(
-            'Bookmarks and folders',
-            'Save public file references, organize them into folders, and search the local collection.',
+            'Save bookmarks and folders',
+            'Keep references to files you want to revisit without pretending to mirror the Commons catalogue.',
             'bookmarks',
             route: '/bookmarks'),
         _FeatureLink(
-            'Download and export',
-            'Download supported media or export metadata and URLs as a CSV manifest.',
-            'downloads'),
+            'Explore an uploader’s portfolio',
+            'Explore an uploader’s files, inspect them, and export a portfolio-sized metadata set.',
+            'author-portfolios'),
         _FeatureLink(
-            'Download security',
-            'See how direct media downloads are screened before a browser file is created.',
-            'download-security'),
+            'Download files and export metadata',
+            'Separate downloading media files from exporting metadata and URLs for research.',
+            'downloads'),
       ],
     ),
     _FeatureGroup(
@@ -75,61 +88,36 @@ class FeaturesPage extends StatelessWidget {
           'Turn a one-off search into a repeatable visual research process.',
       links: [
         _FeatureLink(
-            'Pipelines',
-            'Connect sources, filters, set operations, transforms, and export nodes on a canvas.',
+            'Build a visual pipeline',
+            'Build repeatable visual workflows that fetch, refine, enrich, and export collections.',
             'pipelines',
-            route: '/pipeline'),
-        _FeatureLink(
-            'Getting started with pipelines',
-            'Build a first graph, preview its output, and understand what each node contributes.',
-            'pipeline-getting-started',
             route: '/pipeline'),
       ],
     ),
     _FeatureGroup(
-      title: 'DATA, SHARING & PRIVACY',
+      title: 'SHARE & PROTECT',
       description:
           'Know what the browser keeps, what URLs reveal, and which providers are contacted.',
       links: [
         _FeatureLink(
-            'How your data moves',
-            'Understand requests, browser storage, caches, clipboard use, and downloads.',
-            'your-data'),
-        _FeatureLink(
-            'Sharing and local state',
-            'Share searches and viewer context while keeping local work and sensitive terms in mind.',
+            'Share searches and understand local state',
+            'Know what a URL shares, what survives a reload, and how to move local work between devices.',
             'sharing'),
         _FeatureLink(
             'Rights, privacy, and responsible use',
-            'Read the boundaries around licensing, privacy, providers, and public infrastructure.',
-            'rights',
-            route: '/privacy'),
+            'Understand provider boundaries, local privacy, licensing risk, and respectful use of public infrastructure.',
+            'rights'),
       ],
     ),
     _FeatureGroup(
-      title: 'HELP & POLICIES',
+      title: 'HELP',
       description:
           'Find the right starting point when something is unclear or fails.',
       links: [
         _FeatureLink(
-            'Start here',
-            'Follow the shortest complete path from discovery to inspection and reuse.',
-            'start',
-            route: '/'),
-        _FeatureLink(
             'Troubleshooting',
-            'Diagnose empty results, failed providers, missing previews, storage issues, and exports.',
+            'Diagnose empty results, missing media, unavailable metadata, lost local state, and slow workflows.',
             'troubleshooting'),
-        _FeatureLink(
-            'Terms of Use',
-            'Read the CommonsLens rules, provider boundaries, and responsibility limits.',
-            'rights',
-            route: '/terms'),
-        _FeatureLink(
-            'Privacy Policy',
-            'Read what CommonsLens stores locally and what external services receive.',
-            'your-data',
-            route: '/privacy'),
       ],
     ),
   ];
@@ -183,7 +171,7 @@ class FeaturesPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Advanced search, semantic metadata, geographic discovery, responsible reuse, metadata CSV export, and visual data pipelines for Wikimedia Commons.',
+                    'CommonsLens is a visual research workspace for discovering Wikimedia Commons media, checking its context and reuse information, organizing files, and exporting the metadata you need.',
                     style: TextStyle(
                       color: Color(0xFFAAAAAA),
                       fontSize: 16,

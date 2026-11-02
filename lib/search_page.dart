@@ -1263,7 +1263,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 Icons.auto_awesome_mosaic_outlined,
                 size: 17,
               ),
-              label: const Text('Explore every CommonsLens feature'),
+              label: const Text('Explore all CommonsLens features'),
               style: topLinkStyle,
             ),
             const SizedBox(width: 12),

@@ -505,6 +505,16 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           label: 'Bookmarks',
           onTap: () => context.push('/bookmarks'),
         ),
+        pageButton(
+          icon: Icons.auto_awesome_mosaic_outlined,
+          label: 'All features',
+          onTap: () => context.push('/features'),
+        ),
+        pageButton(
+          icon: Icons.menu_book_outlined,
+          label: 'User guide',
+          onTap: openDocs,
+        ),
       ],
     );
   }
@@ -532,7 +542,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: groups.length + (widget.showCloseButton ? 2 : 3),
+                itemCount: groups.length + 1 + 4,
                 itemBuilder: (context, index) {
                   if (index == groups.length) {
                     return const Divider(
@@ -540,36 +550,39 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       height: 17,
                     );
                   }
-                  if (index == groups.length + 1) {
-                    final bookmarks = widget.showCloseButton;
+                  final pageIndex = index - groups.length - 1;
+                  if (pageIndex >= 0 && pageIndex < 4) {
+                    final (label, icon, onTap) = switch (pageIndex) {
+                      0 => (
+                          'Visual ETL pipelines',
+                          Icons.account_tree_outlined,
+                          () => context.push('/pipeline'),
+                        ),
+                      1 => (
+                          'Bookmarks',
+                          Icons.bookmark_border,
+                          () => context.push('/bookmarks'),
+                        ),
+                      2 => (
+                          'All features',
+                          Icons.auto_awesome_mosaic_outlined,
+                          () => context.push('/features'),
+                        ),
+                      _ => (
+                          'User guide',
+                          Icons.menu_book_outlined,
+                          openDocs,
+                        ),
+                    };
                     return Tooltip(
-                      message: bookmarks ? 'Bookmarks' : 'More Pages',
+                      message: label,
                       child: InkWell(
-                        onTap: () => context
-                            .push(bookmarks ? '/bookmarks' : '/pipeline'),
+                        onTap: onTap,
                         child: SizedBox(
                           height: 48,
                           child: Icon(
-                            bookmarks
-                                ? Icons.bookmark_border
-                                : Icons.account_tree_outlined,
-                            color: Color(0xFF3D7EFF),
-                            size: 19,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  if (index == groups.length + 2) {
-                    return Tooltip(
-                      message: 'Bookmarks',
-                      child: InkWell(
-                        onTap: () => context.push('/bookmarks'),
-                        child: const SizedBox(
-                          height: 48,
-                          child: Icon(
-                            Icons.bookmark_border,
-                            color: Color(0xFF3D7EFF),
+                            icon,
+                            color: const Color(0xFF3D7EFF),
                             size: 19,
                           ),
                         ),

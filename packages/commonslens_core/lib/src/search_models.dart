@@ -1316,17 +1316,30 @@ class SearchItem {
   bool get hasCoordinates =>
       resolvedLatitude != null && resolvedLongitude != null;
 
-  /// Returns a Wikimedia-hosted thumbnail resized to [width], when this item
-  /// has one. The API normally supplies a 320px `thumburl`; Wikimedia accepts
-  /// the same URL with a different width segment, so callers can request a
-  /// display-sized asset without downloading the full original.
+  /// Returns a valid Wikimedia thumbnail URL for [width].
   ///
-  /// If the thumbnail URL is not in Wikimedia's standard `/Npx-name` shape,
-  /// the existing thumbnail is still preferable for an optimized preview.
-  /// Null means no distinct preview exists and the original is the only safe
-  /// choice.
+  /// The grid passes a non-standard width hint and receives the exact
+  /// thumbnail URL supplied by Wikimedia's imageinfo API. Callers that
+  /// explicitly request one of Wikimedia's standard sizes (for example the
+  /// Asset Viewer requesting 1920px) may use that direct derivative safely.
+  /// Arbitrary widths are never constructed locally.
   String? thumbnailUrlAtWidth(int width) {
     if (width <= 0 || thumb.isEmpty || thumb == url) return null;
+
+    const standardWidths = {
+      20,
+      40,
+      60,
+      120,
+      250,
+      330,
+      500,
+      960,
+      1280,
+      1920,
+      3840,
+    };
+    if (!standardWidths.contains(width)) return thumb;
 
     final widthSegment = RegExp(r'/\d+px-([^/?]+)(?=\?|$)');
     if (!widthSegment.hasMatch(thumb)) return thumb;
@@ -1337,22 +1350,19 @@ class SearchItem {
     );
   }
 
-  /// Returns a safe, display-sized preview URL even when the API response did
-  /// not include a distinct `thumburl`. Search results can legitimately fall
-  /// back to the original file URL after a thumbnail-scaling failure; using
-  /// that original directly in a grid makes a large result set painfully slow.
-  /// For standard Wikimedia upload URLs we can derive the equivalent thumb
-  /// path locally without another API request.
+  /// Returns the API-provided preview URL, or null when Wikimedia did not
+  /// provide a distinct thumbnail. The original URL is deliberately not
+  /// converted into a locally constructed thumbnail path.
   String? previewUrlAtWidth(int width) {
     final candidates = previewUrlCandidates(width);
     return candidates.isEmpty ? null : candidates.first;
   }
 
-  /// Candidate URLs for a grid preview, ordered from the smallest derivative
-  /// to the API-provided thumbnail and finally a locally-derived Wikimedia
-  /// thumbnail. A derived URL can be invalid for unusual file names or media
-  /// types, so callers should try the candidates rather than treating the
-  /// first one as authoritative.
+  /// Candidate URLs for a grid preview.
+  ///
+  /// The API-provided thumbnail is the only candidate. Constructing a
+  /// Wikimedia thumbnail path locally is unsafe because direct requests must
+  /// use Wikimedia's current standard thumbnail sizes.
   List<String> previewUrlCandidates(int width) {
     if (width <= 0) return const [];
 
@@ -1365,36 +1375,10 @@ class SearchItem {
       }
     }
 
-    add(thumbnailUrlAtWidth(width));
-    if (thumb.isNotEmpty && thumb != url) add(thumb);
-    add(_derivedPreviewUrlAtWidth(width));
+    // Do not rewrite this URL. The API may return 250px, 330px, or another
+    // standard derivative even when the request used a different width hint.
+    add(thumb == url ? null : thumb);
     return candidates;
-  }
-
-  String? _derivedPreviewUrlAtWidth(int width) {
-    if (width <= 0 || url.isEmpty) return null;
-
-    final parsed = Uri.tryParse(url);
-    if (parsed == null ||
-        !parsed.host.toLowerCase().endsWith('wikimedia.org')) {
-      return null;
-    }
-    final segments = parsed.pathSegments;
-    final commonsIndex = segments.indexOf('commons');
-    if (commonsIndex < 0 || commonsIndex >= segments.length - 1) return null;
-
-    final fileSegments = segments.sublist(commonsIndex + 1);
-    final fileName = fileSegments.last;
-    return parsed.replace(
-      pathSegments: [
-        ...segments.take(commonsIndex + 1),
-        'thumb',
-        ...fileSegments,
-        '${width}px-$fileName',
-      ],
-      query: null,
-      fragment: null,
-    ).toString();
   }
 
   /// Flat map of every field — every value here is already a JSON-native

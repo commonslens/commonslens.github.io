@@ -73,7 +73,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   /// `_fetchSingle`: this isn't a CirrusSearch query, it's a different API
   /// module with its own (flat, non-generator) response shape.
   /// Manually builds a Commons-standard thumbnail URL from a full-resolution
-  /// original, e.g. .../commons/a/a9/File.jpg -> .../commons/thumb/a/a9/File.jpg/320px-File.jpg
+  /// original, e.g. .../commons/a/a9/File.jpg -> .../commons/thumb/a/a9/File.jpg/330px-File.jpg
   /// Used as a fallback for when the API doesn't hand back `thumburl` (see
   /// note on fetchAuthorImages) — so a missing thumbnail never means silently
   /// loading the full-res original as a grid preview.
@@ -155,7 +155,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           'url|size|sha1|mime|user',
           if (requestProfile.includeExtmetadata) 'extmetadata',
         ].join('|'),
-        'iiurlwidth': '320',
+        'iiurlwidth': '330',
       };
 
       final infoUri =
@@ -769,7 +769,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           if (includeExtmetadata) 'extmetadata',
         ].join('|'),
         'iilimit': '$pageSize',
-        if (includeThumbWidth) 'iiurlwidth': '320',
+        if (includeThumbWidth) 'iiurlwidth': '330',
       };
 
       switch (state.sortMode) {

@@ -120,33 +120,13 @@ Widget _mobileDrawerHost() {
 
 void main() {
   testWidgets(
-      'mobile filter drawer selects image classification with a minimized panel',
+      'mobile filter drawer opens image classification with a minimized rail',
       (tester) async {
     await tester.pumpWidget(_mobileHost());
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Expand filter groups'), findsNothing);
     expect(find.byTooltip('Close filters'), findsOneWidget);
-    expect(find.byTooltip('More Pages'), findsNothing);
-    expect(find.text('Bookmarks'), findsOneWidget);
-    expect(find.text('IMAGE CLASSIFICATION'), findsOneWidget);
-    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
-
-    await tester.tap(find.text('IMAGE CLASSIFICATION'));
-    await tester.pumpAndSettle();
-    expect(find.byTooltip('Close filters'), findsOneWidget);
-    expect(find.byTooltip('Minimize feature panel'), findsNothing);
-
-    final depictsField = find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField &&
-          widget.decoration?.hintText == 'e.g. Cat, Eiffel Tower...',
-    );
-    expect(depictsField, findsOneWidget);
-    await tester.enterText(depictsField, 'aurora');
-    await tester.pump(const Duration(milliseconds: 250));
-    await tester.pump();
-    expect(find.text('Aurora borealis').hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Expand feature panel'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -155,7 +135,7 @@ void main() {
     await tester.pumpWidget(_host(autocomplete: _FailingAutocomplete()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('IMAGE CLASSIFICATION'));
+    await tester.tap(find.byTooltip('IMAGE CLASSIFICATION'));
     await tester.pumpAndSettle();
 
     final depictsField = find.byWidgetPredicate(
@@ -248,9 +228,6 @@ void main() {
     tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('IMAGE CLASSIFICATION'));
-    await tester.pumpAndSettle();
-
     final depictsField = find.byWidgetPredicate(
       (widget) =>
           widget is TextField &&
@@ -270,15 +247,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('MORE PAGES'), findsOneWidget);
-    expect(find.text('Visual ETL pipelines'), findsOneWidget);
-    expect(find.text('Bookmarks'), findsOneWidget);
-    expect(find.text('QUALITY'), findsOneWidget);
-    expect(find.byTooltip('Minimize filter groups'), findsOneWidget);
+    expect(find.text('MORE PAGES'), findsNothing);
+    expect(find.text('Visual ETL pipelines'), findsNothing);
+    expect(find.text('Bookmarks'), findsNothing);
+    expect(find.text('QUALITY'), findsNothing);
+    expect(find.byTooltip('Minimize filter groups'), findsNothing);
     expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(find.byTooltip('Minimize feature panel'), findsNothing);
 
-    await tester.tap(find.text('IMAGE CLASSIFICATION'));
+    await tester.tap(find.byTooltip('IMAGE CLASSIFICATION'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
 
@@ -303,11 +280,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Minimize feature panel'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Minimize filter groups'));
-    await tester.pumpAndSettle();
-
-    expect(find.byTooltip('Expand filter groups'), findsOneWidget);
-    expect(find.byTooltip('Bookmarks'), findsOneWidget);
+    expect(find.byTooltip('Expand filter groups'), findsNothing);
     expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
@@ -325,7 +298,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('LOCATION'));
+    await tester.tap(find.byTooltip('LOCATION'));
     await tester.pumpAndSettle();
 
     expect(locationSelections, 1);
@@ -339,7 +312,7 @@ void main() {
     expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('LICENSE'));
+    await tester.tap(find.byTooltip('LICENSE'));
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
@@ -351,7 +324,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('QUALITY'));
+    await tester.tap(find.byTooltip('QUALITY'));
     await tester.pumpAndSettle();
 
     expect(find.text('QUALITY TYPES'), findsOneWidget);
@@ -366,7 +339,7 @@ void main() {
     await tester.pumpWidget(_host());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('LICENSE'));
+    await tester.tap(find.byTooltip('LICENSE'));
     await tester.pumpAndSettle();
 
     expect(find.text('LICENSE / RIGHTS'), findsOneWidget);

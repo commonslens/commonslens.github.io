@@ -177,14 +177,12 @@ void main() {
       expect(item.hasCoordinates, isTrue);
     });
 
-    test(
-        'derives display-sized Wikimedia thumbnails without touching originals',
-        () {
+    test('uses the API-provided thumbnail URL unchanged', () {
       const item = SearchItem(
         title: 'Example.svg',
         url: 'https://upload.wikimedia.org/original/Example.svg',
         thumb:
-            'https://upload.wikimedia.org/thumb/a/ab/Example.svg/320px-Example.svg.png',
+            'https://upload.wikimedia.org/thumb/a/ab/Example.svg/330px-Example.svg.png?source=commons',
         commonsUrl: 'https://commons.wikimedia.org/wiki/File:Example.svg',
         snippet: '',
         mime: 'image/svg+xml',
@@ -193,8 +191,9 @@ void main() {
 
       expect(
         item.thumbnailUrlAtWidth(1920),
-        'https://upload.wikimedia.org/thumb/a/ab/Example.svg/1920px-Example.svg.png',
+        'https://upload.wikimedia.org/thumb/a/ab/Example.svg/1920px-Example.svg.png?source=commons',
       );
+      expect(item.thumbnailUrlAtWidth(320), item.thumb);
       expect(item.thumbnailUrlAtWidth(0), isNull);
 
       final originalOnly = SearchItem(
@@ -208,33 +207,22 @@ void main() {
         isSvg: true,
       );
       expect(originalOnly.thumbnailUrlAtWidth(1920), isNull);
-      expect(
-        originalOnly.previewUrlAtWidth(240),
-        'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.svg/240px-Example.svg',
-      );
+      expect(originalOnly.previewUrlAtWidth(240), isNull);
     });
 
-    test('keeps the API thumbnail as a fallback when resizing fails', () {
+    test('uses only the API thumbnail when a thumbnail is available', () {
       const item = SearchItem(
         title: 'Example.jpg',
         url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.jpg',
         thumb:
-            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.jpg/320px-Example.jpg',
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.jpg/330px-Example.jpg',
         commonsUrl: 'https://commons.wikimedia.org/wiki/File:Example.jpg',
         snippet: '',
         mime: 'image/jpeg',
         isSvg: false,
       );
 
-      final candidates = item.previewUrlCandidates(240);
-
-      expect(
-        candidates,
-        contains(
-          'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Example.jpg/240px-Example.jpg',
-        ),
-      );
-      expect(candidates, contains(item.thumb));
+      expect(item.previewUrlCandidates(240), [item.thumb]);
     });
   });
 

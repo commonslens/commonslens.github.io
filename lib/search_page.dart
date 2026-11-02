@@ -421,6 +421,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   bool? _isFiltersExpanded;
   bool _showMap = false;
   bool _mapHasOpened = false;
+  bool _mobileChromeVisible = true;
+  double _lastScrollOffset = 0;
 
   // Tracks the query params this page has already "consumed" — either by
   // hydrating from them, or by being the one that pushed them via the
@@ -604,6 +606,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void _onScroll() {
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
+
+    // Keep the mobile result surface useful at full height while scrolling.
+    // The search/header block comes back as soon as the user reverses
+    // direction, so the query and view controls never become inaccessible.
+    if (mounted && MediaQuery.sizeOf(context).width < 600) {
+      final delta = pos.pixels - _lastScrollOffset;
+      if (pos.pixels > 24 && delta > 2 && _mobileChromeVisible) {
+        setState(() => _mobileChromeVisible = false);
+      } else if (delta < -2 && !_mobileChromeVisible) {
+        setState(() => _mobileChromeVisible = true);
+      }
+    }
+    _lastScrollOffset = pos.pixels;
 
     if (pos.pixels >= pos.maxScrollExtent - 500) {
       final session = ref.read(searchControllerProvider).activeSession;
@@ -881,13 +896,56 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       ],
     );
 
+    final searchHeader = showSearchChrome
+        ? Column(
+            key: const ValueKey('active-search-header'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutCubic,
+                tween: Tween(begin: 0.8, end: 1.0),
+                builder: (context, widthFactor, child) {
+                  return FractionallySizedBox(
+                    widthFactor: widthFactor,
+                    child: child,
+                  );
+                },
+                child: SearchTopBar(
+                  key: const ValueKey('top-search-bar'),
+                  initialQuery: filterState.queryText,
+                  onSearch: _search,
+                  showFiltersButton: !isDesktop,
+                ),
+              ),
+              _buildHeaderBar(session, filterState),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                child: _isFiltersExpanded!
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildTabBar(filterState),
+                          _buildFormatChips(filterState),
+                          _buildActiveChipsBar(viewState.lastBuiltQuery),
+                          _buildQueryPreviewBar(
+                              viewState.lastBuiltQuery, session.hasSearched),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          )
+        : const SizedBox(key: ValueKey('empty-search-header'));
+
     final mainColumn = Column(
       children: [
         AnimatedSwitcher(
           // Keep the top search bar and every filetype-filter row in one
-          // animated block. When a search is cleared this lets the whole
-          // block move down and shrink together instead of collapsing in
-          // separate stages.
+          // animated block. On mobile the same block collapses while the
+          // results list is moving down, leaving the result surface the full
+          // viewport; an upward swipe restores it.
           duration: const Duration(milliseconds: 500),
           switchInCurve: Curves.easeOutCubic,
           switchOutCurve: Curves.easeInCubic,
@@ -906,50 +964,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
             );
           },
-          child: showSearchChrome
-              ? Column(
-                  key: const ValueKey('active-search-header'),
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TweenAnimationBuilder<double>(
-                      duration: const Duration(milliseconds: 500),
-                      curve: Curves.easeOutCubic,
-                      tween: Tween(begin: 0.8, end: 1.0),
-                      builder: (context, widthFactor, child) {
-                        return FractionallySizedBox(
-                          widthFactor: widthFactor,
-                          child: child,
-                        );
-                      },
-                      child: SearchTopBar(
-                        key: const ValueKey('top-search-bar'),
-                        initialQuery: filterState.queryText,
-                        onSearch: _search,
-                        showFiltersButton: !isDesktop && !isMobile,
-                      ),
-                    ),
-                    _buildHeaderBar(session, filterState),
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
-                      child: _isFiltersExpanded!
-                          ? Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _buildTabBar(filterState),
-                                _buildFormatChips(filterState),
-                                _buildActiveChipsBar(viewState.lastBuiltQuery),
-                                _buildQueryPreviewBar(viewState.lastBuiltQuery,
-                                    session.hasSearched),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                )
-              : const SizedBox(
-                  key: ValueKey('empty-search-header'),
-                ),
+          child: isMobile &&
+                  session.hasSearched &&
+                  !_showMap &&
+                  !_mobileChromeVisible
+              ? const SizedBox(key: ValueKey('collapsed-mobile-header'))
+              : searchHeader,
         ),
         Expanded(child: resultSurface),
       ],
@@ -967,22 +987,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 Expanded(child: mainColumn),
               ],
             )
-          : isMobile
-              ? Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 54),
-                      child: mainColumn,
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      child: _buildMobileFiltersButton(),
-                    ),
-                  ],
-                )
-              : mainColumn,
+          : mainColumn,
     );
   }
 
@@ -1005,19 +1010,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     final searchBar = centered
         ? FractionallySizedBox(
             key: searchKey,
-            widthFactor: isDesktop ? 0.8 : 0.95,
+            widthFactor: isDesktop ? 0.8 : 1.0,
             child: SearchTopBar(
               initialQuery: filterState.queryText,
               onSearch: _search,
-              autofocus: true,
-              showFiltersButton: !isDesktop && !isMobile,
+              autofocus: !isMobile,
+              showFiltersButton: !isDesktop,
             ),
           )
         : SearchTopBar(
             key: searchKey,
             initialQuery: filterState.queryText,
             onSearch: _search,
-            showFiltersButton: !isDesktop && !isMobile,
+            showFiltersButton: !isDesktop,
           );
 
     final slot = AnimatedSize(
@@ -1074,11 +1079,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         // The Scrollable Content
         LayoutBuilder(
           builder: (context, constraints) {
-            const contentPadding = EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 36,
-            );
             final isMobile = MediaQuery.of(context).size.width < 600;
+            final contentPadding = EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 24,
+              vertical: isMobile ? 20 : 36,
+            );
             final contentMinHeight =
                 constraints.maxHeight > contentPadding.vertical
                     ? constraints.maxHeight - contentPadding.vertical
@@ -1296,36 +1301,6 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               style: topLinkStyle,
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMobileFiltersButton() {
-    return Builder(
-      builder: (context) => SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.only(left: 12, top: 8),
-          child: Tooltip(
-            message: 'Filters',
-            child: SizedBox(
-              width: 38,
-              height: 38,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Color(0xFF2A2A2A)),
-                  foregroundColor: const Color(0xFFB0B0B0),
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-                onPressed: () => Scaffold.of(context).openDrawer(),
-                child: const Icon(Icons.tune, size: 17),
-              ),
-            ),
-          ),
         ),
       ),
     );

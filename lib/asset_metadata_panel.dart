@@ -599,7 +599,7 @@ class _RelatedMediaSection extends StatelessWidget {
                         child: ColoredBox(
                           color: const Color(0xFF1A1A1A),
                           child: related.thumb.isNotEmpty
-                              ? WikimediaNetworkImage(
+                              ? Image.network(
                                   related.thumb,
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) => const Icon(

@@ -16,7 +16,7 @@ mixin _SearchAssetOperations {
         'prop': 'info|imageinfo',
         'inprop': 'url',
         'iiprop': 'url|size|sha1|mime|extmetadata|user',
-        'iiurlwidth': '320',
+        'iiurlwidth': '330',
       };
 
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
@@ -437,7 +437,7 @@ mixin _SearchAssetOperations {
           'url|size|sha1|mime|user',
           if (includeExtmetadata) 'extmetadata',
         ].join('|'),
-        'iiurlwidth': '320',
+        'iiurlwidth': '330',
       };
 
       if (hasBox) {

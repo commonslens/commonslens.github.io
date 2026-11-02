@@ -12,7 +12,6 @@ import 'search_models.dart';
 import 'search_components.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
-import 'wikimedia_network_image.dart';
 
 const _mapBackground = Color(0xFF0B0B0B);
 const _mapPanel = Color(0xFF141414);
@@ -305,6 +304,7 @@ class _SearchMapViewState extends State<SearchMapView> {
     final clusters = _clusterItems(plottable, _zoom);
 
     return LayoutBuilder(builder: (context, constraints) {
+      final isCompact = constraints.maxWidth < 600;
       final showResultsPreview =
           widget.session.items.isNotEmpty && constraints.maxWidth >= 720;
       final previewWidth =
@@ -404,7 +404,13 @@ class _SearchMapViewState extends State<SearchMapView> {
               top: 12,
               left: 12,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 310),
+                constraints: BoxConstraints(
+                  // Leave a clean column for the map-style and help buttons
+                  // on phones instead of letting the radius card run into
+                  // them.
+                  maxWidth:
+                      isCompact ? math.max(0, constraints.maxWidth - 128) : 310,
+                ),
                 child: _RadiusPanel(
                   controller: _radiusController,
                   focusNode: _radiusFocusNode,
@@ -416,8 +422,8 @@ class _SearchMapViewState extends State<SearchMapView> {
             ),
             Positioned(
               top: 12,
-              left: showResultsPreview ? 330 : null,
-              right: showResultsPreview ? null : 64,
+              left: showResultsPreview && !isCompact ? 330 : null,
+              right: showResultsPreview && !isCompact ? null : 64,
               child: _MapControlButton(
                 icon: _style.icon,
                 text: _style == _SearchMapStyle.englishStreet ? 'EN' : null,
@@ -436,9 +442,13 @@ class _SearchMapViewState extends State<SearchMapView> {
             ),
             Positioned(
               left: 12,
-              bottom: 28,
+              right: isCompact ? 64 : null,
+              bottom: isCompact ? 82 : 28,
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
+                constraints: BoxConstraints(
+                  maxWidth:
+                      isCompact ? math.max(0, constraints.maxWidth - 88) : 430,
+                ),
                 child: _MapStatusPanel(
                   mappedCount: plottable.length,
                   totalCount: widget.session.items.length,
@@ -486,6 +496,7 @@ class _SearchMapViewState extends State<SearchMapView> {
                 currentRotation: _rotation,
                 minimumZoom: _minimumZoom,
                 maximumZoom: _maximumZoom,
+                compact: isCompact,
               ),
             ),
             if (widget.session.loading)
@@ -690,8 +701,9 @@ class _RadiusPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(isCompact ? 8 : 10),
       decoration: BoxDecoration(
         color: _mapPanel.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(10),
@@ -721,7 +733,9 @@ class _RadiusPanel extends StatelessWidget {
                       const TextInputType.numberWithOptions(decimal: true),
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => hasLocation ? onApply() : null,
-                  style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                  // Keep every mobile input at iOS Safari's no-zoom threshold.
+                  style: TextStyle(
+                      color: Colors.white, fontSize: isCompact ? 16 : 12.5),
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: const Color(0xFF1A1A1A),
@@ -729,8 +743,8 @@ class _RadiusPanel extends StatelessWidget {
                     suffixText: 'km',
                     suffixStyle: const TextStyle(color: Colors.white54),
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 10, vertical: isCompact ? 8 : 10),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
                       borderSide: BorderSide.none,
@@ -1034,7 +1048,7 @@ class _SearchClusterMarker extends StatelessWidget {
                 ),
               )
             : ClipOval(
-                child: WikimediaNetworkImage(
+                child: Image.network(
                   cluster.items.first.thumb,
                   width: 36,
                   height: 36,
@@ -1070,7 +1084,7 @@ class _MapResultCard extends StatelessWidget {
           children: [
             Expanded(
               child: SizedBox.expand(
-                child: WikimediaNetworkImage(
+                child: Image.network(
                   item.thumb,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const ColoredBox(
@@ -1171,12 +1185,14 @@ class _SearchMapNavigationControls extends StatelessWidget {
   final double currentRotation;
   final double minimumZoom;
   final double maximumZoom;
+  final bool compact;
 
   const _SearchMapNavigationControls({
     required this.mapController,
     required this.currentRotation,
     required this.minimumZoom,
     required this.maximumZoom,
+    this.compact = false,
   });
 
   void _zoomBy(double delta) {
@@ -1190,7 +1206,7 @@ class _SearchMapNavigationControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 40,
+      width: compact ? 38 : 40,
       decoration: BoxDecoration(
         color: _mapPanel.withValues(alpha: 0.96),
         borderRadius: BorderRadius.circular(10),
@@ -1201,26 +1217,33 @@ class _SearchMapNavigationControls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _MapNavButton(
-              icon: Icons.add, tooltip: 'Zoom in', onTap: () => _zoomBy(1)),
+              compact: compact,
+              icon: Icons.add,
+              tooltip: 'Zoom in',
+              onTap: () => _zoomBy(1)),
           const Divider(height: 1, color: _mapBorder),
           _MapNavButton(
+              compact: compact,
               icon: Icons.remove,
               tooltip: 'Zoom out',
               onTap: () => _zoomBy(-1)),
           const Divider(height: 1, color: _mapBorder),
           _MapNavButton(
+            compact: compact,
             icon: Icons.rotate_left,
             tooltip: 'Rotate left',
             onTap: () => mapController.rotate(currentRotation - 15),
           ),
           const Divider(height: 1, color: _mapBorder),
           _MapNavButton(
+            compact: compact,
             icon: Icons.rotate_right,
             tooltip: 'Rotate right',
             onTap: () => mapController.rotate(currentRotation + 15),
           ),
           const Divider(height: 1, color: _mapBorder),
           _MapNavButton(
+            compact: compact,
             icon: Icons.explore,
             tooltip: 'Reset to north',
             onTap: () => mapController.rotate(0),
@@ -1235,11 +1258,13 @@ class _MapNavButton extends StatelessWidget {
   final IconData icon;
   final String tooltip;
   final VoidCallback onTap;
+  final bool compact;
 
   const _MapNavButton({
     required this.icon,
     required this.tooltip,
     required this.onTap,
+    this.compact = false,
   });
 
   @override
@@ -1249,8 +1274,8 @@ class _MapNavButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          width: 40,
-          height: 40,
+          width: compact ? 38 : 40,
+          height: compact ? 36 : 40,
           child: Icon(icon, color: Colors.white70, size: 18),
         ),
       ),

@@ -134,7 +134,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
   _FilterGroup _activeGroup = _FilterGroup.imageClassification;
   _FilterGroup _innerGroup = _FilterGroup.imageClassification;
-  bool _outerBarExpanded = true;
+  // The primary group rail is intentionally always compact. The secondary
+  // panel is the useful part of the filter UI, especially on narrow screens,
+  // so never let the group labels consume its horizontal space.
+  bool get _outerBarExpanded => false;
   bool _innerPanelExpanded = false;
 
   late TextEditingController _minWidthCtrl;
@@ -158,12 +161,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   @override
   void initState() {
     super.initState();
-    // Start on the first filter group without taking over the main surface
-    // with its secondary panel. On a phone the primary group list remains
-    // available, so the minimized secondary panel can be reopened by tapping
-    // a group (or its expand rail).
-    _outerBarExpanded = true;
-    _innerPanelExpanded = false;
+    // The docked desktop panel starts compact so it does not take over the
+    // results surface. A mobile Drawer should open straight into the first
+    // useful filter group; otherwise the user sees only two narrow rails and
+    // an apparently empty panel on the first open.
+    _innerPanelExpanded = !widget.docked;
     _seedControllers(ref.read(searchControllerProvider).filterState);
   }
 
@@ -259,7 +261,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   }
 
   void _toggleOuterBar() {
-    setState(() => _outerBarExpanded = !_outerBarExpanded);
+    // The primary rail is permanently icon-only by design.
   }
 
   void _toggleInnerPanel() {
@@ -530,11 +532,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         child: Column(
           children: [
             const SizedBox(height: 8),
-            if (!widget.showCloseButton)
+            if (widget.showCloseButton && !_innerPanelExpanded)
               IconButton(
-                icon: const Icon(Icons.chevron_right, color: Colors.white54),
-                tooltip: 'Expand filter groups',
-                onPressed: _toggleOuterBar,
+                icon: const Icon(Icons.close, color: Colors.white54),
+                tooltip: 'Close filters',
+                onPressed: _closeFilters,
               ),
             const Divider(color: Color(0xFF222222), height: 1),
             Expanded(

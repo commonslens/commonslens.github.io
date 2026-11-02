@@ -13,7 +13,6 @@ import 'download_service.dart';
 import 'bookmark_service.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'legal_pages.dart';
-import 'wikimedia_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // -----------------------------------------------------------------------------
@@ -115,51 +114,54 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
     });
   }
 
-  /// Compact icon-only variant of the Filters button, used once the bar
-  /// drops to mobile width (see build's isMobile).
-  Widget _iconOnlyButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onPressed,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: SizedBox(
-        width: 38,
-        height: 38,
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF2A2A2A)),
-              foregroundColor: const Color(0xFFB0B0B0),
-              padding: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6))),
-          onPressed: onPressed,
-          child: Icon(icon, size: 17),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Below this width the Filters and Search controls collapse to icon-only
-    // buttons so the query field still has room to breathe.
+    // iOS Safari zooms a page when it focuses an input whose rendered text is
+    // smaller than 16px. Keep the mobile query field at that threshold and
+    // give it a little more height so it is comfortable to use with a thumb.
     final isMobile = MediaQuery.of(context).size.width < 600;
+    final fieldHeight = isMobile ? 52.0 : 38.0;
+    final fieldFontSize = isMobile ? 16.0 : 14.0;
+
+    Widget clearButton(TextEditingController controller) {
+      return IconButton(
+        tooltip: 'Clear search',
+        onPressed: () {
+          controller.clear();
+          widget.onSearch('');
+        },
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+        icon: const Icon(Icons.close, size: 17, color: Color(0xFF777777)),
+      );
+    }
+
+    Widget filtersButton() {
+      return IconButton(
+        tooltip: 'Filters',
+        onPressed: () => Scaffold.of(context).openDrawer(),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        icon: const Icon(Icons.tune, size: 19, color: Color(0xFFB0B0B0)),
+      );
+    }
 
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFF101010),
         border: Border(bottom: BorderSide(color: Color(0xFF1C1C1C))),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 16,
+        vertical: isMobile ? 8 : 10,
+      ),
       child: SafeArea(
         bottom: false,
         child: Row(
           children: [
             Expanded(
               child: SizedBox(
-                height: 38,
+                height: fieldHeight,
                 child: Autocomplete<String>(
                   optionsBuilder: _optionsBuilder,
                   onSelected: (String suggestion) {
@@ -210,16 +212,19 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                           const SpellCheckConfiguration.disabled(),
                       controller: controller,
                       focusNode: focusNode,
-                      style: const TextStyle(fontSize: 14, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: fieldFontSize, color: Colors.white),
                       decoration: InputDecoration(
-                        hintText:
-                            'What would you like to find? The dropdown suggestions show direct file matches. To see all results for the search, just press enter/search.',
+                        hintText: isMobile
+                            ? 'Search Wikimedia Commons media'
+                            : 'What would you like to find? The dropdown suggestions show direct file matches. To see all results for the search, just press enter/search.',
                         hintStyle:
                             const TextStyle(color: Colors.grey, fontSize: 14),
                         filled: true,
                         fillColor: const Color(0xFF181818),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 9),
+                        contentPadding: EdgeInsets.symmetric(
+                            horizontal: isMobile ? 16 : 14,
+                            vertical: isMobile ? 14 : 9),
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(6),
                             borderSide: BorderSide.none),
@@ -227,15 +232,22 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                             borderRadius: BorderRadius.circular(6),
                             borderSide: const BorderSide(
                                 color: Color(0xFF3D7EFF), width: 1)),
-                        suffixIcon: controller.text.isNotEmpty
-                            ? GestureDetector(
-                                onTap: () {
-                                  controller.clear();
-                                  widget.onSearch('');
-                                },
-                                child: const Icon(Icons.close,
-                                    size: 15, color: Color(0xFF3A3A3A)))
-                            : null,
+                        // On a phone the filter action lives in the field,
+                        // occupying the space where the desktop Search button
+                        // would otherwise be. Search is submitted from the
+                        // keyboard, so there is no second mobile button.
+                        suffixIcon: isMobile && widget.showFiltersButton
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (controller.text.isNotEmpty)
+                                    clearButton(controller),
+                                  filtersButton(),
+                                ],
+                              )
+                            : controller.text.isNotEmpty
+                                ? clearButton(controller)
+                                : null,
                       ),
                       onSubmitted: (_) => widget.onSearch(controller.text),
                     );
@@ -274,37 +286,29 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                 ),
               ),
             ),
-            if (widget.showFiltersButton) ...[
+            if (widget.showFiltersButton && !isMobile) ...[
               const SizedBox(width: 8),
-              isMobile
-                  ? _iconOnlyButton(
-                      icon: Icons.tune,
-                      tooltip: 'Filters',
-                      onPressed: () => Scaffold.of(context).openDrawer(),
-                    )
-                  : SizedBox(
-                      height: 38,
-                      child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: Color(0xFF2A2A2A)),
-                            foregroundColor: const Color(0xFFB0B0B0),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6)),
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 14)),
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                        child: const Text('Filters',
-                            style: TextStyle(
-                                fontSize: 12.5, fontWeight: FontWeight.w600)),
-                      ),
-                    ),
+              SizedBox(
+                height: 38,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0xFF2A2A2A)),
+                      foregroundColor: const Color(0xFFB0B0B0),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14)),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                  child: const Text('Filters',
+                      style: TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
+              ),
             ],
-            ...[
+            if (!isMobile) ...[
               const SizedBox(width: 8),
               Tooltip(
                 message: 'Search',
                 child: SizedBox(
-                  width: isMobile ? 38 : null,
                   height: 38,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -313,8 +317,7 @@ class _SearchTopBarState extends ConsumerState<SearchTopBar> {
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(6)),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: isMobile ? 0 : 18)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18)),
                     onPressed: () =>
                         widget.onSearch(_fieldController?.text ?? ''),
                     child: const Icon(
@@ -1222,13 +1225,12 @@ class _MediaPreviewState extends State<MediaPreview> {
   /// including PDFs (page-1 render) and SVGs (rasterized) — SearchService
   /// only falls back to the original `url` when thumbnail generation
   /// itself failed for the whole batch (see the urlparamnormal retry in
-  /// search_service.dart). The shared candidate list can also derive a safe
-  /// Wikimedia thumbnail when `thumb == url`; it returns an icon only when no
-  /// optimized candidate is available.
+  /// search_service.dart). The shared candidate list uses the exact thumbnail
+  /// URL returned by Wikimedia; it returns an icon when no thumbnail exists.
   bool _hasRenderableThumb(SearchItem item) {
     if (item.mediaKind == MediaKind.audio) return false;
     if (item.mediaKind == MediaKind.unknown) return false;
-    return item.previewUrlCandidates(320).isNotEmpty;
+    return item.previewUrlCandidates(330).isNotEmpty;
   }
 
   @override
@@ -1236,14 +1238,14 @@ class _MediaPreviewState extends State<MediaPreview> {
     if (!_shouldLoad) return const PreviewLoading();
     final item = widget.item;
     if (!_hasRenderableThumb(item)) return PreviewFallback(item: item);
-    final candidates = item.previewUrlCandidates(320);
+    final candidates = item.previewUrlCandidates(330);
     if (_candidateIndex >= candidates.length) {
       return PreviewFallback(item: item);
     }
 
     final candidateIndex = _candidateIndex;
     final imageUrl = candidates[candidateIndex];
-    final image = WikimediaNetworkImage(imageUrl,
+    final image = Image.network(imageUrl,
         key: ValueKey(imageUrl),
         fit: BoxFit.cover,
         filterQuality: FilterQuality.low,

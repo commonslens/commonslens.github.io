@@ -55,7 +55,7 @@ void main() {
 
       expect(uri.queryParameters['gsrlimit'], '50');
       expect(uri.queryParameters['iilimit'], '50');
-      expect(uri.queryParameters['iiurlwidth'], '320');
+      expect(uri.queryParameters['iiurlwidth'], '330');
       return http.Response('''
         {
           "continue": {

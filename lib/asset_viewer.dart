@@ -20,7 +20,6 @@ import 'backend_providers.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
 import 'wikimedia_download_client.dart';
-import 'wikimedia_network_image.dart';
 
 part 'asset_media_renderer.dart';
 part 'asset_metadata_panel.dart';

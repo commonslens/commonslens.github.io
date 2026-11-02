@@ -411,6 +411,19 @@
     window.addEventListener('flutter-first-frame', function () {
       var loading = document.getElementById('app-loading');
       if (loading) loading.remove();
+
+      // Flutter's full-page web embedding deliberately applies
+      // `touch-action: none` to <body>. That is useful for desktop pointer
+      // routing, but it also tells Safari and Chrome that a phone page is
+      // never being scrolled, so their browser chrome stays expanded. Allow
+      // vertical touch handling on coarse-pointer devices after Flutter has
+      // installed its inline styles. The Flutter scrollables still receive
+      // their pointer events; this only restores the browser's native
+      // vertical-scroll/toolbar-collapse signal.
+      if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+        document.body.style.touchAction = 'pan-y';
+        document.body.style.overscrollBehaviorY = 'auto';
+      }
     });
   </script>
   <script src="flutter_bootstrap.js" async></script>

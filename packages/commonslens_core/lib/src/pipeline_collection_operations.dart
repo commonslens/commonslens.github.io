@@ -621,6 +621,7 @@ mixin _PipelineCollectionOperations {
             try {
               fetched = await ctx.backend.imageMetadataBatch(
                 indexes.map((index) => items[index].title).toList(),
+                category: WikimediaRequestCategory.pipeline,
               );
             } catch (e) {
               enrichWarnings.add(
@@ -671,6 +672,7 @@ mixin _PipelineCollectionOperations {
               fetched = await ctx.backend.structuredDataBatch(
                 pending.map((index) => items[index].title).toList(),
                 pageIds: pageIds,
+                category: WikimediaRequestCategory.pipeline,
               );
             } catch (e) {
               enrichWarnings.add(
@@ -723,6 +725,7 @@ mixin _PipelineCollectionOperations {
               fetched = await ctx.backend.globalUsageBatch(
                 pending.map((index) => items[index].title).toList(),
                 limit: usageLimit,
+                category: WikimediaRequestCategory.pipeline,
               );
             } catch (e) {
               enrichWarnings.add(

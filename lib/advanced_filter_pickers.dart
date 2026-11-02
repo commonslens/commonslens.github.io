@@ -1,5 +1,13 @@
 part of 'advanced_filters_drawer.dart';
 
+const _autocompleteFailureMessage =
+    'Suggestions unavailable. Check your connection and try again.';
+const _autocompleteErrorStyle = TextStyle(
+  color: Color(0xFFFF8A80),
+  fontSize: 10,
+  height: 1.15,
+);
+
 // -----------------------------------------------------------------------------
 // Generic string include/exclude picker — replaces the near-identical
 // Categories and Templates blocks that used to be copy-pasted by hand.
@@ -34,8 +42,22 @@ class _StringSetPicker extends StatefulWidget {
 
 class _StringSetPickerState extends State<_StringSetPicker> {
   bool _excludeMode = false;
+  String? _autocompleteError;
   TextEditingController? _fieldController;
+  final _fieldKey = GlobalKey();
   final _requests = AutocompleteRequestCoordinator<String>();
+
+  void _showAutocompleteError(String rawQuery) {
+    if (!mounted || _fieldController?.text.trim() != rawQuery.trim()) return;
+    if (_autocompleteError == _autocompleteFailureMessage) return;
+    setState(() => _autocompleteError = _autocompleteFailureMessage);
+  }
+
+  void _clearAutocompleteErrorFor(String rawQuery) {
+    if (!mounted || _fieldController?.text.trim() != rawQuery.trim()) return;
+    if (_autocompleteError == null) return;
+    setState(() => _autocompleteError = null);
+  }
 
   @override
   void dispose() {
@@ -70,8 +92,14 @@ class _StringSetPickerState extends State<_StringSetPicker> {
           children: [
             Expanded(
               child: Autocomplete<String>(
-                optionsBuilder: (value) =>
-                    _requests.load(value.text, widget.search),
+                optionsViewOpenDirection:
+                    _autocompleteOptionsOpenDirection(context, _fieldKey),
+                optionsBuilder: (value) => _requests.load(
+                  value.text,
+                  widget.search,
+                  onError: (_) => _showAutocompleteError(value.text),
+                  onSuccess: () => _clearAutocompleteErrorFor(value.text),
+                ),
                 onSelected: (selection) {
                   widget.onAdd(selection, _excludeMode);
                   _fieldController?.clear();
@@ -87,6 +115,7 @@ class _StringSetPickerState extends State<_StringSetPicker> {
                   }
 
                   return TextField(
+                    key: _fieldKey,
                     keyboardType: (kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
                                 defaultTargetPlatform ==
@@ -101,12 +130,20 @@ class _StringSetPickerState extends State<_StringSetPicker> {
                                 ? widget.excludeHint
                                 : widget.addHint)
                         .copyWith(
+                      errorText: _autocompleteError,
+                      errorStyle: _autocompleteErrorStyle,
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.add,
                             color: Colors.white54, size: 18),
                         onPressed: addFromField,
                       ),
                     ),
+                    onChanged: (_) {
+                      if (_autocompleteError != null) {
+                        setState(() => _autocompleteError = null);
+                      }
+                    },
+                    onTap: () => setState(() {}),
                     onSubmitted: (_) => addFromField(),
                   );
                 },
@@ -190,8 +227,22 @@ class _EntitySetPicker<T extends Object> extends StatefulWidget {
 class _EntitySetPickerState<T extends Object>
     extends State<_EntitySetPicker<T>> {
   bool _excludeMode = false;
+  String? _autocompleteError;
   TextEditingController? _fieldController;
+  final _fieldKey = GlobalKey();
   final _requests = AutocompleteRequestCoordinator<T>();
+
+  void _showAutocompleteError(String rawQuery) {
+    if (!mounted || _fieldController?.text.trim() != rawQuery.trim()) return;
+    if (_autocompleteError == _autocompleteFailureMessage) return;
+    setState(() => _autocompleteError = _autocompleteFailureMessage);
+  }
+
+  void _clearAutocompleteErrorFor(String rawQuery) {
+    if (!mounted || _fieldController?.text.trim() != rawQuery.trim()) return;
+    if (_autocompleteError == null) return;
+    setState(() => _autocompleteError = null);
+  }
 
   @override
   void dispose() {
@@ -226,9 +277,15 @@ class _EntitySetPickerState<T extends Object>
           children: [
             Expanded(
               child: Autocomplete<T>(
+                optionsViewOpenDirection:
+                    _autocompleteOptionsOpenDirection(context, _fieldKey),
                 displayStringForOption: widget.labelOf,
-                optionsBuilder: (value) =>
-                    _requests.load(value.text, widget.search),
+                optionsBuilder: (value) => _requests.load(
+                  value.text,
+                  widget.search,
+                  onError: (_) => _showAutocompleteError(value.text),
+                  onSuccess: () => _clearAutocompleteErrorFor(value.text),
+                ),
                 onSelected: (selection) {
                   widget.onAdd(selection, _excludeMode);
                   _fieldController?.clear();
@@ -237,6 +294,7 @@ class _EntitySetPickerState<T extends Object>
                     (context, controller, focusNode, onEditingComplete) {
                   _fieldController = controller;
                   return TextField(
+                    key: _fieldKey,
                     keyboardType: (kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
                                 defaultTargetPlatform ==
@@ -247,8 +305,19 @@ class _EntitySetPickerState<T extends Object>
                     focusNode: focusNode,
                     style: const TextStyle(color: Colors.white),
                     decoration: _fieldDecoration(
-                        hint:
-                            _excludeMode ? widget.excludeHint : widget.addHint),
+                            hint: _excludeMode
+                                ? widget.excludeHint
+                                : widget.addHint)
+                        .copyWith(
+                      errorText: _autocompleteError,
+                      errorStyle: _autocompleteErrorStyle,
+                    ),
+                    onChanged: (_) {
+                      if (_autocompleteError != null) {
+                        setState(() => _autocompleteError = null);
+                      }
+                    },
+                    onTap: () => setState(() {}),
                     onSubmitted: (_) => controller.clear(),
                   );
                 },
@@ -326,10 +395,32 @@ class _StatementsPicker extends ConsumerStatefulWidget {
 
 class _StatementsPickerState extends ConsumerState<_StatementsPicker> {
   bool _excludeMode = false;
+  String? _autocompleteError;
   DepictsEntity? _pendingProperty;
   TextEditingController? _propertyFieldController;
   TextEditingController? _valueFieldController;
+  final _fieldKey = GlobalKey();
   final _requests = AutocompleteRequestCoordinator<DepictsEntity>();
+
+  TextEditingController? get _activeFieldController => _pendingProperty == null
+      ? _propertyFieldController
+      : _valueFieldController;
+
+  void _showAutocompleteError(String rawQuery) {
+    if (!mounted || _activeFieldController?.text.trim() != rawQuery.trim()) {
+      return;
+    }
+    if (_autocompleteError == _autocompleteFailureMessage) return;
+    setState(() => _autocompleteError = _autocompleteFailureMessage);
+  }
+
+  void _clearAutocompleteErrorFor(String rawQuery) {
+    if (!mounted || _activeFieldController?.text.trim() != rawQuery.trim()) {
+      return;
+    }
+    if (_autocompleteError == null) return;
+    setState(() => _autocompleteError = null);
+  }
 
   @override
   void dispose() {
@@ -398,18 +489,25 @@ class _StatementsPickerState extends ConsumerState<_StatementsPicker> {
                 key: ValueKey(_pendingProperty == null
                     ? 'statement-property'
                     : 'statement-value'),
+                optionsViewOpenDirection:
+                    _autocompleteOptionsOpenDirection(context, _fieldKey),
                 displayStringForOption: (option) => option.label,
                 optionsBuilder: (value) {
                   final propertySearch = _pendingProperty == null;
-                  return _requests.load(value.text, (query) {
-                    return propertySearch
-                        ? ref
-                            .read(commonsAutocompleteProvider)
-                            .wikidataProperties(query)
-                        : ref
-                            .read(commonsAutocompleteProvider)
-                            .wikidataEntities(query);
-                  });
+                  return _requests.load(
+                    value.text,
+                    (query) {
+                      return propertySearch
+                          ? ref
+                              .read(commonsAutocompleteProvider)
+                              .wikidataProperties(query)
+                          : ref
+                              .read(commonsAutocompleteProvider)
+                              .wikidataEntities(query);
+                    },
+                    onError: (_) => _showAutocompleteError(value.text),
+                    onSuccess: () => _clearAutocompleteErrorFor(value.text),
+                  );
                 },
                 onSelected: (selection) {
                   _requests.cancel();
@@ -432,6 +530,7 @@ class _StatementsPickerState extends ConsumerState<_StatementsPicker> {
                     _valueFieldController = controller;
                   }
                   return TextField(
+                    key: _fieldKey,
                     keyboardType: (kIsWeb &&
                             (defaultTargetPlatform == TargetPlatform.iOS ||
                                 defaultTargetPlatform ==
@@ -442,9 +541,19 @@ class _StatementsPickerState extends ConsumerState<_StatementsPicker> {
                     focusNode: focusNode,
                     style: const TextStyle(color: Colors.white),
                     decoration: _fieldDecoration(
-                        hint: _pendingProperty == null
-                            ? 'Search property (e.g. location of creation)...'
-                            : 'Search value (e.g. Paris)...'),
+                            hint: _pendingProperty == null
+                                ? 'Search property (e.g. location of creation)...'
+                                : 'Search value (e.g. Paris)...')
+                        .copyWith(
+                      errorText: _autocompleteError,
+                      errorStyle: _autocompleteErrorStyle,
+                    ),
+                    onChanged: (_) {
+                      if (_autocompleteError != null) {
+                        setState(() => _autocompleteError = null);
+                      }
+                    },
+                    onTap: () => setState(() {}),
                   );
                 },
                 optionsViewBuilder: (context, onSelected, options) {
@@ -495,6 +604,29 @@ class _StatementsPickerState extends ConsumerState<_StatementsPicker> {
 // Shared presentational helpers — top-level (library-private) so every
 // picker widget above can use them without an instance.
 // -----------------------------------------------------------------------------
+
+OptionsViewOpenDirection _autocompleteOptionsOpenDirection(
+    BuildContext context, GlobalKey fieldKey) {
+  final fieldContext = fieldKey.currentContext;
+  final fieldBox = fieldContext?.findRenderObject() as RenderBox?;
+  if (fieldBox == null || !fieldBox.hasSize) {
+    return OptionsViewOpenDirection.down;
+  }
+
+  final fieldTop = fieldBox.localToGlobal(Offset.zero).dy;
+  final fieldBottom = fieldTop + fieldBox.size.height;
+  final mediaQuery = MediaQuery.of(context);
+  final visibleBottom = mediaQuery.size.height - mediaQuery.viewInsets.bottom;
+  final spaceAbove = fieldTop - mediaQuery.padding.top;
+  final spaceBelow = visibleBottom - fieldBottom;
+
+  // The picker surfaces cap their menu at 200 px. Only flip upward when the
+  // keyboard (or the bottom edge of the viewport) leaves less room below than
+  // is available above; this avoids pushing a top-of-panel menu off-screen.
+  return spaceBelow < 180 && spaceAbove > spaceBelow
+      ? OptionsViewOpenDirection.up
+      : OptionsViewOpenDirection.down;
+}
 
 Widget _sectionDivider(String label) {
   return Row(

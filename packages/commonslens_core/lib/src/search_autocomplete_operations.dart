@@ -30,12 +30,26 @@ mixin _SearchAutocompleteOperations {
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
-          timeout: const Duration(seconds: 10));
+          timeout: const Duration(seconds: 10),
+          category: WikimediaRequestCategory.autocomplete);
 
-      if (response.statusCode != 200) return [];
+      if (response.statusCode != 200) {
+        throw AutocompleteLookupException('Wikidata entity search',
+            statusCode: response.statusCode);
+      }
 
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      final results = data['search'] as List? ?? [];
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const AutocompleteLookupException('Wikidata entity search');
+      }
+      final apiError = decoded['error'];
+      if (apiError != null) {
+        throw const AutocompleteLookupException('Wikidata entity search');
+      }
+      final results = decoded['search'];
+      if (results is! List) {
+        throw const AutocompleteLookupException('Wikidata entity search');
+      }
 
       return results
           .map((r) {
@@ -48,8 +62,9 @@ mixin _SearchAutocompleteOperations {
           })
           .where((e) => e.qid.isNotEmpty)
           .toList();
-    } catch (_) {
-      return [];
+    } catch (error) {
+      if (error is AutocompleteLookupException) rethrow;
+      throw AutocompleteLookupException('Wikidata entity search', cause: error);
     }
   }
 
@@ -97,13 +112,35 @@ mixin _SearchAutocompleteOperations {
         'format': 'json',
         'origin': '*',
       });
-      final res =
-          await _transport.get(uri, timeout: const Duration(seconds: 5));
-      final data = jsonDecode(res.body);
-      final cats = data['query']['allcategories'] as List? ?? [];
-      return cats.map((c) => c['*'] as String).toList();
-    } catch (_) {
-      return [];
+      final res = await _transport.get(
+        uri,
+        timeout: const Duration(seconds: 5),
+        category: WikimediaRequestCategory.autocomplete,
+      );
+      if (res.statusCode != 200) {
+        throw AutocompleteLookupException('Category search',
+            statusCode: res.statusCode);
+      }
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map) {
+        throw const AutocompleteLookupException('Category search');
+      }
+      if (decoded['error'] != null) {
+        throw const AutocompleteLookupException('Category search');
+      }
+      final query = decoded['query'];
+      final cats = query is Map ? query['allcategories'] : null;
+      if (cats is! List) {
+        throw const AutocompleteLookupException('Category search');
+      }
+      return cats
+          .whereType<Map>()
+          .map((c) => c['*']?.toString() ?? '')
+          .where((category) => category.isNotEmpty)
+          .toList();
+    } catch (error) {
+      if (error is AutocompleteLookupException) rethrow;
+      throw AutocompleteLookupException('Category search', cause: error);
     }
   }
 
@@ -134,19 +171,35 @@ mixin _SearchAutocompleteOperations {
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
-          timeout: const Duration(seconds: 5));
-      if (res.statusCode != 200) return [];
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final pages = data['query']?['allpages'] as List? ?? [];
+          timeout: const Duration(seconds: 5),
+          category: WikimediaRequestCategory.autocomplete);
+      if (res.statusCode != 200) {
+        throw AutocompleteLookupException('Template search',
+            statusCode: res.statusCode);
+      }
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map) {
+        throw const AutocompleteLookupException('Template search');
+      }
+      if (decoded['error'] != null) {
+        throw const AutocompleteLookupException('Template search');
+      }
+      final query = decoded['query'];
+      final pages = query is Map ? query['allpages'] : null;
+      if (pages is! List) {
+        throw const AutocompleteLookupException('Template search');
+      }
       return pages
-          .map((p) => ((p as Map<String, dynamic>)['title'] as String? ?? '')
+          .whereType<Map>()
+          .map((p) => (p['title']?.toString() ?? '')
               .replaceFirst('Template:', '')
               .trim())
           .where(_isPrimaryTemplatePage)
           .where((t) => t.isNotEmpty)
           .toList();
-    } catch (_) {
-      return [];
+    } catch (error) {
+      if (error is AutocompleteLookupException) rethrow;
+      throw AutocompleteLookupException('Template search', cause: error);
     }
   }
 
@@ -176,22 +229,30 @@ mixin _SearchAutocompleteOperations {
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
-          timeout: const Duration(seconds: 5));
+          timeout: const Duration(seconds: 5),
+          category: WikimediaRequestCategory.autocomplete);
 
-      if (response.statusCode != 200) return [];
+      if (response.statusCode != 200) {
+        throw AutocompleteLookupException('File title search',
+            statusCode: response.statusCode);
+      }
 
       // opensearch's response shape is a fixed-position array, not an
       // object: [searchTerm, [titles...], [descriptions...], [urls...]].
-      final data = jsonDecode(response.body) as List;
-      if (data.length < 2) return [];
+      final decoded = jsonDecode(response.body);
+      if (decoded is! List || decoded.length < 2 || decoded[1] is! List) {
+        throw const AutocompleteLookupException('File title search');
+      }
 
-      final titles = data[1] as List? ?? [];
+      final titles = decoded[1] as List;
       return titles
-          .map((t) => (t as String).replaceFirst('File:', '').trim())
+          .whereType<String>()
+          .map((t) => t.replaceFirst('File:', '').trim())
           .where((t) => t.isNotEmpty)
           .toList();
-    } catch (_) {
-      return [];
+    } catch (error) {
+      if (error is AutocompleteLookupException) rethrow;
+      throw AutocompleteLookupException('File title search', cause: error);
     }
   }
 }

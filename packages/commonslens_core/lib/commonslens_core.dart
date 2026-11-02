@@ -20,3 +20,4 @@ export 'src/wikimedia_download_client.dart';
 export 'src/wikimedia_request_gate.dart';
 export 'src/wikimedia_transport.dart';
 export 'src/wikimedia_response_mapper.dart';
+export 'src/wikimedia_request_logger.dart';

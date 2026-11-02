@@ -14,6 +14,7 @@ import 'search_components.dart';
 import 'search_map_view.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
+import 'wikimedia_request_log_view.dart';
 
 class _FeatureCard extends StatefulWidget {
   final IconData icon;
@@ -1232,6 +1233,27 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
             );
           },
+        ),
+
+        // Keep this above the full-screen scrollable content in the Stack.
+        // Otherwise the landing page still paints the icon, but the scroll
+        // view wins the hit test and the button cannot be tapped.
+        Positioned(
+          top: 8,
+          right: 12,
+          child: SafeArea(
+            child: Tooltip(
+              message: 'Wikimedia request log',
+              child: IconButton(
+                onPressed: () => showWikimediaRequestLog(context),
+                icon: const Icon(
+                  Icons.receipt_long_outlined,
+                  color: Colors.white70,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );

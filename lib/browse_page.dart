@@ -874,17 +874,30 @@ class _DepictsTab extends ConsumerStatefulWidget {
 class _DepictsTabState extends ConsumerState<_DepictsTab> {
   List<DepictsEntity> _items = [];
   bool _loading = false;
+  String? _error;
 
   Future<void> _search(String query) async {
     if (query.trim().isEmpty) return;
-    setState(() => _loading = true);
-    final results = await ref
-        .read(commonsAutocompleteProvider)
-        .wikidataEntities(query, limit: 50);
     setState(() {
-      _items = results;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final results = await ref
+          .read(commonsAutocompleteProvider)
+          .wikidataEntities(query, limit: 50);
+      if (!mounted) return;
+      setState(() {
+        _items = results;
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Unable to load Wikidata suggestions. Please try again.';
+      });
+    }
   }
 
   void _select(DepictsEntity entity) {
@@ -915,6 +928,13 @@ class _DepictsTabState extends ConsumerState<_DepictsTab> {
         ),
         if (_loading)
           const Expanded(child: Center(child: CircularProgressIndicator()))
+        else if (_error != null)
+          Expanded(
+            child: Center(
+              child:
+                  Text(_error!, style: const TextStyle(color: Colors.white54)),
+            ),
+          )
         else if (_items.isEmpty)
           const Expanded(
               child: Center(

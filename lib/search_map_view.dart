@@ -12,6 +12,7 @@ import 'search_models.dart';
 import 'search_components.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
+import 'wikimedia_network_image.dart';
 
 const _mapBackground = Color(0xFF0B0B0B);
 const _mapPanel = Color(0xFF141414);
@@ -929,22 +930,22 @@ class MapResultsPreview extends StatelessWidget {
                           ],
                         ),
                       )
-                : MediaResultsGrid(
-                    items: session.items,
-                    loadingMore: session.loadingMore,
-                    queueSource:
-                        MediaQueueSource.search(searchState, map: true),
-                    queueHasMore: session.hasMore,
-                    onNearEnd: onLoadMore,
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 18),
-                    gridDelegate:
-                        const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 210,
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 0.82,
-                    ),
-                  ),
+                    : MediaResultsGrid(
+                        items: session.items,
+                        loadingMore: session.loadingMore,
+                        queueSource:
+                            MediaQueueSource.search(searchState, map: true),
+                        queueHasMore: session.hasMore,
+                        onNearEnd: onLoadMore,
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 18),
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 210,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                          childAspectRatio: 0.82,
+                        ),
+                      ),
           ),
         ],
       ),
@@ -1033,7 +1034,7 @@ class _SearchClusterMarker extends StatelessWidget {
                 ),
               )
             : ClipOval(
-                child: Image.network(
+                child: WikimediaNetworkImage(
                   cluster.items.first.thumb,
                   width: 36,
                   height: 36,
@@ -1069,7 +1070,7 @@ class _MapResultCard extends StatelessWidget {
           children: [
             Expanded(
               child: SizedBox.expand(
-                child: Image.network(
+                child: WikimediaNetworkImage(
                   item.thumb,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => const ColoredBox(

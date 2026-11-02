@@ -2,8 +2,6 @@
 import 'dart:convert';
 import 'dart:html' as html;
 
-import 'package:flutter/foundation.dart';
-
 import 'pipeline_manifest.dart';
 import 'search_models.dart';
 import 'wikimedia_download_client.dart';
@@ -52,10 +50,8 @@ class DownloadService {
       html.Url.revokeObjectUrl(objectUrl);
       return null;
     } on DownloadSecurityException catch (error) {
-      debugPrint('Download blocked: ${error.code}');
       return error.message;
-    } catch (error) {
-      debugPrint('Download failed: $error');
+    } catch (_) {
       return 'Download failed before the file could be verified.';
     }
   }

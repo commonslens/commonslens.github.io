@@ -1,6 +1,7 @@
 import 'search_models.dart';
 import 'search_request_profile.dart';
 import 'search_service.dart';
+import 'wikimedia_request_logger.dart';
 
 /// Plain-data result of one backend fetch. Exactly "the media and its
 /// metadata" — no loading flags (the call has already finished by the time
@@ -226,8 +227,13 @@ class CommonsBackend {
   /// Callers should keep batches small because technical metadata can be
   /// considerably larger than ordinary search results.
   Future<Map<String, Map<String, dynamic>>> imageMetadataBatch(
-          List<String> fileIdsOrTitles) =>
-      _service.fetchImageMetadataBatch(fileIdsOrTitles);
+    List<String> fileIdsOrTitles, {
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
+  }) =>
+      _service.fetchImageMetadataBatch(
+        fileIdsOrTitles,
+        category: category,
+      );
 
   /// A file's full Structured Data on Commons entity — multilingual
   /// captions plus every structured statement (creator, institution,
@@ -244,8 +250,13 @@ class CommonsBackend {
   Future<Map<String, StructuredDataResult>> structuredDataBatch(
     List<String> fileIdsOrTitles, {
     Map<String, int?>? pageIds,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) =>
-      _service.fetchStructuredDataBatch(fileIdsOrTitles, pageIds: pageIds);
+      _service.fetchStructuredDataBatch(
+        fileIdsOrTitles,
+        pageIds: pageIds,
+        category: category,
+      );
 
   /// Pure geographic browse — either a radius around ([lat], [lng]) or a
   /// literal rectangle via [boundingBox] ([northLat, westLng, southLat,
@@ -278,6 +289,9 @@ class CommonsBackend {
       limit: limit,
       continueParams: continueToken,
       includeExtmetadata: requestProfile.includeExtmetadata,
+      category: requestProfile.isPipelineEtl || requestProfile.isPipelinePreview
+          ? WikimediaRequestCategory.pipeline
+          : WikimediaRequestCategory.search,
     );
 
     final queryUsed = boundingBox != null
@@ -307,16 +321,28 @@ class CommonsBackend {
   /// embeds this file — a real-world usage signal (files actually used
   /// somewhere vs. unused personal uploads) distinct from anything
   /// CirrusSearch itself indexes.
-  Future<List<GlobalUsageEntry>> globalUsage(String fileIdOrTitle,
-          {int limit = 500}) =>
-      _service.fetchGlobalUsage(fileIdOrTitle, limit: limit);
+  Future<List<GlobalUsageEntry>> globalUsage(
+    String fileIdOrTitle, {
+    int limit = 500,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
+  }) =>
+      _service.fetchGlobalUsage(
+        fileIdOrTitle,
+        limit: limit,
+        category: category,
+      );
 
   /// Batched global-usage lookup for pipeline enrichment.
   Future<Map<String, List<GlobalUsageEntry>>> globalUsageBatch(
     List<String> fileIdsOrTitles, {
     int limit = 500,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) =>
-      _service.fetchGlobalUsageBatch(fileIdsOrTitles, limit: limit);
+      _service.fetchGlobalUsageBatch(
+        fileIdsOrTitles,
+        limit: limit,
+        category: category,
+      );
 
   Future<BrowseResult<CategoryItem>> browseCategories({
     String? prefix,

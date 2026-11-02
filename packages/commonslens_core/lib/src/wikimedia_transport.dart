@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 
 import 'wikimedia_request_gate.dart';
+import 'wikimedia_request_logger.dart';
 
 /// Injectable read-only HTTP boundary used by the Commons backend.
 ///
@@ -15,6 +16,7 @@ abstract interface class WikimediaTransport {
     bool deduplicate = true,
     bool Function()? cancelled,
     bool Function(http.Response response)? acceptResponse,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   });
 }
 
@@ -28,6 +30,7 @@ abstract interface class WikimediaMediaTransport implements WikimediaTransport {
     Uri uri, {
     Duration timeout = const Duration(seconds: 20),
     bool Function()? cancelled,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   });
 }
 
@@ -50,6 +53,7 @@ class GatedWikimediaTransport implements WikimediaMediaTransport {
     bool deduplicate = true,
     bool Function()? cancelled,
     bool Function(http.Response response)? acceptResponse,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) {
     return WikimediaRequestGate.get(
       _client,
@@ -60,6 +64,7 @@ class GatedWikimediaTransport implements WikimediaMediaTransport {
       deduplicate: deduplicate,
       cancelled: cancelled,
       acceptResponse: acceptResponse,
+      category: category,
     );
   }
 
@@ -68,12 +73,14 @@ class GatedWikimediaTransport implements WikimediaMediaTransport {
     Uri uri, {
     Duration timeout = const Duration(seconds: 20),
     bool Function()? cancelled,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) {
     return WikimediaRequestGate.getStream(
       _client,
       uri,
       timeout: timeout,
       cancelled: cancelled,
+      category: category,
     );
   }
 

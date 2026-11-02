@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'download_security.dart';
 import 'wikimedia_request_gate.dart';
+import 'wikimedia_request_logger.dart';
 import 'wikimedia_transport.dart';
 
 class DownloadPayload {
@@ -89,6 +90,7 @@ class WikimediaDownloadClient {
         uri,
         timeout: const Duration(seconds: 15),
         cancelled: () => _closed || (cancelled?.call() ?? false),
+        category: WikimediaRequestCategory.thumbnail,
       );
       if (response.statusCode != 200) return null;
 
@@ -143,6 +145,7 @@ class WikimediaDownloadClient {
         uri,
         timeout: const Duration(seconds: 15),
         cancelled: () => _closed || (cancelled?.call() ?? false),
+        category: WikimediaRequestCategory.download,
       );
       if (response.statusCode != 200) return null;
 
@@ -238,6 +241,7 @@ class WikimediaDownloadClient {
         requestedUri,
         timeout: timeout,
         cancelled: () => _closed || (cancelled?.call() ?? false),
+        category: WikimediaRequestCategory.download,
       );
 
       final finalUri = response.request?.url ?? requestedUri;

@@ -8,9 +8,11 @@ class _ScriptedClient extends http.BaseClient {
   _ScriptedClient(this.onSend);
 
   final Future<http.Response> Function() onSend;
+  Uri? lastRequestUri;
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    lastRequestUri = request.url;
     final response = await onSend();
     return http.StreamedResponse(
       Stream<List<int>>.value(response.bodyBytes),
@@ -47,6 +49,27 @@ void main() {
 
     await expectLater(future, throwsA(isA<http.ClientException>()));
     expect(requests, 1);
+    client.close();
+  });
+
+  test('does not add maxlag to autocomplete API requests', () async {
+    final client = _ScriptedClient(() async => http.Response(
+          '{"search": [{"id": "Q146"}]}',
+          200,
+        ));
+    final transport = GatedWikimediaTransport(client: client);
+
+    await transport.get(
+      Uri.https('www.wikidata.org', '/w/api.php', {
+        'action': 'wbsearchentities',
+        'search': 'cat',
+        'type': 'item',
+      }),
+      maxAttempts: 1,
+      deduplicate: false,
+    );
+
+    expect(client.lastRequestUri?.queryParameters['maxlag'], isNull);
     client.close();
   });
 }

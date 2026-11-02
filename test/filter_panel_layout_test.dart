@@ -1,6 +1,7 @@
 import 'package:commonslens/advanced_filters_drawer.dart';
 import 'package:commonslens/backend_providers.dart';
 import 'package:commonslens/commons_backend.dart';
+import 'package:commonslens/search_page.dart';
 import 'package:commonslens/search_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +23,16 @@ class _FakeAutocomplete extends CommonsAutocomplete {
   }
 }
 
+class _FailingAutocomplete extends CommonsAutocomplete {
+  @override
+  Future<List<DepictsEntity>> wikidataEntities(
+    String text, {
+    int limit = 8,
+  }) async {
+    throw StateError('simulated autocomplete outage');
+  }
+}
+
 class _FakeBackend extends CommonsBackend {
   @override
   Future<MediaSearchResult> search(
@@ -40,11 +51,15 @@ class _FakeBackend extends CommonsBackend {
   }
 }
 
-Widget _host({VoidCallback? onLocationSelected}) {
+Widget _host({
+  VoidCallback? onLocationSelected,
+  CommonsAutocomplete? autocomplete,
+}) {
   return ProviderScope(
     overrides: [
       commonsBackendProvider.overrideWithValue(_FakeBackend()),
-      commonsAutocompleteProvider.overrideWithValue(_FakeAutocomplete()),
+      commonsAutocompleteProvider
+          .overrideWithValue(autocomplete ?? _FakeAutocomplete()),
     ],
     child: MaterialApp(
       home: Scaffold(
@@ -82,9 +97,30 @@ Widget _mobileHost() {
   );
 }
 
+Widget _mobileDrawerHost() {
+  return ProviderScope(
+    overrides: [
+      commonsBackendProvider.overrideWithValue(_FakeBackend()),
+      commonsAutocompleteProvider.overrideWithValue(_FakeAutocomplete()),
+    ],
+    child: MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(
+          size: Size(390, 800),
+          viewInsets: EdgeInsets.only(bottom: 300),
+        ),
+        child: Scaffold(
+          drawer: const AdvancedFiltersDrawer(),
+          body: const SizedBox.expand(),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   testWidgets(
-      'mobile filter drawer minimises groups and shows the active panel',
+      'mobile filter drawer selects image classification with a minimized panel',
       (tester) async {
     await tester.pumpWidget(_mobileHost());
     await tester.pumpAndSettle();
@@ -92,8 +128,139 @@ void main() {
     expect(find.byTooltip('Expand filter groups'), findsNothing);
     expect(find.byTooltip('Close filters'), findsOneWidget);
     expect(find.byTooltip('More Pages'), findsNothing);
-    expect(find.byTooltip('Bookmarks'), findsOneWidget);
-    expect(find.text('IMAGE CLASSIFICATION'), findsNWidgets(2));
+    expect(find.text('Bookmarks'), findsOneWidget);
+    expect(find.text('IMAGE CLASSIFICATION'), findsOneWidget);
+    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
+
+    await tester.tap(find.text('IMAGE CLASSIFICATION'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Close filters'), findsOneWidget);
+    expect(find.byTooltip('Minimize feature panel'), findsNothing);
+
+    final depictsField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.hintText == 'e.g. Cat, Eiffel Tower...',
+    );
+    expect(depictsField, findsOneWidget);
+    await tester.enterText(depictsField, 'aurora');
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.text('Aurora borealis').hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('autocomplete failures are visible in the filter field',
+      (tester) async {
+    await tester.pumpWidget(_host(autocomplete: _FailingAutocomplete()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('IMAGE CLASSIFICATION'));
+    await tester.pumpAndSettle();
+
+    final depictsField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.hintText == 'e.g. Cat, Eiffel Tower...',
+    );
+    await tester.enterText(depictsField, 'cat');
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    expect(
+      find.text(
+          'Suggestions unavailable. Check your connection and try again.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('request logger is available from the primary sidebar',
+      (tester) async {
+    final logger = WikimediaRequestLogger.instance;
+    logger.clear();
+    logger.record(
+      WikimediaRequestCategory.autocomplete,
+      Uri.parse('https://www.wikidata.org/w/api.php?action=test'),
+      '200',
+    );
+
+    await tester.pumpWidget(_host());
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('Wikimedia request log'), findsOneWidget);
+    await tester.tap(find.byTooltip('Wikimedia request log'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('WIKIMEDIA REQUEST LOG'), findsOneWidget);
+    expect(
+      find.text('https://www.wikidata.org/w/api.php?action=test 200'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    logger.clear();
+  });
+
+  testWidgets('landing request logger remains hit-testable above its content',
+      (tester) async {
+    final logger = WikimediaRequestLogger.instance;
+    logger.clear();
+    logger.record(
+      WikimediaRequestCategory.search,
+      Uri.parse('https://commons.wikimedia.org/w/api.php?action=query'),
+      '200',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          commonsBackendProvider.overrideWithValue(_FakeBackend()),
+          commonsAutocompleteProvider.overrideWithValue(_FakeAutocomplete()),
+        ],
+        child: const MaterialApp(home: SearchPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final loggerButton = find.byTooltip('Wikimedia request log');
+    expect(loggerButton, findsOneWidget);
+    expect(loggerButton.hitTestable(), findsOneWidget);
+    await tester.tap(loggerButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('WIKIMEDIA REQUEST LOG'), findsOneWidget);
+    expect(
+      find.text('https://commons.wikimedia.org/w/api.php?action=query 200'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    logger.clear();
+  });
+
+  testWidgets('mobile Drawer keeps autocomplete options above the keyboard',
+      (tester) async {
+    await tester.pumpWidget(_mobileDrawerHost());
+    tester.state<ScaffoldState>(find.byType(Scaffold)).openDrawer();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('IMAGE CLASSIFICATION'));
+    await tester.pumpAndSettle();
+
+    final depictsField = find.byWidgetPredicate(
+      (widget) =>
+          widget is TextField &&
+          widget.decoration?.hintText == 'e.g. Cat, Eiffel Tower...',
+    );
+    await tester.enterText(depictsField, 'aurora');
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+
+    expect(find.text('Aurora borealis').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -132,13 +299,7 @@ void main() {
     await tester.tap(suggestion);
     await tester.pumpAndSettle();
 
-    expect(
-      find.descendant(
-        of: find.byType(Chip),
-        matching: find.text('Aurora borealis'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Aurora borealis'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Minimize feature panel'));
     await tester.pumpAndSettle();
@@ -146,7 +307,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byTooltip('Expand filter groups'), findsOneWidget);
-    expect(find.byTooltip('More Pages'), findsOneWidget);
+    expect(find.byTooltip('Bookmarks'), findsOneWidget);
     expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
 

@@ -18,8 +18,10 @@ class AutocompleteRequestCoordinator<T> {
 
   Future<Iterable<T>> load(
     String rawQuery,
-    Future<Iterable<T>> Function(String query) fetch,
-  ) async {
+    Future<Iterable<T>> Function(String query) fetch, {
+    void Function(Object error)? onError,
+    void Function()? onSuccess,
+  }) async {
     final query = rawQuery.trim();
     final generation = ++_generation;
     _cancelDelay();
@@ -40,11 +42,13 @@ class AutocompleteRequestCoordinator<T> {
     late final Iterable<T> results;
     try {
       results = await fetch(query);
-    } catch (_) {
+    } catch (error) {
       if (_disposed || generation != _generation) return <T>[];
-      rethrow;
+      onError?.call(error);
+      return <T>[];
     }
     if (_disposed || generation != _generation) return <T>[];
+    onSuccess?.call();
     return results;
   }
 

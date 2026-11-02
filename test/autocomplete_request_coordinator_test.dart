@@ -72,4 +72,21 @@ void main() {
     expect(await first, isEmpty);
     expect(await second, ['second']);
   });
+
+  test('reports a current request error and returns no options', () async {
+    final coordinator = AutocompleteRequestCoordinator<String>(
+      delay: Duration.zero,
+    );
+    addTearDown(coordinator.dispose);
+    Object? reported;
+
+    final result = await coordinator.load(
+      'cat',
+      (_) => Future<Iterable<String>>.error(StateError('offline')),
+      onError: (error) => reported = error,
+    );
+
+    expect(result, isEmpty);
+    expect(reported, isA<StateError>());
+  });
 }

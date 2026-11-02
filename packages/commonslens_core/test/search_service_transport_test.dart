@@ -18,6 +18,7 @@ class _FixtureTransport implements WikimediaTransport {
     bool deduplicate = true,
     bool Function()? cancelled,
     bool Function(http.Response response)? acceptResponse,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) {
     requests.add(uri);
     requestedMaxAttempts.add(maxAttempts);
@@ -597,5 +598,20 @@ void main() {
     final result = await service.searchTemplates('institution:');
 
     expect(result, ['Institution:museum']);
+  });
+
+  test('Wikidata autocomplete surfaces an API error to its caller', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['action'], 'wbsearchentities');
+      return http.Response(
+        '{"error":{"code":"maxlag","info":"replica lag"}}',
+        200,
+      );
+    });
+
+    expect(
+      SearchService(transport: transport).searchDepictsEntities('cat'),
+      throwsA(isA<AutocompleteLookupException>()),
+    );
   });
 }

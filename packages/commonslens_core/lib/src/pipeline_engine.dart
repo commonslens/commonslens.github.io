@@ -36,6 +36,7 @@ import 'search_models.dart';
 import 'search_request_profile.dart';
 import 'commons_backend.dart';
 import 'pipeline_models.dart';
+import 'wikimedia_request_logger.dart';
 
 part 'pipeline_source_operations.dart';
 part 'pipeline_collection_operations.dart';

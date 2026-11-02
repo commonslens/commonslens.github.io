@@ -42,7 +42,10 @@ extension BrowseExtensions on SearchService {
 
     try {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      final res = await _transport.get(uri);
+      final res = await _transport.get(
+        uri,
+        category: WikimediaRequestCategory.browse,
+      );
       if (res.statusCode != 200) {
         return (items: <CategoryTreeItem>[], nextCursor: null);
       }
@@ -101,7 +104,10 @@ extension BrowseExtensions on SearchService {
 
     try {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      final res = await _transport.get(uri);
+      final res = await _transport.get(
+        uri,
+        category: WikimediaRequestCategory.browse,
+      );
       if (res.statusCode != 200) {
         return (items: <CategoryItem>[], nextCursor: null);
       }
@@ -148,7 +154,10 @@ extension BrowseExtensions on SearchService {
 
     try {
       final uri = Uri.https('commons.wikimedia.org', '/w/api.php', params);
-      final res = await _transport.get(uri);
+      final res = await _transport.get(
+        uri,
+        category: WikimediaRequestCategory.browse,
+      );
       if (res.statusCode != 200) return (items: <String>[], nextCursor: null);
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;

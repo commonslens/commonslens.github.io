@@ -9,6 +9,7 @@ import 'search_controller.dart';
 import 'backend_providers.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'legal_pages.dart';
+import 'wikimedia_request_log_view.dart';
 
 part 'advanced_filter_pickers.dart';
 
@@ -131,7 +132,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   static const double _collapsedRailWidth = 52;
   static const double _collapsedInnerRailWidth = 32;
 
-  _FilterGroup? _activeGroup;
+  _FilterGroup _activeGroup = _FilterGroup.imageClassification;
   _FilterGroup _innerGroup = _FilterGroup.imageClassification;
   bool _outerBarExpanded = true;
   bool _innerPanelExpanded = false;
@@ -157,12 +158,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   @override
   void initState() {
     super.initState();
-    // The mobile drawer has limited horizontal space, so keep the primary
-    // filter-group rail minimised while leaving the initial group's panel
-    // open. The docked desktop panel starts with the group rail open and the
-    // feature panel closed until a group is selected.
-    _outerBarExpanded = widget.docked;
-    _innerPanelExpanded = !widget.docked;
+    // Start on the first filter group without taking over the main surface
+    // with its secondary panel. On a phone the primary group list remains
+    // available, so the minimized secondary panel can be reopened by tapping
+    // a group (or its expand rail).
+    _outerBarExpanded = true;
+    _innerPanelExpanded = false;
     _seedControllers(ref.read(searchControllerProvider).filterState);
   }
 
@@ -262,10 +263,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   }
 
   void _toggleInnerPanel() {
-    if (widget.showCloseButton) {
-      _closeFilters();
-      return;
-    }
     setState(() => _innerPanelExpanded = !_innerPanelExpanded);
   }
 
@@ -505,6 +502,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           label: 'Bookmarks',
           onTap: () => context.push('/bookmarks'),
         ),
+        const Divider(color: Color(0xFF2A2A2A), height: 20),
         pageButton(
           icon: Icons.auto_awesome_mosaic_outlined,
           label: 'All features',
@@ -542,15 +540,74 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: groups.length + 1 + 4,
+                itemCount: groups.length + 7,
                 itemBuilder: (context, index) {
-                  if (index == groups.length) {
+                  if (index < groups.length) {
+                    final group = groups[index];
+                    final selected = _selectedFeatureLabels(group, state);
+                    return Tooltip(
+                      message: _groupTitle(group),
+                      child: InkWell(
+                        onTap: () => _selectGroup(group),
+                        child: SizedBox(
+                          height: 48,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                _groupIcon(group),
+                                color: group == _activeGroup
+                                    ? const Color(0xFF7AABFF)
+                                    : const Color(0xFF666666),
+                                size: 19,
+                              ),
+                              if (selected.isNotEmpty)
+                                Positioned(
+                                  top: 8,
+                                  right: 9,
+                                  child: Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF3D7EFF),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final pageOffset = index - groups.length;
+                  if (pageOffset == 0 || pageOffset == 3) {
                     return const Divider(
                       color: Color(0xFF222222),
                       height: 17,
                     );
                   }
-                  final pageIndex = index - groups.length - 1;
+
+                  if (pageOffset == 6) {
+                    return Tooltip(
+                      message: 'Wikimedia request log',
+                      child: InkWell(
+                        onTap: () => showWikimediaRequestLog(context),
+                        child: const SizedBox(
+                          height: 48,
+                          child: Icon(
+                            Icons.receipt_long_outlined,
+                            color: Color(0xFF3D7EFF),
+                            size: 19,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final pageIndex =
+                      pageOffset < 3 ? pageOffset - 1 : pageOffset - 2;
                   if (pageIndex >= 0 && pageIndex < 4) {
                     final (label, icon, onTap) = switch (pageIndex) {
                       0 => (
@@ -589,42 +646,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                       ),
                     );
                   }
-                  final group = groups[index];
-                  final selected = _selectedFeatureLabels(group, state);
-                  return Tooltip(
-                    message: _groupTitle(group),
-                    child: InkWell(
-                      onTap: () => _selectGroup(group),
-                      child: SizedBox(
-                        height: 48,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Icon(
-                              _groupIcon(group),
-                              color: group == _activeGroup
-                                  ? const Color(0xFF7AABFF)
-                                  : const Color(0xFF666666),
-                              size: 19,
-                            ),
-                            if (selected.isNotEmpty)
-                              Positioned(
-                                top: 8,
-                                right: 9,
-                                child: Container(
-                                  width: 7,
-                                  height: 7,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF3D7EFF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
+                  return const SizedBox.shrink();
                 },
               ),
             ),
@@ -657,6 +679,16 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   constraints:
                       const BoxConstraints(minWidth: 28, minHeight: 28),
                   onPressed: _toggleOuterBar,
+                ),
+              if (widget.showCloseButton && !_innerPanelExpanded)
+                IconButton(
+                  icon:
+                      const Icon(Icons.close, color: Colors.white54, size: 18),
+                  tooltip: 'Close filters',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: _closeFilters,
                 ),
             ],
           ),
@@ -717,7 +749,26 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         color: Color(0xFF0D0D0D),
         border: Border(right: BorderSide(color: Color(0xFF242424))),
       ),
-      child: content,
+      child: Column(
+        children: [
+          Expanded(child: content),
+          const Divider(color: Color(0xFF2A2A2A), height: 1),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Tooltip(
+              message: 'Wikimedia request log',
+              child: IconButton(
+                onPressed: () => showWikimediaRequestLog(context),
+                icon: const Icon(
+                  Icons.receipt_long_outlined,
+                  size: 18,
+                  color: Color(0xFF3D7EFF),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1672,11 +1723,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           double innerWidth = _collapsedInnerRailWidth;
 
           if (widget.docked) {
-            outerWidth = availableWidth
-                .clamp(
-                  0,
-                  _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth,
-                )
+            final requestedOuterWidth =
+                _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
+            outerWidth = (availableWidth - innerWidth)
+                .clamp(0, requestedOuterWidth)
                 .toDouble();
             if (_innerPanelExpanded) {
               innerWidth = (availableWidth - outerWidth)
@@ -1687,18 +1737,23 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   .toDouble();
             }
           } else if (_outerBarExpanded) {
-            outerWidth =
-                (_innerPanelExpanded ? (availableWidth / 3) : availableWidth)
-                    .clamp(0, _outerExpandedWidth)
-                    .toDouble();
+            outerWidth = (_innerPanelExpanded
+                    ? (availableWidth / 3)
+                    : availableWidth - _collapsedInnerRailWidth)
+                .clamp(
+                  0,
+                  _innerPanelExpanded ? _outerExpandedWidth : availableWidth,
+                )
+                .toDouble();
             if (_innerPanelExpanded) {
               innerWidth = (availableWidth - outerWidth)
                   .clamp(0, _innerExpandedWidth)
                   .toDouble();
             }
           } else {
-            outerWidth =
-                availableWidth.clamp(0, _collapsedRailWidth).toDouble();
+            outerWidth = (availableWidth - _collapsedInnerRailWidth)
+                .clamp(0, _collapsedRailWidth)
+                .toDouble();
             if (_innerPanelExpanded) {
               innerWidth = (availableWidth - outerWidth)
                   .clamp(0, _innerExpandedWidth)

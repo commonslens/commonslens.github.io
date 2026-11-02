@@ -13,6 +13,7 @@ import 'download_service.dart';
 import 'bookmark_service.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'legal_pages.dart';
+import 'wikimedia_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // -----------------------------------------------------------------------------
@@ -1242,7 +1243,7 @@ class _MediaPreviewState extends State<MediaPreview> {
 
     final candidateIndex = _candidateIndex;
     final imageUrl = candidates[candidateIndex];
-    final image = Image.network(imageUrl,
+    final image = WikimediaNetworkImage(imageUrl,
         key: ValueKey(imageUrl),
         fit: BoxFit.cover,
         filterQuality: FilterQuality.low,

@@ -5,6 +5,8 @@ import 'dart:math';
 
 import 'package:http/http.dart' as http;
 
+import 'wikimedia_request_logger.dart';
+
 /// One global clearance layer for every app-managed request this browser tab
 /// sends to Wikimedia. It prevents independent features (search, previews, metadata,
 /// and collection CSV exports) from creating overlapping request bursts.
@@ -42,13 +44,32 @@ class WikimediaRequestGate {
   }
 
   static Uri _preparedUri(Uri uri) {
-    if (!_isActionApi(uri) || uri.queryParameters.containsKey('maxlag')) {
+    if (!_isActionApi(uri) ||
+        uri.queryParameters.containsKey('maxlag') ||
+        _isAutocompleteApi(uri)) {
       return uri;
     }
     return uri.replace(queryParameters: {
       ...uri.queryParameters,
       'maxlag': '5',
     });
+  }
+
+  /// Type-ahead calls are deliberately best-effort, small read requests. The
+  /// Action API's `maxlag` guard is useful for heavier searches, but Wikidata
+  /// can reject `wbsearchentities` with a maxlag error while still serving the
+  /// exact same request successfully without that optional parameter. Since
+  /// autocomplete callers treat an empty result as "no matches", adding the
+  /// guard here turns a temporary replica lag into a permanently invisible
+  /// dropdown. Keep the request gate, user-agent, and deduplication for these
+  /// calls; only omit the optional maxlag query parameter.
+  static bool _isAutocompleteApi(Uri uri) {
+    final action = uri.queryParameters['action'];
+    if (action == 'wbsearchentities' || action == 'opensearch') return true;
+    if (action != 'query') return false;
+
+    final list = uri.queryParameters['list'];
+    return list == 'allcategories' || list == 'allpages';
   }
 
   static Map<String, String>? _preparedHeaders(
@@ -71,6 +92,7 @@ class WikimediaRequestGate {
     bool deduplicate = true,
     bool Function()? cancelled,
     bool Function(http.Response response)? acceptResponse,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) {
     final preparedUri = _preparedUri(uri);
     final isApi = _isActionApi(preparedUri);
@@ -89,6 +111,7 @@ class WikimediaRequestGate {
       maxAttempts: maxAttempts,
       cancelled: cancelled,
       acceptResponse: acceptResponse,
+      category: category,
     );
 
     if (deduplicate && isApi) {
@@ -119,6 +142,7 @@ class WikimediaRequestGate {
     Uri uri, {
     Duration timeout = const Duration(seconds: 20),
     bool Function()? cancelled,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) async {
     if (cancelled?.call() == true) {
       throw http.ClientException('Request cancelled', uri);
@@ -132,7 +156,15 @@ class WikimediaRequestGate {
       final request = http.Request('GET', uri)
         ..followRedirects = uri.host.toLowerCase() != 'upload.wikimedia.org';
       final response = await client.send(request).timeout(timeout);
+      WikimediaRequestLogger.instance.record(
+        category,
+        uri,
+        '${response.statusCode}',
+      );
       return response;
+    } catch (_) {
+      WikimediaRequestLogger.instance.record(category, uri, 'NO_RESPONSE');
+      rethrow;
     } finally {
       // This gate limits request starts. The media client applies the body
       // limit and cancels the stream itself, so holding this permit until a
@@ -149,6 +181,7 @@ class WikimediaRequestGate {
     required int maxAttempts,
     bool Function()? cancelled,
     bool Function(http.Response response)? acceptResponse,
+    required WikimediaRequestCategory category,
   }) async {
     Object? lastError;
 
@@ -166,7 +199,13 @@ class WikimediaRequestGate {
       http.Response? response;
       try {
         response = await _strictGet(client, uri, headers).timeout(timeout);
+        WikimediaRequestLogger.instance.record(
+          category,
+          uri,
+          '${response.statusCode}',
+        );
       } catch (error) {
+        WikimediaRequestLogger.instance.record(category, uri, 'NO_RESPONSE');
         lastError = error;
       } finally {
         _release();

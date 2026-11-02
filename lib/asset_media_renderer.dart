@@ -46,8 +46,6 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
 
     final isVideo = widget.item.mediaKind == MediaKind.video;
     final isAudio = widget.item.mediaKind == MediaKind.audio;
-    final isImage = widget.item.mediaKind == MediaKind.image ||
-        widget.item.mediaKind == MediaKind.vector;
     final shouldRenderStl =
         _isStl(widget.item) && _isSafeWikimediaUploadUrl(widget.item.url);
     final shouldRenderPdf = widget.item.mediaKind == MediaKind.document &&
@@ -56,7 +54,7 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     // PDFs are only inlined in a restricted iframe on browsers that render
     // them reliably. DjVu remains blocked because the browser fallback is
     // unreliable there. Download verification is a separate boundary.
-    if (isVideo || isAudio || isImage || shouldRenderPdf || shouldRenderStl) {
+    if (isVideo || isAudio || shouldRenderPdf || shouldRenderStl) {
       _isNativeHtml = true;
 
       ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
@@ -75,16 +73,6 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
             ..style.height = '100%'
             ..style.border = 'none'
             ..style.backgroundColor = '#070707'
-            ..style.outline = 'none';
-        } else if (isImage) {
-          return html.ImageElement()
-            ..src = widget.imageUrl
-            ..setAttribute('referrerpolicy', 'no-referrer')
-            ..style.width = '100%'
-            ..style.height = '100%'
-            ..style.objectFit = 'contain'
-            ..style.backgroundColor =
-                _isSvgAsset(widget.item) ? '#FFFFFF' : 'transparent'
             ..style.outline = 'none';
         } else if (isVideo) {
           return html.VideoElement()
@@ -134,12 +122,6 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     }
   }
 
-  bool _isSvgAsset(SearchItem item) =>
-      item.isSvg ||
-      item.mediaKind == MediaKind.vector ||
-      item.extension.toLowerCase() == 'svg' ||
-      item.mime.toLowerCase() == 'image/svg+xml';
-
   bool _isStl(SearchItem item) =>
       item.extension.toLowerCase() == 'stl' ||
       item.mime.toLowerCase() == 'application/sla';
@@ -163,6 +145,17 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
 
   @override
   Widget build(BuildContext context) {
+    final isImage = widget.item.mediaKind == MediaKind.image ||
+        widget.item.mediaKind == MediaKind.vector;
+    if (isImage) {
+      return WikimediaNetworkImage(
+        widget.imageUrl,
+        fit: BoxFit.contain,
+        category: widget.imageUrl == widget.item.url
+            ? WikimediaRequestCategory.media
+            : WikimediaRequestCategory.thumbnail,
+      );
+    }
     if (_isNativeHtml) {
       final isDesktop = MediaQuery.of(context).size.width >= 800;
       return Padding(
@@ -200,7 +193,8 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (item.thumb.isNotEmpty) Image.network(item.thumb, fit: BoxFit.cover),
+        if (item.thumb.isNotEmpty)
+          WikimediaNetworkImage(item.thumb, fit: BoxFit.cover),
         BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(

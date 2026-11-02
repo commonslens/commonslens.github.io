@@ -17,6 +17,7 @@ class _DownloadFixtureTransport implements WikimediaMediaTransport {
     bool deduplicate = true,
     bool Function()? cancelled,
     bool Function(http.Response response)? acceptResponse,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) async {
     requests.add(uri);
     return handler(uri);
@@ -27,6 +28,7 @@ class _DownloadFixtureTransport implements WikimediaMediaTransport {
     Uri uri, {
     Duration timeout = const Duration(seconds: 20),
     bool Function()? cancelled,
+    WikimediaRequestCategory category = WikimediaRequestCategory.other,
   }) async {
     requests.add(uri);
     final response = handler(uri);

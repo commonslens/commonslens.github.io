@@ -25,7 +25,8 @@ mixin _SearchAssetOperations {
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
-          timeout: const Duration(seconds: 15));
+          timeout: const Duration(seconds: 15),
+          category: WikimediaRequestCategory.metadata);
 
       if (response.statusCode != 200) return null;
 
@@ -43,7 +44,8 @@ mixin _SearchAssetOperations {
             headers: {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
-            timeout: const Duration(seconds: 15));
+            timeout: const Duration(seconds: 15),
+            category: WikimediaRequestCategory.metadata);
         if (response.statusCode != 200) return null;
         data = jsonDecode(response.body) as Map<String, dynamic>;
       }
@@ -81,7 +83,9 @@ mixin _SearchAssetOperations {
   /// inspect technical metadata without expanding SearchItem every time the
   /// MediaWiki API adds a field.
   Future<Map<String, Map<String, dynamic>>> fetchImageMetadataBatch(
-      List<String> filenames) async {
+    List<String> filenames, {
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
+  }) async {
     if (filenames.isEmpty) return {};
     try {
       final titles = filenames
@@ -107,7 +111,8 @@ mixin _SearchAssetOperations {
             'Api-User-Agent':
                 'CommonsLens/1.0 (https://github.com/commonslens/commonslens.github.io; Flutter Web)',
           },
-          timeout: const Duration(seconds: 20));
+          timeout: const Duration(seconds: 20),
+          category: category);
       if (response.statusCode != 200) return {};
 
       final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -159,6 +164,7 @@ mixin _SearchAssetOperations {
   Future<Map<String, StructuredDataResult>> fetchStructuredDataBatch(
     List<String> filenames, {
     Map<String, int?>? pageIds,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) async {
     final titles = filenames
         .map((filename) =>
@@ -191,7 +197,8 @@ mixin _SearchAssetOperations {
             headers: {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
-            timeout: const Duration(seconds: 10));
+            timeout: const Duration(seconds: 10),
+            category: category);
         if (response.statusCode != 200) continue;
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data.containsKey('error')) continue;
@@ -221,7 +228,8 @@ mixin _SearchAssetOperations {
             headers: {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
-            timeout: const Duration(seconds: 15));
+            timeout: const Duration(seconds: 15),
+            category: category);
         if (response.statusCode != 200) continue;
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         if (data.containsKey('error')) continue;
@@ -252,7 +260,10 @@ mixin _SearchAssetOperations {
           }
         }
       }
-      final labels = await _resolveWikidataLabels(idsToResolve);
+      final labels = await _resolveWikidataLabels(
+        idsToResolve,
+        category: category,
+      );
 
       final results = <String, StructuredDataResult>{};
       for (final title in titles) {
@@ -326,6 +337,7 @@ mixin _SearchAssetOperations {
   Future<Map<String, String>> _resolveWikidataLabels(
     Set<String> ids, {
     String language = 'en',
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) async {
     if (ids.isEmpty) return {};
     final result = <String, String>{};
@@ -346,7 +358,8 @@ mixin _SearchAssetOperations {
             headers: {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
-            timeout: const Duration(seconds: 10));
+            timeout: const Duration(seconds: 10),
+            category: category);
         if (res.statusCode != 200) continue;
 
         final data = jsonDecode(res.body) as Map<String, dynamic>;
@@ -401,6 +414,7 @@ mixin _SearchAssetOperations {
     int limit = SearchService.pageSize,
     Map<String, dynamic>? continueParams,
     bool includeExtmetadata = true,
+    WikimediaRequestCategory category = WikimediaRequestCategory.search,
   }) async {
     final hasCoord = lat != null && lng != null;
     final hasBox = boundingBox != null && boundingBox.length == 4;
@@ -448,7 +462,8 @@ mixin _SearchAssetOperations {
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
-          timeout: const Duration(seconds: 15));
+          timeout: const Duration(seconds: 15),
+          category: category);
 
       if (response.statusCode != 200) return null;
 
@@ -521,9 +536,14 @@ mixin _SearchAssetOperations {
   Future<List<GlobalUsageEntry>> fetchGlobalUsage(
     String filename, {
     int limit = 500,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) async {
     final title = filename.startsWith('File:') ? filename : 'File:$filename';
-    final batch = await fetchGlobalUsageBatch([title], limit: limit);
+    final batch = await fetchGlobalUsageBatch(
+      [title],
+      limit: limit,
+      category: category,
+    );
     return batch[title] ?? const [];
   }
 
@@ -533,6 +553,7 @@ mixin _SearchAssetOperations {
   Future<Map<String, List<GlobalUsageEntry>>> fetchGlobalUsageBatch(
     List<String> filenames, {
     int limit = 500,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) async {
     final titles = filenames
         .map((filename) =>
@@ -558,7 +579,8 @@ mixin _SearchAssetOperations {
             headers: {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
-            timeout: const Duration(seconds: 20));
+            timeout: const Duration(seconds: 20),
+            category: category);
         if (response.statusCode != 200) continue;
 
         final data = jsonDecode(response.body) as Map<String, dynamic>;

@@ -5,10 +5,36 @@ import 'search_query_compiler.dart';
 import 'search_request_profile.dart';
 import 'wikimedia_transport.dart';
 import 'wikimedia_response_mapper.dart';
+import 'wikimedia_request_logger.dart';
 
 part 'search_asset_operations.dart';
 part 'search_autocomplete_operations.dart';
 part 'search_browse_operations.dart';
+
+/// A type-ahead request reached the provider but could not produce a valid
+/// suggestion list. Callers can distinguish this from a valid empty result and
+/// show a retry/connection message without exposing transport details.
+class AutocompleteLookupException implements Exception {
+  final String operation;
+  final int? statusCode;
+  final Object? cause;
+
+  const AutocompleteLookupException(
+    this.operation, {
+    this.statusCode,
+    this.cause,
+  });
+
+  @override
+  String toString() => statusCode == null
+      ? 'AutocompleteLookupException($operation)'
+      : 'AutocompleteLookupException($operation, HTTP $statusCode)';
+}
+
+WikimediaRequestCategory _categoryForProfile(SearchRequestProfile profile) =>
+    profile.isPipelineEtl || profile.isPipelinePreview
+        ? WikimediaRequestCategory.pipeline
+        : WikimediaRequestCategory.search;
 
 class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   static const int pageSize = 50;
@@ -58,6 +84,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
   }) async {
     final user = username.trim();
     if (user.isEmpty) return null;
+    final category = _categoryForProfile(requestProfile);
 
     try {
       // Step 1: just the ordered list of this user's uploads — titles and
@@ -90,7 +117,8 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           headers: {
             'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
           },
-          timeout: const Duration(seconds: 15));
+          timeout: const Duration(seconds: 15),
+          category: category);
 
       if (listResponse.statusCode != 200) return null;
 
@@ -139,7 +167,8 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
             timeout: const Duration(seconds: 15),
-            maxAttempts: 4);
+            maxAttempts: 4,
+            category: category);
       } catch (e) {
         if (requestProfile != SearchRequestProfile.ui) {
           return SearchResponse(
@@ -302,9 +331,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
           // the next loadMore retries this exact page for this branch
           // rather than abandoning it.
           newMultiContinue[key] = branchContinue ?? <String, dynamic>{};
-          // ignore: avoid_print
-          print(
-              '🔍 [BRANCH FAILED] key=$key — will retry on next loadMore instead of dropping it');
         }
       }());
     }
@@ -353,9 +379,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         .toList();
 
     if (segments.length <= 1) {
-      // ignore: avoid_print
-      print(
-          '🔍 [FETCHPAGE] single-segment path, queryText="${state.queryText}" tab=${state.tab.name} formats=${state.formats}');
       return _fetchPageForQuery(
         state,
         continueParams: continueParams,
@@ -365,9 +388,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         skipFailedPages: skipFailedPages,
       );
     }
-
-    // ignore: avoid_print
-    print('🔍 [FETCHPAGE] multi-segment "+" path, segments=$segments');
 
     return _fanOutFetch<String>(
       branches: segments,
@@ -803,13 +823,14 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
               'Api-User-Agent': 'CommonslensApp/1.0 (Flutter Web)',
             },
             timeout: const Duration(seconds: 15),
+            category: skipFailedPages
+                ? WikimediaRequestCategory.pipeline
+                : WikimediaRequestCategory.search,
             // One initial request plus three retries. If all four attempts
             // fail, this logical page is skipped and pagination continues.
             maxAttempts: 4,
           );
         } catch (e) {
-          // ignore: avoid_print
-          print('🔍 [GIVE UP] request gate exhausted retries: $e');
           return _failedPageResponse(
             continueParams: continueParams,
             pageSize: pageSize,
@@ -843,15 +864,9 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         if (apiError != null) {
           final errorCode = apiError['code'] as String?;
 
-          // ignore: avoid_print
-          print(
-              '🔍 [API ERROR] code=$errorCode info=${apiError['info']} includeThumbWidth=$includeThumbWidth');
-
           // A bad thumbnail is recoverable for the whole logical page: retry
           // without scaling rather than returning an empty partial page.
           if (errorCode == 'urlparamnormal' && includeThumbWidth) {
-            // ignore: avoid_print
-            print('🔍 [RETRY] retrying without iiurlwidth');
             return _fetchSingleAttempt(
               state,
               continueParams: continueParams,
@@ -937,9 +952,6 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
       for (final page in pagesByKey.values) {
         final infoList = page['imageinfo'] as List?;
         if (infoList == null || infoList.isEmpty) {
-          // ignore: avoid_print
-          print(
-              '🔍 [SKIP] title=${page['title']} — no imageinfo (missing=${page['missing']}, invalid=${page['invalid']})');
           continue;
         }
 
@@ -1017,9 +1029,7 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
         totalHits: totalHits,
         suggestion: suggestion,
       );
-    } catch (e, st) {
-      // ignore: avoid_print
-      print('🔍 [EXCEPTION] $e\n$st');
+    } catch (e) {
       return _failedPageResponse(
         continueParams: continueParams,
         pageSize: pageSize,

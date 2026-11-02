@@ -366,6 +366,7 @@ class _EnrichmentBackend extends _StaticBackend {
   Future<Map<String, StructuredDataResult>> structuredDataBatch(
     List<String> fileIdsOrTitles, {
     Map<String, int?>? pageIds,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) async {
     calls.add('sdc-batch:${fileIdsOrTitles.join(',')}');
     return {
@@ -383,6 +384,7 @@ class _EnrichmentBackend extends _StaticBackend {
   Future<Map<String, List<GlobalUsageEntry>>> globalUsageBatch(
     List<String> fileIdsOrTitles, {
     int limit = 500,
+    WikimediaRequestCategory category = WikimediaRequestCategory.metadata,
   }) async {
     calls.add('usage-batch:${fileIdsOrTitles.join(',')}:$limit');
     return {

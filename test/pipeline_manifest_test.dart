@@ -47,6 +47,22 @@ void main() {
     expect(row['categories'], 'Example images');
   });
 
+  test('detailed manifest includes fields requested by the pipeline', () {
+    final row = buildManifestRecords(
+      const [_item],
+      additionalRecords: const [
+        {
+          'imageInfo': {'width': 1920},
+          'structuredData': {'depicts': []}
+        }
+      ],
+    ).single;
+
+    expect(row['imageInfo'], {'width': 1920});
+    expect(row['structuredData'], {'depicts': []});
+    expect(row['uploader'], 'Example user');
+  });
+
   test('field projection controls columns but cannot remove media identity',
       () {
     final row = buildManifestRecords(

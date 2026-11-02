@@ -588,8 +588,10 @@ mixin _PipelineCollectionOperations {
         // fetch large payloads. The selected bundles are batched below.
         final includeSdc = _cfgBool(c, 'structuredData', false);
         final includeUsage = _cfgBool(c, 'globalUsage', false);
-        final configuredCap = _cfgInt(c, 'maxEnrich') ?? 20;
-        final cap = configuredCap.clamp(0, items.length);
+        // Enrichment is an explicit pipeline node, so it applies to every
+        // incoming item. The old implicit 20-item cap made a successful CSV
+        // export look complete while silently leaving most rows unenriched.
+        final cap = items.length;
         final batchSize = (_cfgInt(c, 'batchSize') ?? 10).clamp(1, 20);
         final usageLimit = (_cfgInt(c, 'usageLimit') ?? 50).clamp(1, 500);
         final rows = _recordsFor(input);
@@ -763,15 +765,11 @@ mixin _PipelineCollectionOperations {
           records: rows,
           warning: <String>[
             if (input.warning != null) input.warning!,
-            if (cap < items.length)
-              'Enriched $cap of ${items.length} items. Increase the cap to process more.',
             ...enrichWarnings,
           ].join(' ').trim().isEmpty
               ? null
               : <String>[
                   if (input.warning != null) input.warning!,
-                  if (cap < items.length)
-                    'Enriched $cap of ${items.length} items. Increase the cap to process more.',
                   ...enrichWarnings,
                 ].join(' '),
         );
@@ -876,19 +874,37 @@ mixin _PipelineCollectionOperations {
     final output = await _ensureMaterialized(inputs.first.value, ctx);
     if (output.hasError || !output.isMaterialized) return output;
 
+    final rightsWarning = node.type == PipelineNodeType.sinkCsvExport &&
+            !ctx.requestProfile.includeExtmetadata
+        ? 'Rights and attribution metadata was not fetched for this run. '
+            'Blank licence or attribution fields do not mean reuse is unrestricted; '
+            'verify every file on its original Commons page.'
+        : null;
+    final outputWithWarnings = rightsWarning == null
+        ? output
+        : NodeOutput.materialized(
+            output.items!,
+            totalHits: output.totalHits,
+            records: output.records,
+            warning: [
+              if (output.warning != null) output.warning!,
+              rightsWarning,
+            ].join(' '),
+          );
+
     if (!ctx.unlimitedCsvExport &&
         node.type == PipelineNodeType.sinkCsvExport &&
         _cfgString(node.config, 'resultScope', 'all') == 'custom') {
       final limit =
           (_cfgInt(node.config, 'maxRecords') ?? 1000).clamp(1, 1000000);
-      if (output.items!.length > limit) {
+      if (outputWithWarnings.items!.length > limit) {
         return _selectIndexes(
-          output,
+          outputWithWarnings,
           List<int>.generate(limit, (index) => index),
         );
       }
     }
 
-    return output;
+    return outputWithWarnings;
   }
 }

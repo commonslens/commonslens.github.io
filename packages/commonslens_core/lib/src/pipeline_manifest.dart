@@ -25,8 +25,10 @@ ManifestImageLinks manifestImageLinksFromName(String? value) {
 /// When [projectedRecords] is supplied, an upstream Field Select transform
 /// owns the exported schema. Identity and requested download URLs are still
 /// added so every row remains a useful dataset manifest. Otherwise the
-/// selected [metadataLevel] determines the columns, and enrichment-only
-/// fields from [additionalRecords] are retained by the Full preset.
+/// For a pipeline manifest, detailed fields are the baseline and
+/// enrichment-only fields from [additionalRecords] are added automatically.
+/// The [metadataLevel] parameter remains for compatibility with direct export
+/// callers that still request a specific legacy preset.
 List<Map<String, dynamic>> buildManifestRecords(
   List<SearchItem> items, {
   ManifestMetadataLevel metadataLevel = ManifestMetadataLevel.detailed,
@@ -69,7 +71,6 @@ List<Map<String, dynamic>> buildManifestRecords(
     }
 
     if (projected == null &&
-        metadataLevel == ManifestMetadataLevel.full &&
         additionalRecords != null &&
         index < additionalRecords.length) {
       final extras = additionalRecords[index];

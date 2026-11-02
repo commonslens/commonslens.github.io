@@ -1,6 +1,4 @@
 <div align="center">
-  <img src="web/favicon.png" alt="CommonsLens logo" width="96" height="96">
-
   # CommonsLens
 
   **Search, map, inspect, reuse, and export media from Wikimedia Commons.**
@@ -9,18 +7,9 @@
 
   [Open CommonsLens](https://commonslens.github.io/) · [Explore all features](https://commonslens.github.io/features/) · [Terms](https://commonslens.github.io/terms/) · [Privacy](https://commonslens.github.io/privacy/) · [View the source](https://github.com/commonslens/commonslens.github.io)
 
-  [![Deploy Flutter Web](https://github.com/commonslens/commonslens.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/commonslens/commonslens.github.io/actions/workflows/deploy.yml)
 </div>
 
 ---
-
-<!--
-Hero screenshot suggestion:
-1. Save a wide homepage or search-results screenshot as docs/images/commonslens-hero.png
-2. Uncomment the line below.
-
-![CommonsLens search interface](docs/images/commonslens-hero.png)
--->
 
 ## Why CommonsLens?
 
@@ -106,13 +95,6 @@ CommonsLens provides a visual frontend for Wikimedia Commons and CirrusSearch.
 - One-click original-file download.
 - Long-press selection for metadata CSV export.
 - Full asset viewer on click.
-
-<!--
-Search screenshot suggestion:
-Save as docs/images/search-results.png and uncomment:
-
-![CommonsLens search results with active filters](docs/images/search-results.png)
--->
 
 ## Semantic and metadata filters
 
@@ -258,13 +240,6 @@ CommonsLens supports geographic discovery as both a starting point and an extens
 - Open a geographic query in the main Search interface.
 - Open any map file in the full asset viewer without losing map context.
 
-<!--
-Map screenshot suggestion:
-Save as docs/images/map-search.png and uncomment:
-
-![CommonsLens geographic media search](docs/images/map-search.png)
--->
-
 ## Media viewer and metadata
 
 The asset viewer preserves the gallery that opened it, whether the file came from Search, Map, an author portfolio, filtered bookmarks, a pipeline preview, or related media. Viewer URLs identify the selected file and its list context; same-tab queue snapshots also preserve runtime lists across reloads.
@@ -311,13 +286,6 @@ The asset viewer preserves the gallery that opened it, whether the file came fro
 - Global usage across Wikimedia projects and languages.
 - Links to individual pages using the file.
 - Nearby-media discovery for geotagged assets.
-
-<!--
-Viewer screenshot suggestion:
-Save as docs/images/asset-viewer.png and uncomment:
-
-![CommonsLens asset viewer and metadata inspector](docs/images/asset-viewer.png)
--->
 
 ## Reuse and attribution guidance
 
@@ -387,7 +355,7 @@ Each CSV includes fields covering:
 
 The `/pipeline` workspace is a no-code visual ETL and research environment for Wikimedia Commons.
 
-### The 29 available node types
+### The 31 registered node types
 
 | Category | Nodes |
 | --- | --- |
@@ -396,6 +364,9 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 | Set operations | Combine Constraints, Union, Intersect, Difference A−B |
 | Transforms | Dedupe by URL, Sort, Sample/Limit, Field Select, Enrich |
 | Outputs | Dataset Manifest (CSV), Preview, Send to Search |
+
+The current palette exposes 27 node types. Four legacy sink types remain
+readable in older saved graphs so existing pipeline definitions do not break.
 
 ### Graph editor
 
@@ -425,11 +396,13 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 - Materialise collections only when required by a transform, set operation, preview, or export.
 - Run safe topological execution.
 - Show idle, running, successful, warning, and error states per node.
-- Use 20 items per source for preview runs.
-- Use up to 1,000 items per source for ordinary full runs.
-- Generate CSV manifests by following every available continuation page; only
-  Preview and Send to Search use the 1,000-record browser audit window.
-- Keep media-oriented browser outputs at the 1,000-record audit window.
+- Use the first 100 records for a preview run.
+- Keep ordinary media-oriented browser outputs at a 1,000-record-per-source
+  safety cap.
+- Generate CSV manifests by following every available continuation page. A
+  full manifest export is not limited to the browser preview cap.
+- Keep Preview and Send to Search as bounded browser outputs; use the CSV
+  manifest when you need the complete paginated dataset.
 - Report run progress and allow runs to be paused or cancelled.
 - Preserve typed media records alongside projected or enriched export fields.
 - Avoid silently rerunning the graph when exporting the last result.
@@ -448,9 +421,36 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 
 ### Pipeline outputs
 
-- CSV dataset manifests with one selected image URL and Essential, Detailed, or Full metadata presets.
+- CSV dataset manifests with detailed metadata, fields requested by upstream
+  pipeline nodes, and selected image URLs.
+- Dataset Manifest rows start with detailed fields automatically. There are no
+  essential/detailed/full column presets in the pipeline inspector.
+- An upstream Field Select node is the explicit exception: it controls the
+  exported field set, while CommonsLens still keeps row identity and the
+  requested image URLs useful.
+- Rights and attribution metadata is requested by default. Turning it off
+  shows a warning in the preview and CSV because blank licence or attribution
+  fields do not prove that reuse is unrestricted.
+- The manifest can store the original URL, the web-optimized URL, or both;
+  these are links in the CSV, not downloaded media files.
+- An upstream Enrich node that requests rights/attribution metadata keeps the
+  manifest rights request enabled automatically.
 - Browsable preview grid.
 - Transfer the final collection into the main Search result grid.
+
+### Enrichment and manifest rights data
+
+- Enrich is optional and applies to every item that reaches it; there is no
+  per-item enrichment cap. Put Sample/Limit before Enrich when you want a
+  smaller test run.
+- Technical image metadata is selected by default when Enrich is added.
+- Rights & attribution, Structured Data on Commons, and Global Wikimedia usage
+  are optional Enrich bundles.
+- Rights/attribution metadata can require extra Wikimedia metadata requests and
+  may increase run time. The Dataset Manifest request is separate and enabled
+  by default even when no Enrich node is present.
+- A rights or attribution value can still be unavailable for an individual
+  file. The original Commons file page remains the authority for reuse terms.
 
 ### Persistence and portability
 
@@ -462,13 +462,6 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 - Preserve node configuration, position, ports, and connections.
 - Cache Wikimedia query results for one hour.
 - Clear result caches without deleting saved graphs.
-
-<!--
-Pipeline screenshot suggestion:
-Save as docs/images/visual-pipeline.png and uncomment:
-
-![CommonsLens visual Wikimedia data pipeline](docs/images/visual-pipeline.png)
--->
 
 ## Sharing, responsive design, and PWA support
 
@@ -633,21 +626,6 @@ commonslens/
 ├── web/                              # Web shell, manifest, sitemap, icons, fallback HTML
 └── .github/workflows/deploy.yml      # GitHub Pages deployment
 ```
-
-## Adding screenshots later
-
-Suggested image paths are already included as commented Markdown throughout this README. A simple structure is:
-
-```text
-docs/images/
-├── commonslens-hero.png
-├── search-results.png
-├── map-search.png
-├── asset-viewer.png
-└── visual-pipeline.png
-```
-
-After adding an image, find its nearby commented Markdown block in this README and uncomment the image line. Wide screenshots around 1600×900 work well for GitHub, while compressed PNG or WebP files keep the repository lighter.
 
 ## Contributing
 

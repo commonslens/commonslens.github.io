@@ -256,7 +256,7 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
             icon: Icons.info_outline_rounded,
             title: 'Optional enrichment',
             text:
-                'This node is opt-in. It adds extra Wikimedia requests for Structured Data and Global Usage. Leave it out when you only need normal result metadata and image URLs.',
+                'This node is opt-in and applies to every incoming item. It can add technical metadata, rights/attribution metadata, Structured Data, and Global Usage requests.',
           ),
         ],
         const SizedBox(height: 20),
@@ -275,6 +275,8 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
         if (node.type == PipelineNodeType.sinkCsvExport)
           _DatasetManifestConfiguration(
             node: node,
+            attributionFromEnrich:
+                _hasUpstreamAttributionRequest(graph, node.id),
             onChanged: (key, value) => controller.updateNodeConfig(
               node.id,
               {...node.config, key: value},
@@ -459,6 +461,8 @@ class _InspectorPanelState extends ConsumerState<_InspectorPanel> {
                       await controller.run(
                         preview: true,
                         includeThumbnailUrls: true,
+                        includeAttributionMetadata:
+                            controller.attributionMetadataRequestedFor(node.id),
                       );
                       final output = controller.outputFor(node.id);
                       final runError =
@@ -806,12 +810,33 @@ class _ManifestAction extends StatelessWidget {
   }
 }
 
+bool _hasUpstreamAttributionRequest(PipelineGraph graph, String nodeId) {
+  final pending = <String>[nodeId];
+  final visited = <String>{};
+  while (pending.isNotEmpty) {
+    final current = pending.removeLast();
+    if (!visited.add(current)) continue;
+    for (final edge in graph.incomingEdges(current)) {
+      final upstream = graph.nodeById(edge.fromNodeId);
+      if (upstream == null) continue;
+      if (upstream.type == PipelineNodeType.transformEnrich &&
+          upstream.config['attribution'] == true) {
+        return true;
+      }
+      pending.add(upstream.id);
+    }
+  }
+  return false;
+}
+
 class _DatasetManifestConfiguration extends StatelessWidget {
   final PipelineNode node;
+  final bool attributionFromEnrich;
   final void Function(String key, dynamic value) onChanged;
 
   const _DatasetManifestConfiguration({
     required this.node,
+    required this.attributionFromEnrich,
     required this.onChanged,
   });
 
@@ -851,8 +876,10 @@ class _DatasetManifestConfiguration extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metadata = node.config['metadataLevel'] as String? ?? 'detailed';
     final links = node.config['imageLinks'] as String? ?? 'both';
+    final includeAttribution =
+        node.config['includeAttribution'] as bool? ?? true;
+    final rightsEnabled = includeAttribution || attributionFromEnrich;
     final fileName = node.config['fileName'] as String? ?? '';
     final displayFileName = fileName.trim().isEmpty
         ? 'commonslens_manifest'
@@ -863,36 +890,46 @@ class _DatasetManifestConfiguration extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('CSV COLUMNS'),
-        _sectionHelp(
-            'This is not a filter. It decides which columns are written for each image.'),
-        _ManifestChoice(
-          title: _manifestMetadataLabel('essential'),
-          description: _manifestMetadataDescription('essential'),
-          selected: metadata == 'essential',
-          onTap: () => onChanged('metadataLevel', 'essential'),
+        _sectionLabel('RIGHTS & ATTRIBUTION DATA'),
+        Container(
+          decoration: BoxDecoration(
+            color: _kFieldBg,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color:
+                  rightsEnabled ? _kAccent.withValues(alpha: 0.45) : _kBorder,
+            ),
+          ),
+          child: SwitchListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            activeColor: _kAccent,
+            title: const Text(
+              'Fetch rights & attribution metadata',
+              style: TextStyle(color: Colors.white, fontSize: 12.5),
+            ),
+            subtitle: Text(
+              attributionFromEnrich
+                  ? 'Enabled by an upstream Enrich node.'
+                  : 'Checked by default. Pulling this data may increase run time.',
+              style:
+                  const TextStyle(color: _kMuted, fontSize: 10.5, height: 1.35),
+            ),
+            value: rightsEnabled,
+            onChanged: attributionFromEnrich
+                ? null
+                : (value) => onChanged('includeAttribution', value),
+          ),
         ),
-        const SizedBox(height: 7),
-        _ManifestChoice(
-          title: _manifestMetadataLabel('detailed'),
-          description: _manifestMetadataDescription('detailed'),
-          badge: 'RECOMMENDED',
-          selected: metadata == 'detailed',
-          onTap: () => onChanged('metadataLevel', 'detailed'),
-        ),
-        const SizedBox(height: 7),
-        _ManifestChoice(
-          title: _manifestMetadataLabel('full'),
-          description: _manifestMetadataDescription('full'),
-          selected: metadata == 'full',
-          onTap: () => onChanged('metadataLevel', 'full'),
-        ),
-        const SizedBox(height: 8),
-        _ManifestNote(
-          icon: Icons.info_outline_rounded,
-          text:
-              'Full does not create extra API calls by itself. To add Structured Data, global usage, or technical imageinfo, connect an Enrich node first.',
-        ),
+        if (!rightsEnabled) ...[
+          const SizedBox(height: 8),
+          const _ManifestNote(
+            icon: Icons.warning_amber_rounded,
+            warning: true,
+            text:
+                'Rights metadata is disabled. Blank licence or attribution fields do not mean reuse is unrestricted; verify every file on its original Commons page.',
+          ),
+        ],
         const SizedBox(height: 20),
         _sectionLabel('IMAGE LINKS PER ROW'),
         _sectionHelp(
@@ -939,7 +976,6 @@ class _DatasetManifestConfiguration extends StatelessWidget {
 class _ManifestChoice extends StatelessWidget {
   final String title;
   final String description;
-  final String? badge;
   final bool selected;
   final VoidCallback onTap;
 
@@ -948,7 +984,6 @@ class _ManifestChoice extends StatelessWidget {
     required this.description,
     required this.selected,
     required this.onTap,
-    this.badge,
   });
 
   @override
@@ -987,26 +1022,6 @@ class _ManifestChoice extends StatelessWidget {
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w700)),
                       ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 7),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: _kSuccess.withValues(alpha: 0.13),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: Text(
-                            badge!,
-                            style: const TextStyle(
-                              color: _kSuccess,
-                              fontSize: 7.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.35,
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
@@ -1026,27 +1041,35 @@ class _ManifestChoice extends StatelessWidget {
 class _ManifestNote extends StatelessWidget {
   final IconData icon;
   final String text;
+  final bool warning;
 
-  const _ManifestNote({required this.icon, required this.text});
+  const _ManifestNote({
+    required this.icon,
+    required this.text,
+    this.warning = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
-        color: _kFieldBg,
+        color: warning ? const Color(0xFF2A2115) : _kFieldBg,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _kBorder),
+        border: Border.all(color: warning ? const Color(0xFF765C2C) : _kBorder),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 14, color: _kMuted),
+          Icon(icon,
+              size: 14, color: warning ? const Color(0xFFE7B75C) : _kMuted),
           const SizedBox(width: 7),
           Expanded(
             child: Text(text,
-                style:
-                    const TextStyle(color: _kMuted, fontSize: 10, height: 1.4)),
+                style: TextStyle(
+                    color: warning ? const Color(0xFFFFD994) : _kMuted,
+                    fontSize: 10,
+                    height: 1.4)),
           ),
         ],
       ),
@@ -1175,9 +1198,6 @@ class _ConfigFieldWidget extends StatelessWidget {
       'originalDate': 'Originally made / photographed',
       'all': 'Capped at 1,000',
       'custom': 'Custom maximum',
-      'essential': 'Essential',
-      'detailed': 'Detailed',
-      'full': 'Full metadata',
       'original': 'Full-size URL',
       'thumbnail': 'Web-optimized URL',
     };

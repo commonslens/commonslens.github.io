@@ -97,6 +97,7 @@ void main() {
     final transport = _FixtureTransport((uri) async {
       expect(uri.queryParameters['gsrlimit'], '200');
       expect(uri.queryParameters['iilimit'], '200');
+      expect(uri.queryParameters['iiprop'], isNot(contains('extmetadata')));
       return http.Response('''
         {
           "query": {
@@ -122,6 +123,41 @@ void main() {
 
     expect(result, isNotNull);
     expect(result!.items, hasLength(1));
+  });
+
+  test('rights-enabled pipeline profile requests Commons extmetadata',
+      () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['iiprop'], contains('extmetadata'));
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "1": {
+                "title": "File:Rights.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/rights.jpg",
+                  "mime": "image/jpeg",
+                  "extmetadata": {
+                    "Artist": {"value": "Example artist"},
+                    "AttributionRequired": {"value": "true"}
+                  }
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(queryText: 'rights'),
+      continueParams: null,
+      requestProfile: SearchRequestProfile.pipelinePreviewWithRights,
+    );
+
+    expect(result!.items.single.artistHtml, 'Example artist');
+    expect(result.items.single.attributionRequired, 'true');
   });
 
   test('pipeline skips one failed 200-record page and continues', () async {

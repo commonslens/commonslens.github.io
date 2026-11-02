@@ -4,7 +4,7 @@ part of 'pipeline_engine.dart';
 // partial result. The old implementation cached a truncated result after a
 // later continuation page failed; those entries must never satisfy an
 // unlimited CSV run.
-const _pipelineQueryCacheVersion = 'pipeline-query-v5';
+const _pipelineQueryCacheVersion = 'pipeline-query-v6';
 
 int _resumePageSize(
   Map<String, dynamic>? continueToken, {
@@ -172,13 +172,19 @@ mixin _PipelineSourceOperations {
     final requestedLimit = ctx.effectiveMaxItems;
     final geosearchLimit = (requestedLimit ?? 500).clamp(1, 500);
     final result = box != null
-        ? await ctx.backend.geosearch(boundingBox: box, limit: geosearchLimit)
+        ? await ctx.backend.geosearch(
+            boundingBox: box,
+            limit: geosearchLimit,
+            requestProfile: ctx.requestProfile,
+          )
         : (lat != null && lng != null)
             ? await ctx.backend.geosearch(
                 lat: lat,
                 lng: lng,
                 radiusMeters: radiusKm * 1000,
-                limit: geosearchLimit)
+                limit: geosearchLimit,
+                requestProfile: ctx.requestProfile,
+              )
             : null;
 
     if (result == null) {
@@ -332,7 +338,7 @@ Future<NodeOutput> _materializeState(
       totalHits = cached.totalHits;
       complete = cached.complete;
       warnings = cached.warnings.toList();
-      if (ctx.requestProfile == SearchRequestProfile.pipelineEtl &&
+      if (ctx.requestProfile.isPipelineEtl &&
           cached.pageSize != null &&
           cached.pageSize! < targetPageSize &&
           continueToken != null) {

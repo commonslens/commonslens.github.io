@@ -144,8 +144,7 @@ void main() {
     expect(restored.ports.map((port) => port.id), ['a', 'b', 'out']);
   });
 
-  test('Enrich adds bounded SDC and usage records without replacing items',
-      () async {
+  test('Enrich adds SDC and usage records without replacing items', () async {
     final item = SearchItem(
       title: 'File:Example.jpg',
       url: 'https://upload.wikimedia.org/example.jpg',
@@ -172,7 +171,6 @@ void main() {
           config: const {
             'structuredData': true,
             'globalUsage': true,
-            'maxEnrich': 1,
             'usageLimit': 10,
           },
         ),

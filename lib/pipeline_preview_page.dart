@@ -161,6 +161,7 @@ class _PipelinePreviewPageState extends State<PipelinePreviewPage> {
       body: Column(
         children: [
           if (output.warning != null) _WarningBanner(message: output.warning!),
+          const _RightsDisclaimer(),
           Expanded(child: _view == 0 ? _buildGrid() : _buildRawTable()),
         ],
       ),
@@ -245,8 +246,10 @@ class _PipelinePreviewPageState extends State<PipelinePreviewPage> {
   }
 
   String _formatValue(dynamic value) {
-    if (value == null) return 'null';
-    if (value is String) return value.isEmpty ? 'null' : value;
+    if (value == null) return 'Unavailable — verify Commons page';
+    if (value is String) {
+      return value.isEmpty ? 'Unavailable — verify Commons page' : value;
+    }
     if (value is Map || value is List) {
       try {
         return const JsonEncoder.withIndent('  ').convert(value);
@@ -285,11 +288,12 @@ class _PipelinePreviewPageState extends State<PipelinePreviewPage> {
 }
 
 String _compactTableValue(dynamic value) {
-  if (value == null) return 'null';
+  if (value == null) return 'Unavailable — verify Commons page';
   if (value is Map) return '{${value.length} fields}  · tap to inspect';
   if (value is List) return '[${value.length} items]  · tap to inspect';
-  final text =
-      value is String ? (value.isEmpty ? 'null' : value) : value.toString();
+  final text = value is String
+      ? (value.isEmpty ? 'Unavailable — verify Commons page' : value)
+      : value.toString();
   return text.length > 260 ? '${text.substring(0, 257)}…' : text;
 }
 
@@ -405,6 +409,41 @@ class _WarningBanner extends StatelessWidget {
       ),
       child: Text(message,
           style: const TextStyle(color: Colors.amber, fontSize: 11.5)),
+    );
+  }
+}
+
+class _RightsDisclaimer extends StatelessWidget {
+  const _RightsDisclaimer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFF171717),
+        border: Border.all(color: _previewBorder),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.gavel_outlined, color: Color(0xFFE7B75C), size: 15),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Rights reminder: a blank licence, credit, or attribution field does not mean reuse is unrestricted. Verify the original Commons file page and follow its licence terms before reuse.',
+              style: TextStyle(
+                color: Color(0xFFD8C48F),
+                fontSize: 10.5,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

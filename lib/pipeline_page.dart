@@ -230,13 +230,13 @@ String _nodeDescription(PipelineNodeType type) {
     case PipelineNodeType.transformSample:
       return 'Optionally shuffles, then limits the number of incoming items.';
     case PipelineNodeType.transformEnrich:
-      return 'Fetches additional non-extmetadata Wikimedia data for each selected item. Technical imageinfo is batched; structured data and usage are fetched respectfully and cached.';
+      return 'Fetches additional Wikimedia metadata for every incoming item. Technical imageinfo, rights metadata, structured data, and usage are batched and cached.';
     case PipelineNodeType.sinkPreview:
       return 'Materializes the branch so its media can be browsed in the full-screen dataset preview.';
     case PipelineNodeType.sinkSendToSearch:
       return 'Sends this branch to the main search workspace.';
     case PipelineNodeType.sinkCsvExport:
-      return 'The final step: choose which columns and image links each CSV row should contain, then preview or export the matched files.';
+      return 'The final step: export detailed rows plus fields requested by the pipeline, choose image links, then preview or download the CSV.';
     case PipelineNodeType.sinkJsonExport:
     case PipelineNodeType.sinkZipExport:
       return 'Legacy export node. Use Dataset Manifest (CSV) for metadata and media URLs.';
@@ -244,30 +244,6 @@ String _nodeDescription(PipelineNodeType type) {
       return type.category == PipelineNodeCategory.filter
           ? 'Narrows the incoming media set using this filter.'
           : 'Processes the incoming media set at this point in the pipeline.';
-  }
-}
-
-String _manifestMetadataLabel(String? value) {
-  switch (value) {
-    case 'essential':
-      return 'Essential columns';
-    case 'full':
-      return 'Full available columns';
-    case 'detailed':
-    default:
-      return 'Detailed columns';
-  }
-}
-
-String _manifestMetadataDescription(String? value) {
-  switch (value) {
-    case 'essential':
-      return 'Title, Commons URL, format, dimensions, file size, checksum, licence, artist, and attribution.';
-    case 'full':
-      return 'Every field currently present, including Enrich fields. Values unavailable for a file stay blank in its row.';
-    case 'detailed':
-    default:
-      return 'Adds uploader, upload dates, descriptions, credit, categories, assessments, coordinates, and usage terms.';
   }
 }
 
@@ -400,13 +376,14 @@ String _nodeSummary(PipelineNode node) {
     case PipelineNodeType.transformEnrich:
       final enabled = <String>[];
       if (c['imageInfo'] != false) enabled.add('technical metadata');
+      if (c['attribution'] == true) enabled.add('rights & attribution');
       if (c['structuredData'] == true) enabled.add('structured data');
       if (c['globalUsage'] == true) enabled.add('global usage');
-      return '${enabled.join(', ')} · ${c['maxEnrich'] ?? 20} items';
+      return '${enabled.isEmpty ? 'no bundles selected' : enabled.join(', ')} · all items';
     case PipelineNodeType.sinkCsvExport:
-      final metadata = c['metadataLevel'] as String? ?? 'detailed';
       final links = c['imageLinks'] as String? ?? 'both';
-      return '${_manifestMetadataLabel(metadata)} · ${_manifestImageLinksLabel(links)}';
+      final rights = c['includeAttribution'] as bool? ?? true;
+      return 'detailed rows + pipeline fields · ${_manifestImageLinksLabel(links)} · rights ${rights ? 'on' : 'off'}';
     case PipelineNodeType.sinkJsonExport:
     case PipelineNodeType.sinkZipExport:
       return 'Legacy export — CSV only';
@@ -434,12 +411,18 @@ String _nodeSummary(PipelineNode node) {
 /// what the node will do when the pipeline runs.
 String _nodeCanvasBody(PipelineNode node) {
   if (node.type == PipelineNodeType.sinkCsvExport) {
-    final metadata = node.config['metadataLevel'] as String? ?? 'detailed';
     final links = node.config['imageLinks'] as String? ?? 'both';
+    final attribution = node.config['includeAttribution'] as bool? ?? true;
     final fileName = (node.config['fileName'] as String?)?.trim();
+    final linkLabel = switch (links) {
+      'original' => 'original URL',
+      'thumbnail' => 'web URL',
+      _ => 'original + web URL',
+    };
     return [
-      'CSV columns: ${_manifestMetadataLabel(metadata)}',
-      'Image links: ${_manifestImageLinksLabel(links)}',
+      'Rows: detailed + pipeline fields',
+      'Links: $linkLabel',
+      'Rights: ${attribution ? 'on' : 'off'}',
       'File: ${fileName?.isNotEmpty == true ? fileName : 'commonslens_manifest'}.csv',
     ].join('\n');
   }
@@ -825,9 +808,15 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
       return [
         cf(
           key: 'imageInfo',
-          label: 'Technical image metadata (no extmetadata)',
+          label: 'Technical image metadata',
           kind: ConfigFieldKind.bool,
           defaultValue: true,
+        ),
+        cf(
+          key: 'attribution',
+          label: 'Rights & attribution metadata',
+          kind: ConfigFieldKind.bool,
+          defaultValue: false,
         ),
         cf(
           key: 'structuredData',
@@ -840,12 +829,6 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
           label: 'Global Wikimedia usage',
           kind: ConfigFieldKind.bool,
           defaultValue: false,
-        ),
-        cf(
-          key: 'maxEnrich',
-          label: 'Maximum items to enrich',
-          kind: ConfigFieldKind.int,
-          hint: '20',
         ),
         cf(
           key: 'batchSize',
@@ -863,13 +846,6 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
       ];
     case PipelineNodeType.sinkCsvExport:
       return [
-        cf(
-          key: 'metadataLevel',
-          label: 'CSV columns',
-          kind: ConfigFieldKind.dropdown,
-          options: ['detailed', 'essential', 'full'],
-          defaultValue: 'detailed',
-        ),
         cf(
           key: 'imageLinks',
           label: 'Image links per row',
@@ -969,8 +945,7 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
                       style: const TextStyle(
                           color: Colors.white70, fontSize: 11.5)),
                 ),
-                if (!state.preview)
-                  const CommonsLensDownloadSecurityButton(),
+                if (!state.preview) const CommonsLensDownloadSecurityButton(),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   tooltip: state.isPaused ? 'Resume run' : 'Pause run',

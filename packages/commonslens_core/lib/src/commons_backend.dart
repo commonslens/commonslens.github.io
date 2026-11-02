@@ -268,6 +268,7 @@ class CommonsBackend {
     List<double>? boundingBox,
     int limit = SearchService.pageSize,
     Map<String, dynamic>? continueToken,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) async {
     final result = await _service.geosearch(
       lat: lat,
@@ -276,6 +277,7 @@ class CommonsBackend {
       boundingBox: boundingBox,
       limit: limit,
       continueParams: continueToken,
+      includeExtmetadata: requestProfile.includeExtmetadata,
     );
 
     final queryUsed = boundingBox != null

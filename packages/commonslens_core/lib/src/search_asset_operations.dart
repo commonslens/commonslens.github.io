@@ -400,6 +400,7 @@ mixin _SearchAssetOperations {
     List<double>? boundingBox,
     int limit = SearchService.pageSize,
     Map<String, dynamic>? continueParams,
+    bool includeExtmetadata = true,
   }) async {
     final hasCoord = lat != null && lng != null;
     final hasBox = boundingBox != null && boundingBox.length == 4;
@@ -418,7 +419,10 @@ mixin _SearchAssetOperations {
         'coprop': 'type|dim',
         'colimit': '$limit',
         'inprop': 'url',
-        'iiprop': 'url|size|sha1|mime|extmetadata|user',
+        'iiprop': [
+          'url|size|sha1|mime|user',
+          if (includeExtmetadata) 'extmetadata',
+        ].join('|'),
         'iiurlwidth': '320',
       };
 

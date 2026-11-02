@@ -119,6 +119,7 @@ class _DeferredGeoBackend extends CommonsBackend {
     List<double>? boundingBox,
     int limit = 500,
     Map<String, dynamic>? continueToken,
+    SearchRequestProfile requestProfile = SearchRequestProfile.ui,
   }) =>
       request.future;
 }

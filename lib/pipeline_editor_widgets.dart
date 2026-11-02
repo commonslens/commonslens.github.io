@@ -446,7 +446,11 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
                 line,
-                maxLines: 2,
+                // Canvas summaries are deliberately single-line rows. A
+                // wrapped row can become taller after arcane_nodes has
+                // measured the node, which produces a bottom overflow stripe
+                // instead of allowing the node to grow with its contents.
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white,

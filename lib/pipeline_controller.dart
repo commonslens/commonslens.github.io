@@ -329,6 +329,7 @@ class PipelineController extends Notifier<PipelineViewState> {
     bool preview = false,
     bool unlimitedCsvExport = false,
     bool includeThumbnailUrls = true,
+    bool includeAttributionMetadata = true,
   }) async {
     if (state.isRunning) return;
 
@@ -372,9 +373,10 @@ class PipelineController extends Notifier<PipelineViewState> {
       maxItemsPerSource: unlimitedCsvExport ? null : _maxItemsPerSourceForRun(),
       unlimitedCsvExport: unlimitedCsvExport,
       includeThumbnailUrls: includeThumbnailUrls,
-      requestProfile: preview
-          ? SearchRequestProfile.pipelinePreview
-          : SearchRequestProfile.pipelineEtl,
+      requestProfile: _requestProfile(
+        preview: preview,
+        includeAttributionMetadata: includeAttributionMetadata,
+      ),
       preview: preview,
       beforeFetchPage: _waitForFetchPermission,
       onFetchProgress: (fetched, totalHits) {
@@ -410,6 +412,20 @@ class PipelineController extends Notifier<PipelineViewState> {
   /// own unlimited continuation mode and never sends all those records to an
   /// image grid or the main Search page.
   int _maxItemsPerSourceForRun() => 1000;
+
+  SearchRequestProfile _requestProfile({
+    required bool preview,
+    required bool includeAttributionMetadata,
+  }) {
+    if (preview) {
+      return includeAttributionMetadata
+          ? SearchRequestProfile.pipelinePreviewWithRights
+          : SearchRequestProfile.pipelinePreview;
+    }
+    return includeAttributionMetadata
+        ? SearchRequestProfile.pipelineEtlWithRights
+        : SearchRequestProfile.pipelineEtl;
+  }
 
   Future<bool> _waitForFetchPermission() async {
     while (_pauseRequested && !_cancelRequested) {
@@ -480,15 +496,13 @@ class PipelineController extends Notifier<PipelineViewState> {
     final node = state.graph.nodeById(nodeId);
     if (node == null) return 'That manifest node no longer exists.';
 
-    final level =
-        manifestMetadataLevelFromName(node.config['metadataLevel'] as String?);
     final links =
         manifestImageLinksFromName(node.config['imageLinks'] as String?);
     final hasFieldSelect =
         _hasUpstreamType(nodeId, PipelineNodeType.transformFieldSelect);
     final records = buildManifestRecords(
       output.items!,
-      metadataLevel: level,
+      metadataLevel: ManifestMetadataLevel.detailed,
       imageLinks: links,
       projectedRecords: hasFieldSelect ? output.records : null,
       additionalRecords: hasFieldSelect ? null : output.records,
@@ -516,6 +530,7 @@ class PipelineController extends Notifier<PipelineViewState> {
       preview: false,
       unlimitedCsvExport: true,
       includeThumbnailUrls: links != ManifestImageLinks.original,
+      includeAttributionMetadata: attributionMetadataRequestedFor(nodeId),
     );
     if (state.runCancelled) {
       return 'Manifest generation was cancelled; no file was downloaded.';
@@ -536,6 +551,36 @@ class PipelineController extends Notifier<PipelineViewState> {
         final upstream = state.graph.nodeById(edge.fromNodeId);
         if (upstream == null) continue;
         if (upstream.type == type) return true;
+        pending.add(upstream.id);
+      }
+    }
+    return false;
+  }
+
+  /// Rights metadata is enabled by default on a Dataset Manifest. An upstream
+  /// Enrich node that explicitly asks for attribution also forces it on, so a
+  /// user cannot accidentally configure the graph to request rights data and
+  /// then omit it from the manifest run.
+  bool attributionMetadataRequestedFor(String nodeId) {
+    final node = state.graph.nodeById(nodeId);
+    if (node == null) return true;
+    final manifestEnabled = node.config['includeAttribution'] as bool? ?? true;
+    return manifestEnabled || _hasUpstreamAttributionRequest(nodeId);
+  }
+
+  bool _hasUpstreamAttributionRequest(String nodeId) {
+    final pending = <String>[nodeId];
+    final visited = <String>{};
+    while (pending.isNotEmpty) {
+      final current = pending.removeLast();
+      if (!visited.add(current)) continue;
+      for (final edge in state.graph.incomingEdges(current)) {
+        final upstream = state.graph.nodeById(edge.fromNodeId);
+        if (upstream == null) continue;
+        if (upstream.type == PipelineNodeType.transformEnrich &&
+            upstream.config['attribution'] == true) {
+          return true;
+        }
         pending.add(upstream.id);
       }
     }

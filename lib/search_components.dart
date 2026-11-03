@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'search_models.dart';
 import 'search_service.dart';
 import 'media_queue.dart';
@@ -351,8 +352,13 @@ class WikiLogo extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: const Color(0xFF1E1E1E)),
           color: const Color(0xFF141414)),
-      child: const Icon(Icons.perm_media_rounded,
-          size: 26, color: Color(0xFF3D7EFF)),
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: SvgPicture.asset(
+          'assets/branding/commonslens-icon.svg',
+          semanticsLabel: 'CommonsLens',
+        ),
+      ),
     );
   }
 }

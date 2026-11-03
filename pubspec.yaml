@@ -66,6 +66,7 @@ dev_dependencies:
 flutter:
 
   assets:
+    - assets/branding/
     - assets/landing_background/
     - assets/features_media/
     - assets/docs-images/

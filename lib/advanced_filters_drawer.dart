@@ -55,7 +55,7 @@ String _licenseReuseSummary(LicensePreset preset) {
 }
 
 // -----------------------------------------------------------------------------
-// Container: mobile-only Drawer wrapper. Desktop docks FilterPanelContent
+// Container: narrow-screen Drawer wrapper. Desktop docks FilterPanelContent
 // directly into search_page.dart's layout instead of going through a Drawer
 // at all — see SearchPage.build's isDesktop branch. This file used to BE
 // the drawer; now the drawer is just one of two shells around the same
@@ -131,14 +131,19 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   static const double _innerExpandedWidth = 400;
   static const double _collapsedRailWidth = 52;
   static const double _collapsedInnerRailWidth = 32;
+  static const double _mobileBreakpoint = 600;
 
   _FilterGroup _activeGroup = _FilterGroup.imageClassification;
   _FilterGroup _innerGroup = _FilterGroup.imageClassification;
-  // The primary group rail is intentionally always compact. The secondary
-  // panel is the useful part of the filter UI, especially on narrow screens,
-  // so never let the group labels consume its horizontal space.
-  bool get _outerBarExpanded => false;
+  // Desktop/tablet starts with the group labels visible, while mobile keeps
+  // the outer rail icon-only to preserve room for the filter controls.
+  bool _outerBarExpanded = true;
   bool _innerPanelExpanded = false;
+
+  bool get _outerBarCanExpand =>
+      MediaQuery.of(context).size.width >= _mobileBreakpoint;
+
+  bool get _isOuterBarExpanded => _outerBarCanExpand && _outerBarExpanded;
 
   late TextEditingController _minWidthCtrl;
   late TextEditingController _minHeightCtrl;
@@ -161,10 +166,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   @override
   void initState() {
     super.initState();
-    // The docked desktop panel starts compact so it does not take over the
-    // results surface. A mobile Drawer should open straight into the first
-    // useful filter group; otherwise the user sees only two narrow rails and
-    // an apparently empty panel on the first open.
+    // A mobile Drawer should open straight into the first useful filter group;
+    // otherwise the user sees only two narrow rails and an apparently empty
+    // panel on the first open. The outer group rail itself is responsive in
+    // build: desktop/tablet starts expanded, while mobile remains compact.
     _innerPanelExpanded = !widget.docked;
     _seedControllers(ref.read(searchControllerProvider).filterState);
   }
@@ -254,14 +259,15 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
   double get _preferredPanelWidth {
     final outerWidth =
-        _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
+        _isOuterBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
     final innerWidth =
         _innerPanelExpanded ? _innerExpandedWidth : _collapsedInnerRailWidth;
     return outerWidth + innerWidth;
   }
 
   void _toggleOuterBar() {
-    // The primary rail is permanently icon-only by design.
+    if (!_outerBarCanExpand) return;
+    setState(() => _outerBarExpanded = !_outerBarExpanded);
   }
 
   void _toggleInnerPanel() {
@@ -303,7 +309,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   String _groupTitle(_FilterGroup group) {
     switch (group) {
       case _FilterGroup.imageClassification:
-        return 'IMAGE CLASSIFICATION';
+        return 'CLASSIFICATION';
       case _FilterGroup.quality:
         return 'QUALITY';
       case _FilterGroup.license:
@@ -522,7 +528,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
   Widget _buildOuterBar(SearchState state, {required double width}) {
     final groups = _FilterGroup.values;
 
-    if (!_outerBarExpanded) {
+    if (!_isOuterBarExpanded) {
       return Container(
         width: width,
         decoration: const BoxDecoration(
@@ -532,6 +538,12 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         child: Column(
           children: [
             const SizedBox(height: 8),
+            if (_outerBarCanExpand)
+              IconButton(
+                icon: const Icon(Icons.chevron_right, color: Colors.white54),
+                tooltip: 'Expand filter groups',
+                onPressed: _toggleOuterBar,
+              ),
             if (widget.showCloseButton && !_innerPanelExpanded)
               IconButton(
                 icon: const Icon(Icons.close, color: Colors.white54),
@@ -672,7 +684,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         letterSpacing: 1.4,
                         fontWeight: FontWeight.w700)),
               ),
-              if (!widget.showCloseButton)
+              if (_outerBarCanExpand)
                 IconButton(
                   icon: const Icon(Icons.chevron_left,
                       color: Colors.white54, size: 18),
@@ -698,45 +710,48 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         for (final group in groups)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => _selectGroup(group),
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: group == _activeGroup
-                      ? const Color(0xFF182032)
-                      : const Color(0xFF141414),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                      color: group == _activeGroup
-                          ? const Color(0xFF3D7EFF)
-                          : const Color(0xFF252525)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(_groupIcon(group),
-                            size: 16,
-                            color: group == _activeGroup
-                                ? const Color(0xFF7AABFF)
-                                : const Color(0xFF777777)),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(_groupTitle(group),
-                              style: TextStyle(
-                                  color: group == _activeGroup
-                                      ? Colors.white
-                                      : const Color(0xFFAAAAAA),
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ],
-                    ),
-                    _buildGroupSummary(state, group),
-                  ],
+            child: Tooltip(
+              message: _groupTitle(group),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _selectGroup(group),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: group == _activeGroup
+                        ? const Color(0xFF182032)
+                        : const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                        color: group == _activeGroup
+                            ? const Color(0xFF3D7EFF)
+                            : const Color(0xFF252525)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(_groupIcon(group),
+                              size: 16,
+                              color: group == _activeGroup
+                                  ? const Color(0xFF7AABFF)
+                                  : const Color(0xFF777777)),
+                          const SizedBox(width: 7),
+                          Expanded(
+                            child: Text(_groupTitle(group),
+                                style: TextStyle(
+                                    color: group == _activeGroup
+                                        ? Colors.white
+                                        : const Color(0xFFAAAAAA),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                      _buildGroupSummary(state, group),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1196,7 +1211,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             padding: const EdgeInsets.all(20),
             children: [
               if (_innerGroup == _FilterGroup.imageClassification) ...[
-                _sectionDivider('IMAGE CLASSIFICATION'),
+                _sectionDivider('CLASSIFICATION'),
                 const SizedBox(height: 20),
                 GestureDetector(
                   onTap: () => context.push('/browse'),
@@ -1726,7 +1741,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
           if (widget.docked) {
             final requestedOuterWidth =
-                _outerBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
+                _isOuterBarExpanded ? _outerExpandedWidth : _collapsedRailWidth;
             outerWidth = (availableWidth - innerWidth)
                 .clamp(0, requestedOuterWidth)
                 .toDouble();
@@ -1738,7 +1753,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   )
                   .toDouble();
             }
-          } else if (_outerBarExpanded) {
+          } else if (_isOuterBarExpanded) {
             outerWidth = (_innerPanelExpanded
                     ? (availableWidth / 3)
                     : availableWidth - _collapsedInnerRailWidth)

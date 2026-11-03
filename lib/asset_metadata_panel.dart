@@ -21,11 +21,7 @@ class _MetadataInspector extends StatelessWidget {
     required this.onLaunchCommons,
   });
 
-  String _cleanHtml(String html) {
-    if (html.isEmpty) return '';
-    final exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: true);
-    return html.replaceAll(exp, '').trim();
-  }
+  String _cleanHtml(String value) => AssetReuseGuide.plainText(value);
 
   /// Shared section header, used everywhere below instead of one-off
   /// Text+Divider blocks, so every section in the panel reads with the
@@ -165,9 +161,9 @@ class _MetadataInspector extends StatelessWidget {
   }
 
   Widget _buildDescriptionSection() {
-    final snippet = item.snippet.isEmpty ? '' : _cleanHtml(item.snippet);
+    final snippet = _cleanHtml(item.snippet);
     final imageDescription = _cleanHtml(item.imageDescriptionHtml);
-    final objectName = item.objectName.trim();
+    final objectName = _cleanHtml(item.objectName);
 
     final hasAnyDescription = snippet.isNotEmpty ||
         imageDescription.isNotEmpty ||
@@ -204,6 +200,56 @@ class _MetadataInspector extends StatelessWidget {
                 ),
               ),
           ],
+        ],
+      ),
+    );
+  }
+
+  List<String> _categoryList(String rawCategories) {
+    return rawCategories
+        .split(RegExp(r'\s*(?:\||;|\r?\n)\s*'))
+        .map(_cleanHtml)
+        .where((category) => category.isNotEmpty)
+        .toList();
+  }
+
+  Widget _buildCategoriesSection() {
+    final categories = _categoryList(item.categories);
+    if (categories.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'CATEGORIES',
+            style: TextStyle(
+              color: Color(0xFF666666),
+              fontSize: 10,
+              letterSpacing: 1.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: categories.length,
+            separatorBuilder: (context, index) =>
+                const Divider(color: Color(0xFF222222), height: 1),
+            itemBuilder: (context, index) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: SelectableText(
+                categories[index],
+                style: const TextStyle(
+                  color: Color(0xFFE0E0E0),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -251,7 +297,7 @@ class _MetadataInspector extends StatelessWidget {
           _buildPropertyRow('FILE TYPE', item.mime.toUpperCase()),
           _buildPropertyRow('EXTENSION', item.extension.toUpperCase()),
           _buildPropertyRow('DIMENSIONS', dimensions),
-          _buildPropertyRow('CATEGORIES', item.categories.trim()),
+          _buildCategoriesSection(),
           _buildPropertyRow('ASSESSMENTS', item.assessments.trim()),
           _buildPropertyRow('GPS COORDINATES', coordinates),
           _StructuredDataSection(fileTitle: item.title),
@@ -921,7 +967,7 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
               ),
               const SizedBox(height: 14),
               const Text(
-                'LICENSES // REPORTED BY COMMONS',
+                'LICENSES REPORTED BY COMMONS',
                 style: TextStyle(
                   color: _terminalMuted,
                   fontSize: 9.5,
@@ -979,7 +1025,7 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
                 ),
                 const SizedBox(height: 7),
                 const Text(
-                  '// Includes the primary label and structured copyright-license claims. The source page remains authoritative for template-only terms.',
+                  'Includes the primary label and structured copyright-license claims. The source page remains authoritative for template-only terms.',
                   style: TextStyle(
                     color: _terminalMuted,
                     fontSize: 10.5,
@@ -1008,7 +1054,7 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
         ),
         const SizedBox(height: 18),
         const Text(
-          'COPY-READY FORMAT // OUTPUT',
+          'COPY-READY FORMAT',
           style: TextStyle(
             color: _terminalMuted,
             fontSize: 9.5,
@@ -1114,7 +1160,7 @@ class _ReuseSectionState extends ConsumerState<_ReuseSection> {
         ),
         const SizedBox(height: 12),
         const Text(
-          '// Attribution helpers are generated from Wikimedia metadata. Verify the source page and full license before publishing; this is not legal advice.',
+          'Attribution helpers are generated from Wikimedia metadata. Verify the source page and full license before publishing; this is not legal advice.',
           style: TextStyle(
             color: _terminalMuted,
             fontSize: 10.5,

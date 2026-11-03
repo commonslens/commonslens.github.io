@@ -86,11 +86,14 @@ Widget _mobileHost() {
       commonsAutocompleteProvider.overrideWithValue(_FakeAutocomplete()),
     ],
     child: MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          width: 390,
-          height: 800,
-          child: FilterPanelContent(showCloseButton: true),
+      home: MediaQuery(
+        data: const MediaQueryData(size: Size(390, 800)),
+        child: Scaffold(
+          body: SizedBox(
+            width: 390,
+            height: 800,
+            child: FilterPanelContent(showCloseButton: true),
+          ),
         ),
       ),
     ),
@@ -118,9 +121,29 @@ Widget _mobileDrawerHost() {
   );
 }
 
+Widget _tabletHost() {
+  return ProviderScope(
+    overrides: [
+      commonsBackendProvider.overrideWithValue(_FakeBackend()),
+      commonsAutocompleteProvider.overrideWithValue(_FakeAutocomplete()),
+    ],
+    child: MaterialApp(
+      home: MediaQuery(
+        data: const MediaQueryData(size: Size(800, 800)),
+        child: Scaffold(
+          body: SizedBox(
+            width: 420,
+            height: 800,
+            child: FilterPanelContent(showCloseButton: true),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
-  testWidgets(
-      'mobile filter drawer opens image classification with a minimized rail',
+  testWidgets('mobile filter drawer opens classification with a minimized rail',
       (tester) async {
     await tester.pumpWidget(_mobileHost());
     await tester.pumpAndSettle();
@@ -130,12 +153,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('tablet filter drawer starts expanded and can be minimized',
+      (tester) async {
+    await tester.pumpWidget(_tabletHost());
+    await tester.pumpAndSettle();
+
+    expect(find.text('FILTER GROUPS'), findsOneWidget);
+    expect(find.byTooltip('Minimize filter groups'), findsOneWidget);
+    expect(find.byTooltip('Expand filter groups'), findsNothing);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Minimize filter groups'));
+    await tester.pumpAndSettle();
+    expect(find.text('FILTER GROUPS'), findsNothing);
+    expect(find.byTooltip('Expand filter groups'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Expand filter groups'));
+    await tester.pumpAndSettle();
+    expect(find.text('FILTER GROUPS'), findsOneWidget);
+    expect(find.byTooltip('Minimize filter groups'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('autocomplete failures are visible in the filter field',
       (tester) async {
     await tester.pumpWidget(_host(autocomplete: _FailingAutocomplete()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('IMAGE CLASSIFICATION'));
+    await tester.tap(find.byTooltip('CLASSIFICATION'));
     await tester.pumpAndSettle();
 
     final depictsField = find.byWidgetPredicate(
@@ -247,15 +293,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('MORE PAGES'), findsNothing);
-    expect(find.text('Visual ETL pipelines'), findsNothing);
-    expect(find.text('Bookmarks'), findsNothing);
-    expect(find.text('QUALITY'), findsNothing);
-    expect(find.byTooltip('Minimize filter groups'), findsNothing);
+    expect(find.text('MORE PAGES'), findsOneWidget);
+    expect(find.text('Visual ETL pipelines'), findsOneWidget);
+    expect(find.text('Bookmarks'), findsOneWidget);
+    expect(find.text('QUALITY'), findsOneWidget);
+    expect(find.byTooltip('Minimize filter groups'), findsOneWidget);
     expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(find.byTooltip('Minimize feature panel'), findsNothing);
 
-    await tester.tap(find.byTooltip('IMAGE CLASSIFICATION'));
+    await tester.tap(find.byTooltip('CLASSIFICATION'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Minimize feature panel'), findsOneWidget);
 
@@ -280,10 +326,19 @@ void main() {
 
     await tester.tap(find.byTooltip('Minimize feature panel'));
     await tester.pumpAndSettle();
-    expect(find.byTooltip('Expand filter groups'), findsNothing);
+    expect(find.byTooltip('Minimize filter groups'), findsOneWidget);
     expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
+    await tester.tap(find.byTooltip('Minimize filter groups'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Minimize filter groups'), findsNothing);
+    expect(find.byTooltip('Expand filter groups'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Expand filter groups'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Expand feature panel'), findsOneWidget);
     await tester.tap(find.byTooltip('Expand feature panel'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('Minimize feature panel'), findsOneWidget);

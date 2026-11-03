@@ -62,6 +62,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/pipeline',
+      redirect: (context, state) =>
+          (html.window.innerWidth ?? double.infinity) < 600 ? '/' : null,
       builder: (context, state) => const PipelinePage(),
     ),
     GoRoute(

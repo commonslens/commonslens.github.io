@@ -1217,7 +1217,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                         )
                       else
                         const Text(
-                          'CommonsLens is an independent, non-commercial research interface.\nMedia and data are sourced directly from Wikimedia Commons.\nCommonsLens does not make, host, own, license, or claim copyright over displayed content.',
+                          'CommonsLens is an independent, non-commercial research interface. Media and data are sourced directly from Wikimedia Commons. CommonsLens does not make, host, own, license, or claim copyright over displayed content.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey,

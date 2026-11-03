@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'landing_tips.dart';
 import 'legal_pages.dart';
 
 /// The major workspaces that have their own first-visit explanation.
@@ -21,6 +22,7 @@ enum WelcomeArea {
   browseDirectories,
   pipelines,
   bookmarks,
+  assetViewer,
 }
 
 class _WelcomeCopy {
@@ -546,6 +548,16 @@ const _welcomeCopy = <WelcomeArea, _WelcomeCopy>{
     guideLabel: 'Bookmarks guide',
     icon: Icons.bookmark_outline_rounded,
   ),
+  WelcomeArea.assetViewer: _WelcomeCopy(
+    title: 'Welcome to Asset Viewer',
+    description:
+        'Inspect a file at full size while keeping its Commons context close at hand.',
+    nextStep:
+        'Read the metadata and reuse panel, open the original Commons page, then bookmark or download the file when it is ready for your work.',
+    guideSection: 'inspect',
+    guideLabel: 'Viewer guide',
+    icon: Icons.visibility_outlined,
+  ),
 };
 
 /// Tracks first visits in browser-local storage and presents the matching
@@ -555,11 +567,19 @@ class PageWelcome {
 
   static const _storageKey = 'commonslens.visited-pages.v1';
   static const _firstLandingStorageKey = 'commonslens.first-landing-welcome.v1';
+  static const _landingTipVisitStorageKey =
+      'commonslens.landing-tip-visited.v1';
   static final Set<String> _pending = <String>{};
   static final Set<String> _sessionVisited = <String>{};
   static bool _firstLandingShownThisSession = false;
+  static bool _landingTipPending = false;
+  static bool _landingTipVisitRecordedThisSession = false;
 
-  static String _key(WelcomeArea area) => area.name;
+  // The Grid welcome used to be shown on the landing surface before the
+  // result grid was ready. Keep a new key for the result-grid version so users
+  // who encountered that old notice can still get the corrected timing once.
+  static String _key(WelcomeArea area) =>
+      area == WelcomeArea.grid ? 'grid-results' : area.name;
 
   static Set<String> _readVisited() {
     try {
@@ -606,8 +626,8 @@ class PageWelcome {
   }
 
   /// Shows the richer orientation dialog the first time the landing surface
-  /// is actually visible. The Grid visit is marked here so the shorter Grid
-  /// snackbar does not follow immediately after this full introduction.
+  /// is actually visible. The Grid result welcome stays independent so it can
+  /// appear after the first result preview/card is ready.
   static void maybeShowFirstLanding(
     BuildContext context, {
     required VoidCallback onStartSearching,
@@ -629,7 +649,6 @@ class PageWelcome {
       _pending.remove(pendingKey);
       if (!context.mounted || _firstLandingShownThisSession) return;
       _markFirstLandingSeen();
-      _markVisited(WelcomeArea.grid);
       showDialog<void>(
         context: context,
         barrierColor: Colors.black.withValues(alpha: 0.72),
@@ -668,5 +687,142 @@ class PageWelcome {
           ),
         );
     });
+  }
+
+  /// Shows one random, non-persistent tip whenever a fresh landing page is
+  /// initialized after the first visit. Unlike workspace welcomes, tips are
+  /// intentionally shown again on later visits so the feature set stays
+  /// discoverable over time.
+  static void maybeShowLandingTip(BuildContext context) {
+    if (_landingTipPending) return;
+    if (!_markLandingTipVisit()) return;
+    _landingTipPending = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _landingTipPending = false;
+      if (!context.mounted) return;
+
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      if (messenger == null) return;
+
+      try {
+        final tips = await LandingTips.load();
+        if (!context.mounted || tips.isEmpty) return;
+
+        final tip = LandingTips.pickRandom(tips);
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(
+              // The app-wide SnackBarTheme keeps ordinary notices compact;
+              // tips need the full reading width for their longer copy.
+              width: double.infinity,
+              duration: const Duration(seconds: 10),
+              padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+              content: _LandingTipSnackBarContent(
+                tip: tip,
+                onDismiss: () => messenger.hideCurrentSnackBar(),
+              ),
+            ),
+          );
+      } catch (_) {
+        // A missing or malformed optional tip asset should never affect the
+        // landing page itself.
+      }
+    });
+  }
+
+  /// Records that the landing page has been opened, returning whether this
+  /// visit is eligible for a tip. The older first-landing key is accepted as
+  /// proof for people who used CommonsLens before tips were introduced.
+  static bool _markLandingTipVisit() {
+    if (_landingTipVisitRecordedThisSession) return true;
+
+    try {
+      final storage = html.window.localStorage;
+      final alreadyVisited = storage[_landingTipVisitStorageKey] == '1' ||
+          storage[_firstLandingStorageKey] == '1';
+      _landingTipVisitRecordedThisSession = true;
+      if (!alreadyVisited) {
+        storage[_landingTipVisitStorageKey] = '1';
+        return false;
+      }
+      storage[_landingTipVisitStorageKey] = '1';
+      return true;
+    } catch (_) {
+      final alreadyVisited = _landingTipVisitRecordedThisSession;
+      _landingTipVisitRecordedThisSession = true;
+      return alreadyVisited;
+    }
+  }
+}
+
+class _LandingTipSnackBarContent extends StatelessWidget {
+  const _LandingTipSnackBarContent({
+    required this.tip,
+    required this.onDismiss,
+  });
+
+  final LandingTip tip;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.lightbulb_outline_rounded,
+            color: Color(0xFF8EAFFF), size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                tip.title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                tip.message,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11.5,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 5),
+              TextButton(
+                onPressed: () => openDocsSection(tip.guideSection),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF8EAFFF),
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                child: Text(tip.guideLabel),
+              ),
+            ],
+          ),
+        ),
+        IconButton(
+          tooltip: 'Dismiss',
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          icon: const Icon(Icons.close, color: Colors.white54, size: 16),
+          onPressed: onDismiss,
+        ),
+      ],
+    );
   }
 }

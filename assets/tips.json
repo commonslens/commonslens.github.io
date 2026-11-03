@@ -1,0 +1,86 @@
+[
+  {
+    "id": "query-preview",
+    "title": "Tip: inspect the query before you run it",
+    "message": "After a search, open Query preview to see the Wikimedia request assembled from your active filters. It is a quick way to spot an over-specific combination.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Advanced filters guide"
+  },
+  {
+    "id": "share-search-url",
+    "title": "Tip: your search is a shareable recipe",
+    "message": "Search terms, filters, sort order, location, and even Grid or Map view are encoded in the URL. Copy it to share the recipe—not a frozen result list.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
+  },
+  {
+    "id": "map-search-session",
+    "title": "Tip: Map and Grid share one search",
+    "message": "Switching to Map keeps the current query and loaded results. Use Map to discover a nearby point, then return to Grid without rebuilding your search.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "browse-vocabulary",
+    "title": "Tip: Browse is for finding Commons vocabulary",
+    "message": "When ordinary words are not finding the right files, Browse Categories, Templates, or Depicts subjects and apply a result back into Search.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "selection-mode",
+    "title": "Tip: long-press a card to select files",
+    "message": "Long-press a media card to enter selection mode, then add files to the persistent download queue as you browse different views.",
+    "guideSection": "downloads",
+    "guideLabel": "Download guide"
+  },
+  {
+    "id": "queue-is-metadata-only",
+    "title": "Tip: selecting a file does not download it",
+    "message": "The download queue stores public file references only. Media bytes are fetched when you explicitly start a verified ZIP job or an individual download.",
+    "guideSection": "downloads",
+    "guideLabel": "Download guide"
+  },
+  {
+    "id": "lazy-viewer-sections",
+    "title": "Tip: open viewer sections when you need them",
+    "message": "Structured data, related media, and global usage load when expanded. You can inspect the core file details first without requesting every optional panel.",
+    "guideSection": "inspect",
+    "guideLabel": "Viewer guide"
+  },
+  {
+    "id": "copy-attribution",
+    "title": "Tip: start attribution from the viewer",
+    "message": "The How to use this file panel can produce plain text, HTML, or WikiText attribution from the file metadata. Always compare it with the original Commons page before publishing.",
+    "guideSection": "reuse",
+    "guideLabel": "Reuse guide"
+  },
+  {
+    "id": "author-portfolio",
+    "title": "Tip: follow an uploader into a portfolio",
+    "message": "Found one useful file? Open its uploader portfolio to explore that Wikimedia username's other uploads without guessing new search terms.",
+    "guideSection": "author-portfolios",
+    "guideLabel": "Portfolio guide"
+  },
+  {
+    "id": "pipeline-quick-start",
+    "title": "Tip: start pipelines with three nodes",
+    "message": "Try Text Query → Format Filter → Dataset Manifest. Run a preview before exporting, then grow the graph once the simple workflow makes sense.",
+    "guideSection": "pipeline-getting-started",
+    "guideLabel": "Pipeline guide"
+  },
+  {
+    "id": "pipeline-set-operations",
+    "title": "Tip: pipelines can combine branches",
+    "message": "Use set operations to union, intersect, or subtract two media branches. This is useful when one search describes the subject and another describes the constraint.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "request-log",
+    "title": "Tip: check the request log when something feels odd",
+    "message": "The receipt icon in the top-right of the landing page shows the Wikimedia requests CommonsLens made and the status each one returned.",
+    "guideSection": "troubleshooting",
+    "guideLabel": "Troubleshooting guide"
+  }
+]

@@ -219,6 +219,12 @@ class AuthorPortfolioController extends FamilyNotifier<SearchSession, String> {
 
   @override
   SearchSession build(String arg) {
+    if (arg.trim().isEmpty) {
+      // The author page can be opened as a destination from navigation before
+      // a username is known. Keep that state intentionally empty instead of
+      // sending an invalid empty-user request to Wikimedia.
+      return const SearchSession();
+    }
     _engine = AuthorPortfolioSession(
       arg,
       backend: ref.watch(commonsBackendProvider),

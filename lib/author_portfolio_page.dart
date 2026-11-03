@@ -154,6 +154,48 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
   }
 
   Widget _buildBody(SearchSession session) {
+    if (widget.username.trim().isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.person_search_rounded,
+                color: Color(0xFF7AABFF),
+                size: 34,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Search for an author',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Enter a Wikimedia username above to explore that uploader\'s public files.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Color(0xFF9A9A9A),
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const DocsSectionLink(
+                section: 'author-portfolios',
+                label: 'Learn about author portfolios',
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (session.loading && session.items.isEmpty) {
       return const Center(
         child: SizedBox(

@@ -66,6 +66,7 @@ dev_dependencies:
 flutter:
 
   assets:
+    - assets/tips.json
     - assets/branding/
     - assets/landing_background/
     - assets/features_media/

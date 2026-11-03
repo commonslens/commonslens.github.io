@@ -441,7 +441,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   bool _mapHasOpened = false;
   bool _mobileChromeVisible = true;
   bool _focusLandingSearch = false;
-  bool _gridImageWelcomeTriggered = false;
+  bool _gridResultWelcomeTriggered = false;
   double _lastScrollOffset = 0;
 
   // Tracks the query params this page has already "consumed" — either by
@@ -560,7 +560,12 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     _consumeUrlParams(widget.queryParameters);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_showMap) PageWelcome.maybeShow(context, WelcomeArea.map);
+      if (_showMap) {
+        PageWelcome.maybeShow(context, WelcomeArea.map);
+      } else if (_isLandingUrl &&
+          !ref.read(searchControllerProvider).activeSession.hasSearched) {
+        PageWelcome.maybeShowLandingTip(context);
+      }
     });
   }
 
@@ -583,9 +588,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     if (mounted) setState(() => _focusLandingSearch = true);
   }
 
-  void _onFirstGridImageLoaded() {
-    if (!mounted || _gridImageWelcomeTriggered) return;
-    _gridImageWelcomeTriggered = true;
+  void _onFirstGridResultReady() {
+    if (!mounted || _gridResultWelcomeTriggered) return;
+    _gridResultWelcomeTriggered = true;
     PageWelcome.maybeShow(context, WelcomeArea.grid);
   }
 
@@ -1428,7 +1433,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             controller: _scrollController,
             items: session.items,
             loadingMore: session.loadingMore,
-            onFirstImageLoaded: _onFirstGridImageLoaded,
+            onFirstResultReady: _onFirstGridResultReady,
             queueSource:
                 ref.read(searchControllerProvider).externalQueueNodeId == null
                     ? MediaQueueSource.search(filterState)

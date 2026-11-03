@@ -19,6 +19,7 @@ import 'search_controller.dart';
 import 'backend_providers.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
+import 'page_welcome.dart';
 import 'wikimedia_download_client.dart';
 
 part 'asset_media_renderer.dart';
@@ -345,7 +346,10 @@ class _AssetViewerState extends ConsumerState<AssetViewer> {
       _snapshot = ref.read(mediaQueueStoreProvider).get(_queueId, _source);
     }
     _visibleItems = items;
-    if (items.isNotEmpty) _resolvePage(items);
+    if (items.isNotEmpty) {
+      PageWelcome.maybeShow(context, WelcomeArea.assetViewer);
+      _resolvePage(items);
+    }
 
     if (items.isEmpty) {
       return Scaffold(

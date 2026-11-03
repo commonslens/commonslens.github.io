@@ -836,7 +836,7 @@ class MediaResultsGrid extends StatelessWidget {
   final bool folderSelectionMode;
   final Set<String> selectedFolderUrls;
   final ValueChanged<SearchItem>? onFolderSelectionToggle;
-  final VoidCallback? onFirstImageLoaded;
+  final VoidCallback? onFirstResultReady;
 
   const MediaResultsGrid({
     super.key,
@@ -855,7 +855,7 @@ class MediaResultsGrid extends StatelessWidget {
     this.folderSelectionMode = false,
     this.selectedFolderUrls = const <String>{},
     this.onFolderSelectionToggle,
-    this.onFirstImageLoaded,
+    this.onFirstResultReady,
   });
 
   @override
@@ -905,7 +905,7 @@ class MediaResultsGrid extends StatelessWidget {
             folderSelectionMode: folderSelectionMode,
             folderSelected: selectedFolderUrls.contains(item.url),
             onFolderSelectionToggle: onFolderSelectionToggle,
-            onPreviewLoaded: onFirstImageLoaded,
+            onPreviewReady: onFirstResultReady,
           ),
         );
       },
@@ -935,7 +935,7 @@ class MediaCard extends ConsumerStatefulWidget {
   final bool folderSelectionMode;
   final bool folderSelected;
   final ValueChanged<SearchItem>? onFolderSelectionToggle;
-  final VoidCallback? onPreviewLoaded;
+  final VoidCallback? onPreviewReady;
 
   const MediaCard({
     super.key,
@@ -948,7 +948,7 @@ class MediaCard extends ConsumerStatefulWidget {
     this.folderSelectionMode = false,
     this.folderSelected = false,
     this.onFolderSelectionToggle,
-    this.onPreviewLoaded,
+    this.onPreviewReady,
   });
 
   @override
@@ -1071,7 +1071,7 @@ class _MediaCardState extends ConsumerState<MediaCard> {
                     MediaPreview(
                       item: item,
                       index: widget.index,
-                      onImageLoaded: widget.onPreviewLoaded,
+                      onPreviewReady: widget.onPreviewReady,
                     ),
                     Positioned(
                       top: 8,
@@ -1184,13 +1184,13 @@ class _MediaCardState extends ConsumerState<MediaCard> {
 class MediaPreview extends StatefulWidget {
   final SearchItem item;
   final int index;
-  final VoidCallback? onImageLoaded;
+  final VoidCallback? onPreviewReady;
 
   const MediaPreview({
     super.key,
     required this.item,
     required this.index,
-    this.onImageLoaded,
+    this.onPreviewReady,
   });
   @override
   State<MediaPreview> createState() => _MediaPreviewState();
@@ -1200,7 +1200,7 @@ class _MediaPreviewState extends State<MediaPreview> {
   bool _shouldLoad = false;
   int _candidateIndex = 0;
   Timer? _loadTimer;
-  bool _imageReported = false;
+  bool _previewReported = false;
   @override
   void initState() {
     super.initState();
@@ -1228,7 +1228,7 @@ class _MediaPreviewState extends State<MediaPreview> {
     if (oldWidget.item.url != widget.item.url) {
       _candidateIndex = 0;
       _shouldLoad = false;
-      _imageReported = false;
+      _previewReported = false;
       _loadTimer?.cancel();
       final slot = widget.index % 25;
       if (slot == 0) {
@@ -1243,11 +1243,11 @@ class _MediaPreviewState extends State<MediaPreview> {
     }
   }
 
-  void _reportImageLoaded() {
-    if (_imageReported || widget.onImageLoaded == null) return;
-    _imageReported = true;
+  void _reportPreviewReady() {
+    if (_previewReported || widget.onPreviewReady == null) return;
+    _previewReported = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.onImageLoaded!();
+      if (mounted) widget.onPreviewReady!();
     });
   }
 
@@ -1269,9 +1269,15 @@ class _MediaPreviewState extends State<MediaPreview> {
   Widget build(BuildContext context) {
     if (!_shouldLoad) return const PreviewLoading();
     final item = widget.item;
-    if (!_hasRenderableThumb(item)) return PreviewFallback(item: item);
+    if (!_hasRenderableThumb(item)) {
+      // Audio and STL/other 3D files intentionally use a fallback card in the
+      // search grid. They still count as a ready first result for onboarding.
+      _reportPreviewReady();
+      return PreviewFallback(item: item);
+    }
     final candidates = item.previewUrlCandidates(330);
     if (_candidateIndex >= candidates.length) {
+      _reportPreviewReady();
       return PreviewFallback(item: item);
     }
 
@@ -1290,10 +1296,11 @@ class _MediaPreviewState extends State<MediaPreview> {
         });
         return const PreviewLoading();
       }
+      _reportPreviewReady();
       return PreviewFallback(item: item);
     }, loadingBuilder: (context, child, progress) {
       if (progress == null) {
-        _reportImageLoaded();
+        _reportPreviewReady();
         return child;
       }
       return const PreviewLoading();

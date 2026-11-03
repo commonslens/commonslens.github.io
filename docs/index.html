@@ -736,9 +736,30 @@
           </tbody>
         </table>
 
-        <h3>Search separate concepts with <code>+</code></h3>
-        <p>Put spaces around the plus sign to create separate search branches, for example <code>mozart + beethoven</code>. CommonsLens searches each branch and combines the results, removing duplicate files. This is useful when you want one result set containing unrelated concepts. It is not the same as requiring every term to appear in one file, and the plus sign should not be treated as a literal search word.</p>
-        <p>Use ordinary spaces when the words belong to one idea, such as <code>red fox</code>. Use <code>+</code> only when you intentionally want independent branches.</p>
+        <h3 id="text-query-syntax">Use text query syntax</h3>
+        <p>The Search field and the pipeline’s <strong>Text Query</strong> source accept Wikimedia’s CirrusSearch syntax. CommonsLens forwards the query text to Wikimedia, with one CommonsLens-specific exception: spaced <code>+</code> creates separate result branches. The table below covers the most useful actions.</p>
+        <div class="data-table-wrap">
+          <table>
+            <thead><tr><th>Action</th><th>Example</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td>Search ordinary words</td><td><code>red fox</code></td><td>Searches the words as one related query. Use ordinary spaces when the words describe one idea.</td></tr>
+              <tr><td>Match an exact phrase</td><td><code>"red fox"</code></td><td>Looks for the phrase as a phrase. Quotes turn off normal stemming, so this is stricter than an unquoted search.</td></tr>
+              <tr><td>Exclude a word</td><td><code>red fox -dog</code></td><td>Excludes results containing <code>dog</code>. Do not put a space between the minus sign and the term.</td></tr>
+              <tr><td>Exclude an exact phrase</td><td><code>red fox -"domestic dog"</code></td><td>Excludes results containing the phrase <code>domestic dog</code>, without excluding files that merely contain one of those words.</td></tr>
+              <tr><td>Search separate concepts</td><td><code>mozart + beethoven</code></td><td><strong>CommonsLens behavior:</strong> searches each side independently, combines the result sets, and removes duplicate files. Put spaces around <code>+</code>. This is OR-style branching, not a way to require both terms in one file.</td></tr>
+              <tr><td>Use boolean keywords</td><td><code>cat OR dog</code><br><code>cat AND dog</code></td><td>Passes the native CirrusSearch boolean expression through to Wikimedia. Its behavior can vary with special search keywords, so prefer the dedicated filters or CommonsLens <code>+</code> branching when they express your intent more clearly.</td></tr>
+              <tr><td>Search titles</td><td><code>intitle:"Eiffel Tower"</code></td><td>Restricts the text match to file/page titles.</td></tr>
+              <tr><td>Limit the media type</td><td><code>filetype:video</code></td><td>Limits results to a Wikimedia media family, such as <code>video</code>, <code>bitmap</code>, <code>audio</code>, or <code>office</code>.</td></tr>
+              <tr><td>Search a category</td><td><code>incategory:"Architecture"</code></td><td>Finds files directly in the named Commons category. Use the Categories filter when you need the app’s direct or nested category controls.</td></tr>
+              <tr><td>Search a template</td><td><code>hastemplate:"Quality image"</code></td><td>Finds pages/files that use the named Commons template.</td></tr>
+              <tr><td>Search structured data</td><td><code>haswbstatement:P180=Q146</code></td><td>Matches a Wikidata statement; this example searches for files whose Structured Data says they depict Q146.</td></tr>
+              <tr><td>Search raw wikitext</td><td><code>insource:"{{Information"</code><br><code>insource:/pattern/</code></td><td>Searches the file description page’s source text. The quoted form is literal; the slash-delimited form is a regular expression and can be expensive.</td></tr>
+              <tr><td>Use a wildcard</td><td><code>cat*</code></td><td>Matches a word beginning with <code>cat</code> and continuing with zero or more characters. The wildcard cannot begin a word.</td></tr>
+              <tr><td>Use fuzzy or proximity matching</td><td><code>colour~</code><br><code>"red fox"~2</code></td><td>Allows approximate spelling for a word, or up to the specified word distance for a phrase.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>These operators come from <a href="https://www.mediawiki.org/wiki/Help:CirrusSearch">MediaWiki’s CirrusSearch documentation</a>. Commons also explains the practical search options in its <a href="https://commons.wikimedia.org/wiki/Help:Search">search help</a>. Remember that quotes mean an exact phrase, not a general “make this term mandatory” switch; for separate OR-style concepts in CommonsLens, use the spaced <code>+</code> behavior documented above.</p>
 
         <h3>Search using filters without a text phrase</h3>
         <p>You can begin with a media scope, format, or meaningful filter instead of a text query. For example, choose Images and PNG to discover PNG images, or combine a location and date filter for a map-oriented task. If you apply filters and the results look unexpectedly broad, check the active chips and the query preview before adding more conditions.</p>
@@ -1659,7 +1680,7 @@
           <table>
             <thead><tr><th>Node</th><th>Connections</th><th>What it does</th><th>Configure it with</th></tr></thead>
             <tbody>
-              <tr><td><strong>Text Query</strong></td><td><code>0 → 1</code></td><td>Starts a full-text Wikimedia Commons search from the query you type. It is the most general-purpose source and can be followed by query filters.</td><td>Query text, such as a name, phrase, or Commons search expression.</td></tr>
+              <tr><td><strong>Text Query</strong></td><td><code>0 → 1</code></td><td>Starts a full-text Wikimedia Commons search from the query you type. It is the most general-purpose source and can be followed by query filters.</td><td>Query text, such as a name, phrase, or Commons search expression. See the <a href="#text-query-syntax">text query syntax table</a>.</td></tr>
               <tr><td><strong>Category</strong></td><td><code>0 → 1</code></td><td>Finds files assigned to one or more Commons categories. You can require the selected categories together or treat them as alternatives, and optionally include subcategories.</td><td>Category names; Union (OR) instead of AND; Include subcategories.</td></tr>
               <tr><td><strong>Depicted Subject</strong></td><td><code>0 → 1</code></td><td>Finds media whose Structured Data on Commons says it depicts one or more selected subjects. This uses Wikidata Q-codes rather than only matching visible words in a title.</td><td>One or more subject Q-codes; choose whether selected subjects are combined as a union.</td></tr>
               <tr><td><strong>Wikidata Statement</strong></td><td><code>0 → 1</code></td><td>Finds media with selected Wikidata property/value statements. It is useful for structured relationships such as location, creator, depicted entity, or collection identity.</td><td>Property/value Q-code pairs; choose whether selected statements are combined as a union.</td></tr>

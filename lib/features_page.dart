@@ -22,9 +22,9 @@ class FeaturesPage extends StatefulWidget {
     _ShowcaseFeature(
       number: '01',
       eyebrow: 'START WITH THE OPEN WEB',
-      title: 'The world’s visual archive. One clear starting point.',
+      title: 'The world’s largest visual archive. One clear starting point.',
       description:
-          'CommonsLens searches Wikimedia Commons across images, audio, video, documents, vectors, and 3D. Type the thing you want — or the thing you almost remember — and let the archive meet you halfway.',
+          'CommonsLens searches Wikimedia Commons across images, audio, video, documents, vectors, and 3D. Type the thing you want, or the thing you almost remember, and let the archive meet you halfway.',
       points: [
         'Switch media families without rebuilding your search.',
         'Use examples and focused result tabs when the right words are still hiding.',
@@ -35,6 +35,8 @@ class FeaturesPage extends StatefulWidget {
       mediaCredit: 'Diliff · Own work · CC BY-SA 3.0 · Wikimedia Commons',
       sourceUrl:
           'https://commons.wikimedia.org/wiki/File:Glacier_Point_at_Sunset,_Yosemite_NP,_CA,_US_-_Diliff.jpg',
+      icon: Icons.search_rounded,
+      moduleLabel: 'DISCOVERY ENGINE',
       accent: Color(0xFF7AABFF),
       ctaLabel: 'Start exploring',
       route: '/',
@@ -57,13 +59,15 @@ class FeaturesPage extends StatefulWidget {
           'King of Hearts · Own work · CC BY-SA 4.0 · Wikimedia Commons',
       sourceUrl:
           'https://commons.wikimedia.org/wiki/File:Midtown_Manhattan_from_Weehawken_September_2021_HDR.jpg',
+      icon: Icons.tune_rounded,
+      moduleLabel: 'FILTER SYSTEM',
       accent: Color(0xFFB5CF8A),
       ctaLabel: 'See the filters',
       guideSection: 'advanced-filters',
     ),
     _ShowcaseFeature(
       number: '03',
-      eyebrow: 'PLACE MATTERS',
+      eyebrow: "A TIME AND PLACE FOR EVERYTHING",
       title: 'Search by where the story happened.',
       description:
           'Some media only makes sense when you know where it belongs. Put a point on the map, set a radius, or explore geographic context, then move from place to file without losing the thread.',
@@ -76,6 +80,8 @@ class FeaturesPage extends StatefulWidget {
       mediaLabel: 'ISS, August 2005',
       mediaCredit: 'NASA · Public domain · Wikimedia Commons',
       sourceUrl: 'https://commons.wikimedia.org/wiki/File:ISS_Aug2005.jpg',
+      icon: Icons.public_rounded,
+      moduleLabel: 'GEOGRAPHIC CONTEXT',
       accent: Color(0xFFE4A36C),
       ctaLabel: 'Open the map',
       route: '/map',
@@ -93,23 +99,25 @@ class FeaturesPage extends StatefulWidget {
         'Make the reuse decision with evidence, not a guess.',
       ],
       assetPath: 'assets/features_media/monet_bridge.jpg',
-      mediaLabel: "Claude Monet — Le Pont d'Argenteuil",
+      mediaLabel: "Claude Monet: Le Pont d'Argenteuil",
       mediaCredit: 'Pierre André Leclercq · Public domain · Wikimedia Commons',
       sourceUrl:
           "https://commons.wikimedia.org/wiki/File:Claude_Monet.-_Le_Pont_d'Argenteuil.JPG",
+      icon: Icons.auto_stories_outlined,
+      moduleLabel: 'CONTEXT & RIGHTS',
       accent: Color(0xFFD09BE8),
       ctaLabel: 'Learn about reuse',
       guideSection: 'reuse',
     ),
     _ShowcaseFeature(
       number: '05',
-      eyebrow: 'KEEP THE GOOD STUFF',
+      eyebrow: 'MAKE IT YOURS',
       title: 'Collect discoveries before they disappear.',
       description:
           'The best research rarely arrives in one sitting. Bookmark files, arrange them in folders, download what you need, and export the metadata that lets your work travel.',
       points: [
         'Build local collections of references without copying the Commons catalogue.',
-        'Download media separately from CSV metadata and URLs.',
+        'Securely download media separately from CSV metadata and URLs.',
         'Explore an uploader’s portfolio when one good file opens a larger trail.',
       ],
       assetPath: 'assets/features_media/jaws_of_death.jpg',
@@ -118,6 +126,8 @@ class FeaturesPage extends StatefulWidget {
           'CPHoM Robert F. Sargent · Public domain · Wikimedia Commons',
       sourceUrl:
           'https://commons.wikimedia.org/wiki/File:Into_the_Jaws_of_Death_23-0455M_edit.jpg',
+      icon: Icons.bookmark_border_rounded,
+      moduleLabel: 'COLLECTIONS & EXPORT',
       accent: Color(0xFFF0C66D),
       ctaLabel: 'See saved work',
       route: '/bookmarks',
@@ -139,6 +149,8 @@ class FeaturesPage extends StatefulWidget {
       mediaCredit: 'Circli · Own work · CC BY-SA 4.0 · Wikimedia Commons',
       sourceUrl:
           'https://commons.wikimedia.org/wiki/File:DNA_Orbit_Animated_Clean.gif',
+      icon: Icons.account_tree_outlined,
+      moduleLabel: 'REPEATABLE WORKFLOWS',
       accent: Color(0xFF84D3CB),
       ctaLabel: 'Build a pipeline',
       route: '/pipeline',
@@ -183,8 +195,8 @@ class _FeaturesPageState extends State<FeaturesPage>
         (math.max(600.0, MediaQuery.sizeOf(context).height - kToolbarHeight))
             .toDouble();
     final heroHeight = (math.max(
-      isMobile ? 610.0 : 700.0,
-      viewportHeight * 0.88,
+      isMobile ? 780.0 : 760.0,
+      viewportHeight * 0.94,
     )).toDouble();
     final pairHeight = (math.max(
       isMobile ? 620.0 : 680.0,
@@ -237,26 +249,36 @@ class _FeaturesPageState extends State<FeaturesPage>
                   SizedBox(
                     height: heroHeight,
                     width: double.infinity,
-                    child: AnimatedBuilder(
-                      animation: _heroController,
-                      builder: (context, child) {
-                        final progress = Curves.easeOutCubic.transform(
-                          _heroController.value,
-                        );
-                        return Opacity(
-                          opacity: progress,
-                          child: Transform.translate(
-                            offset: Offset(0, 34 * (1 - progress)),
-                            child: child,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        const Positioned.fill(child: _HeroBackdrop()),
+                        AnimatedBuilder(
+                          animation: _heroController,
+                          builder: (context, child) {
+                            final progress = Curves.easeOutCubic.transform(
+                              _heroController.value,
+                            );
+                            return Opacity(
+                              opacity: progress,
+                              child: Transform.translate(
+                                offset: Offset(0, 34 * (1 - progress)),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: Transform.translate(
+                              offset: Offset(0, isMobile ? 12 : 112),
+                              child: SizedBox(
+                                width: heroWidth,
+                                child: _buildHero(context, isMobile),
+                              ),
+                            ),
                           ),
-                        );
-                      },
-                      child: Center(
-                        child: SizedBox(
-                          width: heroWidth,
-                          child: _buildHero(context, isMobile),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   SizedBox(height: isMobile ? 16 : 22),
@@ -298,10 +320,10 @@ class _FeaturesPageState extends State<FeaturesPage>
   Widget _buildHero(BuildContext context, bool isMobile) {
     final titleStyle = TextStyle(
       color: Colors.white,
-      fontSize: isMobile ? 39 : 64,
+      fontSize: isMobile ? 42 : 96,
       height: 0.99,
       fontWeight: FontWeight.w700,
-      letterSpacing: isMobile ? -1.2 : -2.5,
+      letterSpacing: isMobile ? -1.3 : -3.5,
     );
 
     return ConstrainedBox(
@@ -309,33 +331,12 @@ class _FeaturesPageState extends State<FeaturesPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 34,
-                height: 2,
-                color: const Color(0xFF3D7EFF),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'A VISUAL RESEARCH WORKSPACE',
-                style: TextStyle(
-                  color: Color(0xFF8CAFFF),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.8,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isMobile ? 24 : 30),
           Text.rich(
             TextSpan(
               children: [
-                const TextSpan(text: 'Find the image.\n'),
+                const TextSpan(text: 'Research Workbenches\n'),
                 const TextSpan(
-                  text: 'Keep the story.',
+                  text: 'For Wikimedia Commons.',
                   style: TextStyle(color: Color(0xFF8CAFFF)),
                 ),
               ],
@@ -347,10 +348,10 @@ class _FeaturesPageState extends State<FeaturesPage>
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 700),
             child: Text(
-              'CommonsLens helps you move through Wikimedia Commons with more intention — from the first spark of an idea to a find you can understand, save, and use responsibly.',
+              'CommonsLens helps you discover media, map its context, filter it with intent, save what matters, and carry the metadata into your next idea.',
               style: TextStyle(
                 color: const Color(0xFFC4C8D0),
-                fontSize: isMobile ? 15 : 18,
+                fontSize: isMobile ? 17 : 20,
                 height: 1.55,
               ),
               textAlign: TextAlign.center,
@@ -369,25 +370,49 @@ class _FeaturesPageState extends State<FeaturesPage>
                 onPressed: () => context.go('/'),
               ),
               _RouteButton(
-                label: 'Browse the archive',
+                label: 'User Guide',
                 icon: Icons.grid_view_rounded,
                 onPressed: () => context.push('/browse'),
               ),
             ],
           ),
-          SizedBox(height: isMobile ? 28 : 38),
+          SizedBox(height: isMobile ? 22 : 28),
           Wrap(
             alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: const [
-              _HeroSignal(icon: Icons.search_rounded, label: 'Discover'),
-              _HeroSignal(icon: Icons.tune_rounded, label: 'Refine'),
-              _HeroSignal(
-                icon: Icons.auto_stories_outlined,
-                label: 'Understand',
+            spacing: isMobile ? 2 : 6,
+            runSpacing: 2,
+            children: [
+              _HeroNavLink(
+                icon: Icons.search_rounded,
+                label: 'Search',
+                onPressed: () => context.go('/'),
               ),
-              _HeroSignal(icon: Icons.ios_share_rounded, label: 'Reuse'),
+              _HeroNavLink(
+                icon: Icons.grid_view_rounded,
+                label: 'Directory Browse',
+                onPressed: () => context.push('/browse'),
+              ),
+              _HeroNavLink(
+                icon: Icons.bookmark_border_rounded,
+                label: 'Bookmarks',
+                onPressed: () => context.push('/bookmarks'),
+              ),
+              _HeroNavLink(
+                icon: Icons.public_rounded,
+                label: 'Map',
+                onPressed: () => context.push('/map'),
+              ),
+              _HeroNavLink(
+                icon: Icons.person_outline_rounded,
+                label: 'Author Portfolios',
+                onPressed: () => context.push('/author'),
+              ),
+              if (!isMobile)
+                _HeroNavLink(
+                  icon: Icons.account_tree_outlined,
+                  label: 'Pipelines',
+                  onPressed: () => context.push('/pipeline'),
+                ),
             ],
           ),
         ],
@@ -396,46 +421,133 @@ class _FeaturesPageState extends State<FeaturesPage>
   }
 
   Widget _buildShowcaseIntro(bool isMobile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text(
-          'THE SHAPE OF A GOOD FIND',
-          style: TextStyle(
-            color: Color(0xFF73819A),
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.7,
+    final pillars = [
+      const _VisionPillar(
+        icon: Icons.explore_outlined,
+        title: 'Start anywhere',
+        description:
+            'Begin with a phrase, a place, a creator, or a half remembered image. Curiosity is a perfectly good query.',
+      ),
+      const _VisionPillar(
+        icon: Icons.visibility_outlined,
+        title: 'See the whole file',
+        description:
+            'Media is only the beginning. Keep context, rights, source, and metadata close enough to make a confident choice.',
+      ),
+      const _VisionPillar(
+        icon: Icons.route_outlined,
+        title: 'Leave with a trail',
+        description:
+            'Save a reference, follow an author, export the details, or build a workflow that makes the next discovery easier.',
+      ),
+    ];
+
+    return Container(
+      width: double.infinity,
+      color: Colors.black,
+      padding: EdgeInsets.fromLTRB(
+        isMobile ? 22 : 52,
+        isMobile ? 52 : 84,
+        isMobile ? 22 : 52,
+        isMobile ? 58 : 92,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'WHY COMMONSLENS EXISTS',
+            style: TextStyle(
+              color: Color(0xFF8CAFFF),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.9,
+            ),
           ),
-        ),
-        const SizedBox(height: 9),
-        Text(
-          isMobile ? 'Five ways to look closer.' : 'Six ways to look closer.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: isMobile ? 26 : 34,
-            height: 1.05,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.8,
-          ),
-        ),
-        if (!isMobile) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 18),
           ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 560),
+            constraints: const BoxConstraints(maxWidth: 920),
             child: Text(
-              'A quick introduction to the parts of CommonsLens that help an interesting file become a useful one.',
+              'A better way into the open archive.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Color(0xFF8D96A6),
-                fontSize: 13,
+                color: Colors.white,
+                fontSize: isMobile ? 36 : 62,
+                height: 1.02,
+                fontWeight: FontWeight.w700,
+                letterSpacing: isMobile ? -1.1 : -2.2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: Text(
+              'CommonsLens is for the moment when curiosity becomes a question. Search across Wikimedia Commons, follow the context, save the right files, and turn a good find into something you can use.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFFC8D1E0),
+                fontSize: isMobile ? 17 : 21,
+                height: 1.5,
+              ),
+            ),
+          ),
+          SizedBox(height: isMobile ? 48 : 68),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: isMobile
+                ? Column(
+                    children: [
+                      for (var index = 0; index < pillars.length; index++) ...[
+                        pillars[index],
+                        if (index < pillars.length - 1)
+                          const SizedBox(height: 34),
+                      ],
+                    ],
+                  )
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final pillar in pillars) Expanded(child: pillar),
+                    ],
+                  ),
+          ),
+          SizedBox(height: isMobile ? 62 : 86),
+          const Text(
+            'THE SHAPE OF A GOOD FIND',
+            style: TextStyle(
+              color: Color(0xFF8CAFFF),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.7,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            isMobile ? 'Five ways to look closer.' : 'Six ways to look closer.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isMobile ? 29 : 42,
+              height: 1.05,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.1,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: Text(
+              'A closer look at the tools that help an interesting file become a useful one.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: const Color(0xFF8D96A6),
+                fontSize: isMobile ? 14 : 15,
                 height: 1.45,
               ),
             ),
           ),
         ],
-      ],
+      ),
     );
   }
 
@@ -481,6 +593,69 @@ class _FeaturesPageState extends State<FeaturesPage>
   }
 }
 
+class _VisionPillar extends StatelessWidget {
+  const _VisionPillar({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
+
+  final IconData icon;
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF8CAFFF).withValues(alpha: 0.08),
+              border: Border.all(
+                color: const Color(0xFF8CAFFF).withValues(alpha: 0.72),
+              ),
+            ),
+            child: SizedBox(
+              width: 54,
+              height: 54,
+              child: Icon(
+                icon,
+                color: const Color(0xFF8CAFFF),
+                size: 27,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              height: 1.1,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFAEB9CB),
+              fontSize: 15,
+              height: 1.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ShowcaseFeature {
   const _ShowcaseFeature({
     required this.number,
@@ -492,6 +667,8 @@ class _ShowcaseFeature {
     required this.mediaLabel,
     required this.mediaCredit,
     required this.sourceUrl,
+    required this.icon,
+    required this.moduleLabel,
     required this.accent,
     required this.ctaLabel,
     required this.guideSection,
@@ -508,6 +685,8 @@ class _ShowcaseFeature {
   final String mediaLabel;
   final String mediaCredit;
   final String sourceUrl;
+  final IconData icon;
+  final String moduleLabel;
   final Color accent;
   final String ctaLabel;
   final String guideSection;
@@ -589,24 +768,13 @@ class _ShowcaseRowState extends State<_ShowcaseRow> {
 
   @override
   Widget build(BuildContext context) {
-    final mediaTravel = -_signedPosition * (widget.isMobile ? 22.0 : 46.0);
-    final copyTravel = (widget.reversed ? -1.0 : 1.0) *
-        _signedPosition *
-        (widget.isMobile ? 20.0 : 38.0);
-    final scale = 0.975 + (_focus * 0.025);
-    final opacity = 0.72 + (_focus * 0.28);
-
-    final media = Transform.translate(
-      offset: Offset(0, mediaTravel),
-      child: _FeatureMedia(
-        feature: widget.feature,
-        compact: widget.isMobile,
-        fillAvailable: true,
-      ),
+    final media = _FeatureMedia(
+      feature: widget.feature,
+      compact: widget.isMobile,
+      fillAvailable: true,
     );
-    final copy = Transform.translate(
-      offset: Offset(copyTravel, 0),
-      child: _FeatureCopy(
+    final copy = _buildCopyMotion(
+      _FeatureCopy(
         feature: widget.feature,
         compact: widget.isMobile,
       ),
@@ -651,16 +819,89 @@ class _ShowcaseRowState extends State<_ShowcaseRow> {
             ),
           );
 
+    return ColoredBox(
+      color: Colors.black,
+      child: ClipRect(child: scene),
+    );
+  }
+
+  Widget _buildCopyMotion(Widget child) {
+    final horizontalTravel = widget.isMobile ? 20.0 : 38.0;
+    final horizontalDirection = widget.reversed ? -1.0 : 1.0;
+    Widget animatedChild;
+    switch (widget.feature.number) {
+      case '01':
+        animatedChild = Transform.translate(
+          offset: Offset(
+            _signedPosition * horizontalTravel * 1.8 * horizontalDirection,
+            0,
+          ),
+          child: child,
+        );
+      case '02':
+        animatedChild = Transform.translate(
+          offset: Offset(
+            _signedPosition * horizontalTravel * horizontalDirection,
+            _signedPosition * (widget.isMobile ? 34 : 58),
+          ),
+          child: child,
+        );
+      case '03':
+        animatedChild = Transform.rotate(
+          angle: -_signedPosition * 0.022,
+          child: Transform.translate(
+            offset: Offset(
+              -_signedPosition * horizontalTravel * horizontalDirection,
+              0,
+            ),
+            child: child,
+          ),
+        );
+      case '04':
+        animatedChild = Transform.translate(
+          offset: Offset(
+            _signedPosition * horizontalTravel * horizontalDirection,
+            _signedPosition * (widget.isMobile ? 28 : 48),
+          ),
+          child: Transform.scale(
+            scale: 0.93 + (_focus * 0.07),
+            child: child,
+          ),
+        );
+      case '05':
+        animatedChild = Transform.rotate(
+          angle: _signedPosition * 0.018,
+          child: Transform.translate(
+            offset: Offset(
+              _signedPosition * horizontalTravel * horizontalDirection,
+              0,
+            ),
+            child: child,
+          ),
+        );
+      case '06':
+        animatedChild = Transform.translate(
+          offset: Offset(
+            _signedPosition * horizontalTravel * horizontalDirection,
+            -_signedPosition * (widget.isMobile ? 38 : 66),
+          ),
+          child: Transform.scale(
+            scale: 0.94 + (_focus * 0.06),
+            child: child,
+          ),
+        );
+      default:
+        animatedChild = Transform.translate(
+          offset: Offset(
+            _signedPosition * horizontalTravel * horizontalDirection,
+            0,
+          ),
+          child: child,
+        );
+    }
     return Opacity(
-      opacity: opacity,
-      child: Transform.scale(
-        scale: scale,
-        alignment: Alignment.center,
-        child: ColoredBox(
-          color: Colors.black,
-          child: ClipRect(child: scene),
-        ),
-      ),
+      opacity: 0.68 + (_focus * 0.32),
+      child: animatedChild,
     );
   }
 }
@@ -702,19 +943,11 @@ class _FeatureMedia extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: compact ? 14 : 22,
-          left: compact ? 14 : 22,
-          child: _MediaBadge(
-            label: feature.number,
-            accent: feature.accent,
-          ),
-        ),
-        Positioned(
           left: compact ? 14 : 22,
           right: compact ? 14 : 22,
           bottom: compact ? 13 : 22,
           child: Material(
-            color: Colors.black,
+            color: Colors.transparent,
             child: InkWell(
               onTap: _openSource,
               borderRadius: BorderRadius.circular(7),
@@ -732,6 +965,12 @@ class _FeatureMedia extends StatelessWidget {
                         fontSize: compact ? 12 : 14,
                         height: 1.25,
                         fontWeight: FontWeight.w700,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black,
+                            blurRadius: 8,
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -745,6 +984,12 @@ class _FeatureMedia extends StatelessWidget {
                             style: TextStyle(
                               color: const Color(0xFFC1C7D2),
                               fontSize: compact ? 10 : 11,
+                              shadows: const [
+                                Shadow(
+                                  color: Colors.black,
+                                  blurRadius: 7,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -791,17 +1036,58 @@ class _FeatureCopy extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.all(compact ? 22 : 58),
+      padding: EdgeInsets.all(compact ? 28 : 74),
       child: Column(
         crossAxisAlignment:
             compact ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          Row(
+            mainAxisAlignment:
+                compact ? MainAxisAlignment.start : MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: compact ? 44 : 58,
+                height: compact ? 44 : 58,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: feature.accent.withValues(alpha: 0.12),
+                    border: Border.all(
+                      color: feature.accent.withValues(alpha: 0.58),
+                    ),
+                  ),
+                  child: Icon(
+                    feature.icon,
+                    color: feature.accent,
+                    size: compact ? 21 : 28,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Flexible(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      feature.moduleLabel,
+                      style: TextStyle(
+                        color: feature.accent,
+                        fontSize: compact ? 10 : 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 25),
           Text(
             feature.eyebrow,
             style: TextStyle(
               color: feature.accent,
-              fontSize: compact ? 10 : 11,
+              fontSize: compact ? 11 : 12,
               fontWeight: FontWeight.w800,
               letterSpacing: 1.7,
             ),
@@ -812,7 +1098,7 @@ class _FeatureCopy extends StatelessWidget {
             textAlign: compact ? TextAlign.start : TextAlign.center,
             style: TextStyle(
               color: Colors.white,
-              fontSize: compact ? 25 : 42,
+              fontSize: compact ? 29 : 52,
               height: 1.05,
               fontWeight: FontWeight.w700,
               letterSpacing: compact ? -0.6 : -1.2,
@@ -824,7 +1110,7 @@ class _FeatureCopy extends StatelessWidget {
             textAlign: compact ? TextAlign.start : TextAlign.center,
             style: TextStyle(
               color: const Color(0xFFB1B8C5),
-              fontSize: compact ? 14 : 16,
+              fontSize: compact ? 16 : 18,
               height: 1.5,
             ),
           ),
@@ -849,7 +1135,7 @@ class _FeatureCopy extends StatelessWidget {
                       point,
                       style: TextStyle(
                         color: const Color(0xFFD1D5DD),
-                        fontSize: compact ? 12.5 : 13.5,
+                        fontSize: compact ? 14 : 15.5,
                         height: 1.4,
                       ),
                     ),
@@ -1032,66 +1318,29 @@ class _NextStepCopy extends StatelessWidget {
   }
 }
 
-class _MediaBadge extends StatelessWidget {
-  const _MediaBadge({required this.label, required this.accent});
-
-  final String label;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xD90B0D12),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accent.withValues(alpha: 0.6)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: accent,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroSignal extends StatelessWidget {
-  const _HeroSignal({required this.icon, required this.label});
+class _HeroNavLink extends StatelessWidget {
+  const _HeroNavLink({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
 
   final IconData icon;
   final String label;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xFF111722).withValues(alpha: 0.75),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xFF242D3C)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: const Color(0xFF8CAFFF)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Color(0xFFB9C2D1),
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 15),
+      label: Text(label),
+      style: TextButton.styleFrom(
+        foregroundColor: const Color(0xFFD0D7E4),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+        textStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -1105,6 +1354,79 @@ class _FeaturePageBackdrop extends StatelessWidget {
   Widget build(BuildContext context) {
     return const IgnorePointer(
       child: ColoredBox(color: Colors.black),
+    );
+  }
+}
+
+class _HeroBackdrop extends StatelessWidget {
+  const _HeroBackdrop();
+
+  static const _sourceUrl =
+      'https://commons.wikimedia.org/wiki/File:Louvre_Museum_Wikimedia_Commons.jpg';
+
+  Future<void> _openSource() async {
+    final uri = Uri.parse(_sourceUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(
+          'assets/features_media/louvre_museum.jpg',
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          errorBuilder: (context, error, stackTrace) =>
+              const ColoredBox(color: Colors.black),
+        ),
+        IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.48),
+                  Colors.black.withValues(alpha: 0.60),
+                  Colors.black.withValues(alpha: 0.96),
+                ],
+                stops: const [0, 0.48, 1],
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 22,
+          bottom: 16,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _openSource,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                child: Text(
+                  'Louvre Museum · Benh LIEU SONG (Flickr) · CC BY-SA 3.0 · Wikimedia Commons',
+                  style: TextStyle(
+                    color: Color(0xFFD2D7E0),
+                    fontSize: 10,
+                    letterSpacing: 0.15,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black,
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

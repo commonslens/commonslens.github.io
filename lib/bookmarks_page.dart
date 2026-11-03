@@ -8,6 +8,7 @@ import 'media_queue.dart';
 import 'search_components.dart';
 import 'search_models.dart';
 import 'legal_pages.dart';
+import 'page_welcome.dart';
 
 class BookmarksPage extends ConsumerStatefulWidget {
   final String initialQuery;
@@ -35,6 +36,11 @@ class _BookmarksPageState extends ConsumerState<BookmarksPage> {
   void initState() {
     super.initState();
     _selectedFolderId = widget.initialFolderId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        PageWelcome.maybeShow(context, WelcomeArea.bookmarks);
+      }
+    });
   }
 
   @override

@@ -49,6 +49,7 @@ import 'backend_providers.dart';
 import 'autocomplete_request_coordinator.dart';
 import 'pipeline_preview_page.dart';
 import 'legal_pages.dart';
+import 'page_welcome.dart';
 
 part 'pipeline_editor_widgets.dart';
 part 'pipeline_inspector.dart';
@@ -891,15 +892,7 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            "Welcome to pipelines! We've created a default workspace for you. "
-            'Click the folder on the top right to view your pipelines.',
-          ),
-          duration: Duration(seconds: 6),
-        ),
-      );
+      PageWelcome.maybeShow(context, WelcomeArea.pipelines);
     });
   }
 
@@ -916,7 +909,7 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(error ??
             success ??
-            'Export prepared — your download has started.')));
+            'Export prepared: your download has started.')));
   }
 
   Widget _buildRunProgress(

@@ -510,6 +510,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           label: 'Bookmarks',
           onTap: () => context.push('/bookmarks'),
         ),
+        pageButton(
+          icon: Icons.person_search_outlined,
+          label: 'Search by author',
+          onTap: () => context.push('/author'),
+        ),
         const Divider(color: Color(0xFF2A2A2A), height: 20),
         pageButton(
           icon: Icons.auto_awesome_mosaic_outlined,
@@ -554,7 +559,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: groups.length + 7,
+                itemCount: groups.length + 8,
                 itemBuilder: (context, index) {
                   if (index < groups.length) {
                     final group = groups[index];
@@ -596,14 +601,14 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   }
 
                   final pageOffset = index - groups.length;
-                  if (pageOffset == 0 || pageOffset == 3) {
+                  if (pageOffset == 0 || pageOffset == 4) {
                     return const Divider(
                       color: Color(0xFF222222),
                       height: 17,
                     );
                   }
 
-                  if (pageOffset == 6) {
+                  if (pageOffset == 7) {
                     return Tooltip(
                       message: 'API logs',
                       child: InkWell(
@@ -621,8 +626,8 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                   }
 
                   final pageIndex =
-                      pageOffset < 3 ? pageOffset - 1 : pageOffset - 2;
-                  if (pageIndex >= 0 && pageIndex < 4) {
+                      pageOffset < 4 ? pageOffset - 1 : pageOffset - 2;
+                  if (pageIndex >= 0 && pageIndex < 5) {
                     final (label, icon, onTap) = switch (pageIndex) {
                       0 => (
                           'Visual ETL pipelines',
@@ -635,6 +640,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                           () => context.push('/bookmarks'),
                         ),
                       2 => (
+                          'Search by author',
+                          Icons.person_search_outlined,
+                          () => context.push('/author'),
+                        ),
+                      3 => (
                           'All features',
                           Icons.auto_awesome_mosaic_outlined,
                           () => context.push('/features'),

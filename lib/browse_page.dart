@@ -7,6 +7,7 @@ import 'search_models.dart';
 import 'search_url_codec.dart';
 import 'backend_providers.dart';
 import 'legal_pages.dart';
+import 'page_welcome.dart';
 
 void _openSearchWith(
   BuildContext context,
@@ -35,6 +36,11 @@ class _BrowsePageState extends State<BrowsePage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        PageWelcome.maybeShow(context, WelcomeArea.browseDirectories);
+      }
+    });
   }
 
   @override

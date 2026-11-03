@@ -7,6 +7,7 @@ import 'search_controller.dart';
 import 'search_components.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
+import 'page_welcome.dart';
 
 class AuthorPortfolioPage extends ConsumerStatefulWidget {
   final String username;
@@ -27,6 +28,11 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        PageWelcome.maybeShow(context, WelcomeArea.authorPortfolio);
+      }
+    });
   }
 
   @override

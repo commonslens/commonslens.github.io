@@ -15,6 +15,7 @@ import 'search_map_view.dart';
 import 'media_queue.dart';
 import 'legal_pages.dart';
 import 'wikimedia_request_log_view.dart';
+import 'page_welcome.dart';
 
 class _FeatureCard extends StatefulWidget {
   final IconData icon;
@@ -220,7 +221,9 @@ const _landingBackgroundAssets = <_LandingBackgroundAsset>[
 ];
 
 class _LandingBackground extends StatefulWidget {
-  const _LandingBackground();
+  const _LandingBackground({this.onFirstImageLoaded});
+
+  final VoidCallback? onFirstImageLoaded;
 
   @override
   State<_LandingBackground> createState() => _LandingBackgroundState();
@@ -235,6 +238,7 @@ class _LandingBackgroundState extends State<_LandingBackground> {
   final List<_LandingBackgroundAsset> _queue = [];
   _LandingBackgroundAsset? _next;
   bool _motionDisabled = false;
+  bool _firstImageReported = false;
 
   @override
   void initState() {
@@ -322,6 +326,14 @@ class _LandingBackgroundState extends State<_LandingBackground> {
     }
   }
 
+  void _reportFirstImageLoaded() {
+    if (_firstImageReported || widget.onFirstImageLoaded == null) return;
+    _firstImageReported = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onFirstImageLoaded!();
+    });
+  }
+
   @override
   void dispose() {
     _rotationTimer?.cancel();
@@ -356,6 +368,12 @@ class _LandingBackgroundState extends State<_LandingBackground> {
               filterQuality: FilterQuality.low,
               gaplessPlayback: true,
               excludeFromSemantics: true,
+              frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                if (frame != null || wasSynchronouslyLoaded) {
+                  _reportFirstImageLoaded();
+                }
+                return child;
+              },
             ),
           ),
         ),
@@ -422,6 +440,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   bool _showMap = false;
   bool _mapHasOpened = false;
   bool _mobileChromeVisible = true;
+  bool _focusLandingSearch = false;
+  bool _gridImageWelcomeTriggered = false;
   double _lastScrollOffset = 0;
 
   // Tracks the query params this page has already "consumed" — either by
@@ -538,6 +558,35 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     PaintingBinding.instance.imageCache.maximumSize = 80;
     PaintingBinding.instance.imageCache.maximumSizeBytes = 30 << 20;
     _consumeUrlParams(widget.queryParameters);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_showMap) PageWelcome.maybeShow(context, WelcomeArea.map);
+    });
+  }
+
+  bool get _isLandingUrl {
+    final params = Map<String, String>.from(widget.queryParameters)
+      ..remove('view');
+    return params.isEmpty;
+  }
+
+  void _onLandingImageLoaded() {
+    if (!mounted || _showMap || !_isLandingUrl) return;
+    if (ref.read(searchControllerProvider).activeSession.hasSearched) return;
+    PageWelcome.maybeShowFirstLanding(
+      context,
+      onStartSearching: _focusSearchAfterWelcome,
+    );
+  }
+
+  void _focusSearchAfterWelcome() {
+    if (mounted) setState(() => _focusLandingSearch = true);
+  }
+
+  void _onFirstGridImageLoaded() {
+    if (!mounted || _gridImageWelcomeTriggered) return;
+    _gridImageWelcomeTriggered = true;
+    PageWelcome.maybeShow(context, WelcomeArea.grid);
   }
 
   bool _sameParams(Map<String, String> a, Map<String, String>? b) {
@@ -564,6 +613,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         _showMap = requestedMap;
         _mapHasOpened = _mapHasOpened || requestedMap;
       }
+      PageWelcome.maybeShow(
+        context,
+        requestedMap ? WelcomeArea.map : WelcomeArea.grid,
+      );
     }
     final searchParams = Map<String, String>.from(params)..remove('view');
     final currentSearchParams = SearchUrlCodec.toQueryParams(
@@ -658,6 +711,10 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       _mapHasOpened = _mapHasOpened || visible;
     });
     _replaceSearchUrl();
+    PageWelcome.maybeShow(
+      context,
+      visible ? WelcomeArea.map : WelcomeArea.grid,
+    );
   }
 
   void _openMapFromLocation() => _setMapVisible(true);
@@ -1014,7 +1071,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             child: SearchTopBar(
               initialQuery: filterState.queryText,
               onSearch: _search,
-              autofocus: !isMobile,
+              autofocus: !isMobile || _focusLandingSearch,
               showFiltersButton: !isDesktop,
             ),
           )
@@ -1074,7 +1131,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const _LandingBackground(),
+        _LandingBackground(onFirstImageLoaded: _onLandingImageLoaded),
 
         // The Scrollable Content
         LayoutBuilder(
@@ -1371,6 +1428,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             controller: _scrollController,
             items: session.items,
             loadingMore: session.loadingMore,
+            onFirstImageLoaded: _onFirstGridImageLoaded,
             queueSource:
                 ref.read(searchControllerProvider).externalQueueNodeId == null
                     ? MediaQueueSource.search(filterState)

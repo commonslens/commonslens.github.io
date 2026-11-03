@@ -107,6 +107,59 @@ int _idCounter = 0;
 String _newId(String prefix) =>
     '$prefix-${DateTime.now().microsecondsSinceEpoch}-${_idCounter++}';
 
+PipelineGraph _newStarterGraph() {
+  final queryId = _newId('node');
+  final formatFilterId = _newId('node');
+  final manifestId = _newId('node');
+
+  return PipelineGraph(
+    id: _newId('graph'),
+    name: 'Untitled Pipeline',
+    updatedAt: DateTime.now(),
+    nodes: [
+      PipelineNode(
+        id: queryId,
+        type: PipelineNodeType.sourceTextQuery,
+        x: -360,
+        y: -96,
+        config: const {'query': 'Wikipedia'},
+      ),
+      PipelineNode(
+        id: formatFilterId,
+        type: PipelineNodeType.filterFormat,
+        x: 0,
+        y: -96,
+        config: const {
+          'formats': ['png'],
+        },
+      ),
+      PipelineNode(
+        id: manifestId,
+        type: PipelineNodeType.sinkCsvExport,
+        x: 360,
+        y: -96,
+        config: const {'imageLinks': 'both'},
+      ),
+    ],
+    edges: [
+      PipelineEdge(
+        id: _newId('edge'),
+        fromNodeId: queryId,
+        fromPortId: 'out',
+        toNodeId: formatFilterId,
+        toPortId: 'in',
+      ),
+      PipelineEdge(
+        id: _newId('edge'),
+        fromNodeId: formatFilterId,
+        fromPortId: 'out',
+        toNodeId: manifestId,
+        toPortId: 'in',
+      ),
+    ],
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Providers
 // -----------------------------------------------------------------------------
@@ -137,11 +190,7 @@ class PipelineController extends Notifier<PipelineViewState> {
 
   @override
   PipelineViewState build() {
-    final graph = PipelineGraph(
-      id: _newId('graph'),
-      name: 'Untitled Pipeline',
-      updatedAt: DateTime.now(),
-    );
+    final graph = _newStarterGraph();
     // Fire-and-forget — the editor is usable immediately; savedGraphs
     // populates once IndexedDB responds.
     unawaited(Future<void>.microtask(_loadSavedGraphs));
@@ -606,10 +655,7 @@ class PipelineController extends Notifier<PipelineViewState> {
 
   void newGraph() {
     state = PipelineViewState(
-      graph: PipelineGraph(
-          id: _newId('graph'),
-          name: 'Untitled Pipeline',
-          updatedAt: DateTime.now()),
+      graph: _newStarterGraph(),
       savedGraphs: state.savedGraphs,
     );
     _lastOutputs = {};

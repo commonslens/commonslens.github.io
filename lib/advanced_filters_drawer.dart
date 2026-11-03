@@ -605,7 +605,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
 
                   if (pageOffset == 6) {
                     return Tooltip(
-                      message: 'Wikimedia request log',
+                      message: 'API logs',
                       child: InkWell(
                         onTap: () => showWikimediaRequestLog(context),
                         child: const SizedBox(
@@ -772,14 +772,35 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           const Divider(color: Color(0xFF2A2A2A), height: 1),
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Tooltip(
-              message: 'Wikimedia request log',
-              child: IconButton(
-                onPressed: () => showWikimediaRequestLog(context),
-                icon: const Icon(
-                  Icons.receipt_long_outlined,
-                  size: 18,
-                  color: Color(0xFF3D7EFF),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Tooltip(
+                message: 'API logs',
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(6),
+                  onTap: () => showWikimediaRequestLog(context),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 18,
+                          color: Color(0xFF3D7EFF),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'API logs',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),

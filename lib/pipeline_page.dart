@@ -886,6 +886,23 @@ class PipelinePage extends ConsumerStatefulWidget {
 class _PipelinePageState extends ConsumerState<PipelinePage> {
   String? _selectedNodeId;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Welcome to pipelines! We've created a default workspace for you. "
+            'Click the folder on the top right to view your pipelines.',
+          ),
+          duration: Duration(seconds: 6),
+        ),
+      );
+    });
+  }
+
   void _leavePipeline() {
     if (context.canPop()) {
       context.pop();

@@ -1265,8 +1265,9 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Widget _buildLandingOrientationLinks(BuildContext context) {
-    final topLinkStyle = OutlinedButton.styleFrom(
+    final topLinkStyle = TextButton.styleFrom(
       foregroundColor: Colors.grey,
+      iconColor: const Color(0xFF3D7EFF),
       minimumSize: Size.zero,
       padding: const EdgeInsets.symmetric(
         horizontal: 16,
@@ -1284,7 +1285,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            OutlinedButton.icon(
+            TextButton.icon(
               onPressed: () => context.push('/features'),
               icon: const Icon(
                 Icons.auto_awesome_mosaic_outlined,
@@ -1294,10 +1295,17 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               style: topLinkStyle,
             ),
             const SizedBox(width: 12),
-            OutlinedButton.icon(
+            TextButton.icon(
               onPressed: openDocs,
               icon: const Icon(Icons.menu_book_outlined, size: 17),
               label: const Text('Read the user guide'),
+              style: topLinkStyle,
+            ),
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: () => openDocsSection('search'),
+              icon: const Icon(Icons.info_outline_rounded, size: 17),
+              label: const Text('How to Search'),
               style: topLinkStyle,
             ),
           ],

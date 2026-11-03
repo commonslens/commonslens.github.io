@@ -190,8 +190,32 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
     // graph loaded from IndexedDB before this widget existed).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _syncModelToCanvas(null, ref.read(pipelineControllerProvider).graph);
+        final graph = ref.read(pipelineControllerProvider).graph;
+        _syncModelToCanvas(null, graph);
+        _scheduleInitialCenter(graph.id);
       }
+    });
+  }
+
+  /// Node offsets are world coordinates, while the editor starts with its
+  /// viewport centered on the world origin. Recenter after the nodes have had
+  /// a frame to lay out so the starter chain opens in the middle of the grid.
+  /// The graph-id check keeps a stale callback from moving the viewport after
+  /// the user has already opened a different graph.
+  void _scheduleInitialCenter(String graphId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final graph = ref.read(pipelineControllerProvider).graph;
+        if (graph.id != graphId || graph.nodes.isEmpty) return;
+
+        _flController.focusNodesById(graph.nodes
+            .map((node) => _ourNodeIdToFlId[node.id])
+            .whereType<String>()
+            .toSet());
+        _flController.clearSelection(isHandled: true);
+      });
     });
   }
 
@@ -374,6 +398,7 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
   Widget build(BuildContext context) {
     ref.listen(pipelineControllerProvider.select((s) => s.graph), (prev, next) {
       _syncModelToCanvas(prev, next);
+      if (prev?.id != next.id) _scheduleInitialCenter(next.id);
     });
 
     return Stack(

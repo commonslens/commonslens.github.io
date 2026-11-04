@@ -53,11 +53,14 @@ class _AuthorPortfolioPageState extends ConsumerState<AuthorPortfolioPage> {
   void _submitAuthorSearch() {
     final name = _authorCtrl.text.trim();
     if (name.isEmpty || name == widget.username) return;
-    // authorPortfolioProvider is keyed by username, so navigating here just
-    // rebuilds this same page watching a different family instance — no
-    // extra state plumbing needed, GoRouter + Riverpod already do the work.
-    context
-        .go(Uri(path: '/author', queryParameters: {'name': name}).toString());
+    // Keep the portfolio surface in place while changing its username. Using
+    // replace is important when this page was opened from the viewer: the
+    // viewer remains the back destination, while the new author search
+    // replaces this author location instead of looking like a second page was
+    // pushed on top of the empty state.
+    context.replace(
+      Uri(path: '/author', queryParameters: {'name': name}).toString(),
+    );
   }
 
   void _onScroll() {

@@ -82,5 +82,488 @@
     "message": "The receipt icon in the top-right of the landing page shows the Wikimedia requests CommonsLens made and the status each one returned.",
     "guideSection": "troubleshooting",
     "guideLabel": "Troubleshooting guide"
+  },
+  {
+    "id": "plus-search-branches",
+    "title": "Tip: use + to search separate ideas",
+    "message": "Write `mozart + beethoven` with spaces around the plus sign to run two independent searches, merge their results, and remove duplicate files. It is OR-style branching, not a requirement that one file contain both terms.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "exclude-search-term",
+    "title": "Tip: exclude a term with -word",
+    "message": "Use `red fox -dog` to remove results containing dog. Keep the minus sign attached to the term; use `-\"domestic dog\"` when the exclusion is an exact phrase.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "exact-search-phrase",
+    "title": "Tip: quote an exact phrase",
+    "message": "Use quotation marks around a phrase such as `\"red fox\"` when word order matters. Quotes make a stricter phrase search; they are not a general make-this-term-mandatory switch.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "title-search-operator",
+    "title": "Tip: search only file titles",
+    "message": "Try `intitle:\"Eiffel Tower\"` when the phrase must occur in the Commons file or page title instead of anywhere in indexed text.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "filetype-search-operator",
+    "title": "Tip: limit a query with filetype:",
+    "message": "Native operators such as `filetype:video`, `filetype:audio`, `filetype:bitmap`, and `filetype:office` can narrow a text query. The media tabs are often easier when you do not need to type the operator.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "category-search-operator",
+    "title": "Tip: search a known category directly",
+    "message": "Use `incategory:\"Architecture\"` for files directly in a named Commons category. Use the Categories filter when you need the app’s nested-subcategory control.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "template-search-operator",
+    "title": "Tip: find pages using a template",
+    "message": "Use `hastemplate:\"Quality image\"` or another template name to search file pages carrying that template. A template is page metadata, not the same thing as a category.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "structured-data-search",
+    "title": "Tip: search Structured Data with a Q-code",
+    "message": "A query such as `haswbstatement:P180=Q146` searches a Wikidata statement—in this example, files whose Structured Data says they depict a cat. Use Depicts or property filters when you want autocomplete.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "insource-literal",
+    "title": "Tip: search raw description-page text",
+    "message": "Use `insource:\"{{Information\"` to look for literal text in file-page source. This searches wikitext rather than the normal title, description, and category index.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "insource-regex",
+    "title": "Tip: use insource regex sparingly",
+    "message": "Slash-delimited patterns such as `insource:/monument.*historique/` can find flexible wikitext matches, but regular expressions can be expensive. Start with literal text when possible.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "wildcard-search",
+    "title": "Tip: complete a word with a wildcard",
+    "message": "`cat*` matches words beginning with cat and continuing with zero or more characters. The wildcard cannot begin a word, so use it as a suffix rather than `*cat`.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "fuzzy-proximity-search",
+    "title": "Tip: try fuzzy or proximity matching",
+    "message": "Add `~` after a word for approximate spelling, or use a distance such as `\"red fox\"~2` when the words may appear close together rather than as one exact phrase.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "boolean-search-operators",
+    "title": "Tip: know the difference between OR and +",
+    "message": "`cat OR dog` is native CirrusSearch boolean syntax. CommonsLens `cat + dog` is different: it runs independent branches and merges them, which is useful when ordinary boolean grouping would be unclear.",
+    "guideSection": "text-query-syntax",
+    "guideLabel": "Search syntax guide"
+  },
+  {
+    "id": "autocomplete-enter",
+    "title": "Tip: autocomplete is not the full search",
+    "message": "Selecting an autocomplete suggestion opens a direct file-title search. Press Enter instead when you want Wikimedia to search the whole phrase you typed.",
+    "guideSection": "search",
+    "guideLabel": "Search guide"
+  },
+  {
+    "id": "format-chips-any",
+    "title": "Tip: multiple format chips mean any selected format",
+    "message": "Selecting PNG and SVG asks for either format; it does not require one file to be both. Use the media tab as well when you want to limit the broader media family.",
+    "guideSection": "search",
+    "guideLabel": "Search guide"
+  },
+  {
+    "id": "remove-filter-chip",
+    "title": "Tip: remove one active filter from its chip",
+    "message": "Active filters appear as removable chips in the search workspace. Delete the last chip that changed the result set before rebuilding the whole search from scratch.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "filter-intersection-union",
+    "title": "Tip: switch between Intersection and Union",
+    "message": "Use Intersection when one file must satisfy every included subject, category, property, or template. Use Union when any included value is enough; exclusions remain exclusions either way.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "nested-category-warning",
+    "title": "Tip: nested categories can become very broad",
+    "message": "Include nested subcategories uses Commons’ deep-category search and can time out on a broad root. Turn it off or choose narrower categories when results are incomplete or unexpectedly empty.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "original-date-metadata",
+    "title": "Tip: original dates come from file metadata",
+    "message": "Originally made / photographed uses available fields such as DateTimeOriginal, not the upload or page-edit date. Files without a parseable original date cannot satisfy that range.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "attribution-post-filter",
+    "title": "Tip: attribution filtering may happen after search",
+    "message": "Attribution required is based on metadata returned for each file rather than a single CirrusSearch keyword. A broad query may need additional result pages before the requested set is filled.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "quality-and-above",
+    "title": "Tip: Quality and above is a convenience tier",
+    "message": "The Quality filter’s “this tier + above” option groups named Commons assessments in the displayed order. It is a discovery shortcut, not an official numeric quality score.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "filter-only-start",
+    "title": "Tip: you can start with filters only",
+    "message": "You do not need a text phrase first. Choose a media scope, format, license, location, or technical filter to discover files by a requirement rather than a word.",
+    "guideSection": "search",
+    "guideLabel": "Search guide"
+  },
+  {
+    "id": "date-range-boundaries",
+    "title": "Tip: date fields use an open-ended range",
+    "message": "Enter only From for on-or-after, only Before for earlier-than, or both for a bounded range. The date field matters: submitted, edited, and original dates describe different events.",
+    "guideSection": "advanced-filters",
+    "guideLabel": "Filter guide"
+  },
+  {
+    "id": "one-location-mode",
+    "title": "Tip: coordinate and nearby-title searches are alternatives",
+    "message": "A point-and-radius location search clears a competing nearby-title location. If the result set looks geographically wrong, check which location chip is active before adding more filters.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "browse-counts",
+    "title": "Tip: directory counts are vocabulary clues",
+    "message": "Category, template, and subject directories show names and counts to help you choose Commons terminology. A count is a discovery signal, not a guarantee that every item will load into the next search.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "browse-apply-result",
+    "title": "Tip: apply a directory result back to Search",
+    "message": "Select a category, template, or depicted subject in Browse, then use its search action to carry the exact value into the main Search workspace instead of retyping it.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "browse-template-vs-category",
+    "title": "Tip: templates and categories answer different questions",
+    "message": "A category organizes files by topic or collection; a template is metadata attached to a file page. Browse both when an institution, source, or rights workflow is difficult to find with ordinary words.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "browse-depicts-qcode",
+    "title": "Tip: choose the exact Depicts entity",
+    "message": "When Browse or autocomplete offers several labels, choose the Wikidata entity you mean. The stored Q-code is more reliable than relying on a spelling that can refer to several people or places.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "browse-nested-depth",
+    "title": "Tip: broad directory roots are not always practical",
+    "message": "Deep category searches can exceed Commons’ category limits. Narrow the directory term, disable nested mode, or search separate categories when a large root becomes slow.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "browse-vocabulary-then-text",
+    "title": "Tip: use Browse to learn the words, then Search to combine them",
+    "message": "Browse is strongest when you do not know the exact Commons label. Once you find the right category or template, combine it with text, formats, dates, or rights in Search.",
+    "guideSection": "browse",
+    "guideLabel": "Browse guide"
+  },
+  {
+    "id": "map-radius-floor",
+    "title": "Tip: nearby map searches have a 500 m floor",
+    "message": "The map clamps a nearby-search radius to at least 0.5 km, or 500 metres. A smaller value is raised to 500 m, so use the result metadata and map context when you need a tighter visual inspection.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-tap-changes-search",
+    "title": "Tip: tapping the map changes the actual search",
+    "message": "A map tap is not just a pin. It becomes the center of a new nearby-media search, updates the Search state, and carries the location back to Grid.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-pan-does-not-search",
+    "title": "Tip: panning does not change the location filter",
+    "message": "Panning, zooming, and rotating only change the camera. Tap a new point and apply the radius when you want to search a different place.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-clusters",
+    "title": "Tip: open a cluster before choosing a file",
+    "message": "Numbered markers represent several loaded results at the current zoom. Select a cluster to open its file sheet, then choose a file or zoom in for individual markers.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-unmapped-results",
+    "title": "Tip: not every result can become a marker",
+    "message": "Map plots only loaded results with usable coordinates. A file can remain in the result preview without a marker because it has no mappable location metadata.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-load-more",
+    "title": "Tip: load more results to reveal more markers",
+    "message": "Map only knows about the Search results loaded so far. Use Load more or continue scrolling the result preview when the mapped count is smaller than the collection you are exploring.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-layer-attribution",
+    "title": "Tip: open map attribution when you need provider terms",
+    "message": "The layer control cycles through street, satellite, and hybrid presentations. Map attribution remains visible for the selected provider and its terms.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "map-no-device-location",
+    "title": "Tip: Map does not request your live device location",
+    "message": "Map uses coordinates from the URL, filters, or the point you choose on the map. It does not ask for GPS permission or silently use your device location.",
+    "guideSection": "map",
+    "guideLabel": "Map guide"
+  },
+  {
+    "id": "create-bookmark-folder",
+    "title": "Tip: create a folder before collecting a theme",
+    "message": "Open Bookmarks, choose Add folder, and name an album before you start sorting. You can also create a folder from a card’s folder picker while assigning one file.",
+    "guideSection": "bookmarks",
+    "guideLabel": "Bookmarks guide"
+  },
+  {
+    "id": "multiple-bookmark-folders",
+    "title": "Tip: one bookmark can belong to several folders",
+    "message": "Folder membership is separate from the main bookmark collection. Put a file in multiple folders for overlapping projects without duplicating the saved URL.",
+    "guideSection": "bookmarks",
+    "guideLabel": "Bookmarks guide"
+  },
+  {
+    "id": "remove-folder-membership",
+    "title": "Tip: removing a folder is not deleting its files",
+    "message": "Remove a file from one folder to change only that album. Removing the bookmark itself removes it from All Bookmarked Media and every folder.",
+    "guideSection": "bookmarks",
+    "guideLabel": "Bookmarks guide"
+  },
+  {
+    "id": "bookmark-metadata-refresh",
+    "title": "Tip: bookmarks are references, not snapshots",
+    "message": "CommonsLens stores the public file URL and reloads current Wikimedia metadata when you open Bookmarks. Recheck the source page before relying on old rights or attribution details.",
+    "guideSection": "bookmarks",
+    "guideLabel": "Bookmarks guide"
+  },
+  {
+    "id": "bookmark-search-fields",
+    "title": "Tip: search bookmarks by uploader and categories too",
+    "message": "The Bookmarks search field can match loaded title, URL, description, object name, uploader, and category text—not just the visible filename.",
+    "guideSection": "bookmarks",
+    "guideLabel": "Bookmarks guide"
+  },
+  {
+    "id": "bookmark-bulk-folder",
+    "title": "Tip: bulk-assign bookmarked files to folders",
+    "message": "Use Select media to add to a folder from All Bookmarked Media, choose several cards, and add the selection to one or more folders at once.",
+    "guideSection": "bookmarks",
+    "guideLabel": "Bookmarks guide"
+  },
+  {
+    "id": "bookmarks-url-view-only",
+    "title": "Tip: a shared bookmarks URL does not share your folders",
+    "message": "A bookmarks link can preserve the page, search text, and selected folder identifier, but another browser does not receive your local bookmark URLs or folder contents.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
+  },
+  {
+    "id": "author-upload-order",
+    "title": "Tip: portfolio order is upload order",
+    "message": "An author portfolio starts with the uploader’s newest uploads. Newest does not mean the photograph, scan, recording, or depicted event was created most recently.",
+    "guideSection": "author-portfolios",
+    "guideLabel": "Portfolio guide"
+  },
+  {
+    "id": "author-is-uploader",
+    "title": "Tip: uploader and creator can be different people",
+    "message": "A portfolio is keyed to a Wikimedia account. Inspect each file’s creator, source, institution, and license separately before treating the account as the author of the work.",
+    "guideSection": "author-portfolios",
+    "guideLabel": "Portfolio guide"
+  },
+  {
+    "id": "author-count-plus",
+    "title": "Tip: a + after the portfolio count means more pages",
+    "message": "The portfolio count describes items currently loaded. Scroll toward the end to request older uploads while the count still shows a trailing plus.",
+    "guideSection": "author-portfolios",
+    "guideLabel": "Portfolio guide"
+  },
+  {
+    "id": "viewer-keyboard-navigation",
+    "title": "Tip: use the arrow keys in the viewer",
+    "message": "When a file comes from a result queue, Left and Right arrow keys move through neighboring results on desktop. The header shows the current position, such as 3 OF 50.",
+    "guideSection": "inspect",
+    "guideLabel": "Viewer guide"
+  },
+  {
+    "id": "viewer-direct-link",
+    "title": "Tip: direct file links have no surrounding queue",
+    "message": "Opening a viewer URL with only a file identifier shows DIRECT LINK. Add a search, portfolio, bookmarks, map, or pipeline context when you want surrounding navigation.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
+  },
+  {
+    "id": "viewer-image-quality",
+    "title": "Tip: WEB and FULL change the preview, not the license",
+    "message": "For images and vectors, WEB is lighter and FULL is larger when available. The choice affects the displayed URL and is remembered locally; it does not change metadata or reuse terms.",
+    "guideSection": "inspect",
+    "guideLabel": "Viewer guide"
+  },
+  {
+    "id": "viewer-related-media",
+    "title": "Tip: related media is another discovery path",
+    "message": "Expand Related Media in the viewer to follow Wikimedia’s similarity results. Use it to explore neighboring files, then verify each file independently.",
+    "guideSection": "inspect",
+    "guideLabel": "Viewer guide"
+  },
+  {
+    "id": "viewer-no-structured-data",
+    "title": "Tip: an empty Structured Data panel is still information",
+    "message": "No statements means CommonsLens did not receive structured claims to display for that file. It does not prove that the file has no description, license, or useful metadata elsewhere.",
+    "guideSection": "inspect",
+    "guideLabel": "Viewer guide"
+  },
+  {
+    "id": "queue-limit-dedup",
+    "title": "Tip: the queue deduplicates and stops at 500 entries",
+    "message": "Selecting the same canonical media URL from different views reuses one queue item. The browser-local queue accepts up to 500 entries, so split very large collections into deliberate batches.",
+    "guideSection": "downloads",
+    "guideLabel": "Download guide"
+  },
+  {
+    "id": "csv-no-media",
+    "title": "Tip: Export CSV does not fetch media bytes",
+    "message": "CSV export creates a metadata manifest with Wikimedia URLs. Choose Download Original or Download ZIP when you actually need the image, audio, video, or document bytes.",
+    "guideSection": "downloads",
+    "guideLabel": "Download guide"
+  },
+  {
+    "id": "zip-download-parts",
+    "title": "Tip: large ZIP jobs arrive as numbered parts",
+    "message": "CommonsLens rotates ZIP output by entry count and byte budget so a large selection does not require one enormous browser Blob. Check the browser downloads panel for every part.",
+    "guideSection": "downloads",
+    "guideLabel": "Download guide"
+  },
+  {
+    "id": "download-security-rights",
+    "title": "Tip: download validation is not rights clearance",
+    "message": "A file can pass transport, type, size, and integrity checks and still require attribution or have other reuse restrictions. Verify the original Commons source page before publishing.",
+    "guideSection": "download-security",
+    "guideLabel": "Download security"
+  },
+  {
+    "id": "browser-download-permission",
+    "title": "Tip: the browser controls multi-download permission",
+    "message": "A ZIP job or several explicit downloads may trigger the browser’s multiple-download permission. CommonsLens cannot choose your download folder or recall files already handed to the browser.",
+    "guideSection": "downloads",
+    "guideLabel": "Download guide"
+  },
+  {
+    "id": "pipeline-manifest-required",
+    "title": "Tip: a pipeline needs a Dataset Manifest sink",
+    "message": "A graph is not runnable until a Dataset Manifest (CSV) node finishes the branch. Legacy output nodes may still be readable in old graphs but are not the current palette workflow.",
+    "guideSection": "pipeline-getting-started",
+    "guideLabel": "Pipeline guide"
+  },
+  {
+    "id": "pipeline-preview-full",
+    "title": "Tip: Preview 100 records before a full export",
+    "message": "Preview is capped for quick logic checks. Run full export when you need continuation pages and a complete metadata CSV; preview is not proof that a large dataset is exhausted.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "pipeline-and-vs-intersect",
+    "title": "Tip: Combine Constraints and Intersect are different",
+    "message": "Use Combine Constraints (AND) while both branches are query-capable and should become one server-side search. Use Intersect after two branches are already materialized and must be compared by media URL.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "pipeline-field-select",
+    "title": "Tip: Field Select changes export columns, not thumbnails",
+    "message": "Field Select projects the records used for output. It does not remove the underlying media item from the preview or transform the file itself.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "pipeline-enrich-sample",
+    "title": "Tip: put Sample / Limit before Enrich",
+    "message": "Enrich can make extra metadata requests for every incoming item. Put Sample / Limit before it when you want a smaller test run, then enable only the metadata bundles you need.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "pipeline-autosave",
+    "title": "Tip: pipeline edits autosave in this browser",
+    "message": "Node positions, connections, settings, titles, and notes are saved locally as you edit. Rename the graph so it is recognizable in Saved pipelines.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "pipeline-json-recipe",
+    "title": "Tip: pipeline JSON is a recipe, not a result backup",
+    "message": "Export as JSON carries the graph definition, not fetched media, query caches, or a completed CSV. Import it elsewhere, review its usernames and coordinates, then run it there.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
+  },
+  {
+    "id": "pipeline-clear-cache",
+    "title": "Tip: clear pipeline cache without deleting the graph",
+    "message": "The pipeline Clear Cache action removes locally cached query and enrichment results while preserving the saved graph. Use it when you need fresh requests or more browser storage space.",
+    "guideSection": "pipelines",
+    "guideLabel": "Pipeline reference"
+  },
+  {
+    "id": "url-is-recipe-not-snapshot",
+    "title": "Tip: a shared URL is a recipe, not a frozen result list",
+    "message": "Search URLs preserve query text, filters, sort, location, and Map/Grid presentation. The recipient runs a new request, so result order, metadata, and availability can differ later.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
+  },
+  {
+    "id": "local-state-not-shared",
+    "title": "Tip: local bookmarks and pipelines do not travel with a URL",
+    "message": "URLs can restore a view or recipe, but browser-local bookmarks, folders, saved graphs, caches, queues, and viewer preferences need their own export or recreation on another device.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
+  },
+  {
+    "id": "url-sensitive-query",
+    "title": "Tip: treat query URLs as visible data",
+    "message": "Search terms, usernames, categories, coordinates, and filter choices can appear in browser history, messages, screenshots, and logs. Do not put confidential research terms or sensitive locations in a shared URL.",
+    "guideSection": "sharing",
+    "guideLabel": "Sharing guide"
   }
 ]

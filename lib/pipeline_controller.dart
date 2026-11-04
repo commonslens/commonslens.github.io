@@ -215,13 +215,27 @@ class PipelineController extends Notifier<PipelineViewState> {
   // Graph editing — called from the canvas UI's node/edge callbacks.
   // ---------------------------------------------------------------------
 
-  void addNode(PipelineNodeType type, {double x = 0, double y = 0}) {
-    final node = PipelineNode(id: _newId('node'), type: type, x: x, y: y);
+  String addNode(
+    PipelineNodeType type, {
+    double x = 0,
+    double y = 0,
+    String? title,
+    Map<String, dynamic>? config,
+  }) {
+    final node = PipelineNode(
+      id: _newId('node'),
+      type: type,
+      title: title,
+      x: x,
+      y: y,
+      config: config,
+    );
     state = state.copyWith(
       graph: state.graph.copyWith(
           nodes: [...state.graph.nodes, node], updatedAt: DateTime.now()),
     );
     _persist();
+    return node.id;
   }
 
   /// Copies [nodeId]'s type and config (but not its edges — a duplicate

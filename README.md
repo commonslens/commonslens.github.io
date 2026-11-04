@@ -157,6 +157,7 @@ Attribution filtering is applied against returned rights metadata. CommonsLens d
 - Wikimedia content model.
 - Creation-date range.
 - Last-edited-date range.
+- Original media/capture-date range when DateTimeOriginal metadata is available.
 - Minimum and maximum width.
 - Minimum and maximum height.
 - Minimum and maximum file size in KB or MB.
@@ -404,6 +405,10 @@ readable in older saved graphs so existing pipeline definitions do not break.
 - Run safe topological execution.
 - Show idle, running, successful, warning, and error states per node.
 - Use the first 100 records for a preview run.
+- When a preview uses an original-date filter, it checks one fetched result
+  page so the preview stays responsive. It may contain fewer records—or no
+  records—even when later pages contain matches; run the full export to scan
+  additional pages.
 - Keep ordinary media-oriented browser outputs at a 1,000-record-per-source
   safety cap.
 - Generate CSV manifests by following every available continuation page. A

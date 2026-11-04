@@ -28,4 +28,34 @@ void main() {
     expect(find.text('BUILD WORKFLOWS'), findsOneWidget);
     expect(find.text('Build a visual pipeline'), findsOneWidget);
   });
+
+  testWidgets('mobile showcase rows always place images before their copy',
+      (tester) async {
+    await tester.pumpWidget(_host(const Size(390, 844)));
+
+    const featurePairs = [
+      ('assets/features_media/glacier_point.jpg', 'DISCOVERY ENGINE'),
+      ('assets/features_media/midtown_manhattan.jpg', 'FILTER SYSTEM'),
+      ('assets/features_media/iss_aug2005.jpg', 'GEOGRAPHIC CONTEXT'),
+      ('assets/features_media/monet_bridge.jpg', 'CONTEXT & RIGHTS'),
+      ('assets/features_media/jaws_of_death.jpg', 'COLLECTIONS & EXPORT'),
+    ];
+
+    for (final (assetPath, moduleLabel) in featurePairs) {
+      final image = find.byWidgetPredicate(
+        (widget) =>
+            widget is Image &&
+            widget.image is AssetImage &&
+            (widget.image as AssetImage).assetName == assetPath,
+      );
+      final copy = find.text(moduleLabel);
+
+      expect(image, findsOneWidget);
+      expect(copy, findsOneWidget);
+      expect(
+        tester.getTopLeft(image).dy,
+        lessThan(tester.getTopLeft(copy).dy),
+      );
+    }
+  });
 }

@@ -169,6 +169,7 @@ class _PipelineCanvas extends ConsumerStatefulWidget {
 class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
   late final fln.FlNodeEditorController _flController;
   bool _suppressFlEvents = false;
+  final List<String> _copiedOurNodeIds = [];
 
   final Map<String, String> _ourNodeIdToFlId = {};
   final Map<String, String> _flIdToOurNodeId = {};
@@ -221,7 +222,24 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
 
   void _handleAnyFlEvent(fln.NodeEditorEvent event) {
     if (_suppressFlEvents) return;
+    // CopySelectionEvent is not part of arcane_nodes' public exports, but it
+    // still travels through the public event bus. Remember the CommonsLens
+    // nodes represented by the selection so a later paste can restore the
+    // app-side config, not just the canvas rendering.
+    if (event.runtimeType.toString() == 'CopySelectionEvent') {
+      _copiedOurNodeIds
+        ..clear()
+        ..addAll(_flController.selectedNodeIds
+            .map((id) => _flIdToOurNodeId[id])
+            .whereType<String>());
+    }
     _reconcileFromCanvas();
+  }
+
+  void _scheduleSelectionReconcile() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_suppressFlEvents) _reconcileFromCanvas();
+    });
   }
 
   /// Pushes MODEL changes onto the canvas. Diffs by id rather than
@@ -318,6 +336,53 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
     final controller = ref.read(pipelineControllerProvider.notifier);
     final graph = ref.read(pipelineControllerProvider).graph;
 
+    // Ctrl+V is handled inside arcane_nodes. Its new canvas nodes do not
+    // generate a CommonsLens PipelineGraph edit, so adopt any fl_nodes node
+    // that has no mapping yet. The copied model node supplies the config and
+    // title; a paste from an unrelated editor falls back to the node type's
+    // defaults but is still fully selectable in the inspector.
+    final copiedTemplates = <PipelineNodeType, List<PipelineNode>>{};
+    for (final ourId in _copiedOurNodeIds) {
+      final node = graph.nodeById(ourId);
+      if (node != null) {
+        copiedTemplates.putIfAbsent(node.type, () => []).add(node);
+      }
+    }
+    final usedTemplateIds = <String>{};
+    for (final entry in _flController.nodes.entries) {
+      if (_flIdToOurNodeId.containsKey(entry.key)) continue;
+
+      final flNode = entry.value;
+      PipelineNodeType? type;
+      for (final candidate in PipelineNodeType.values) {
+        if (candidate.name == flNode.prototype.idName) {
+          type = candidate;
+          break;
+        }
+      }
+      if (type == null) continue;
+
+      PipelineNode? template;
+      for (final candidate in copiedTemplates[type] ?? const <PipelineNode>[]) {
+        if (usedTemplateIds.add(candidate.id)) {
+          template = candidate;
+          break;
+        }
+      }
+
+      final ourId = controller.addNode(
+        type,
+        x: flNode.offset.dx,
+        y: flNode.offset.dy,
+        title: template?.title,
+        config: template == null
+            ? null
+            : Map<String, dynamic>.from(template.config),
+      );
+      _ourNodeIdToFlId[ourId] = entry.key;
+      _flIdToOurNodeId[entry.key] = ourId;
+    }
+
     // Nodes removed on the canvas (e.g. Delete key / right-click menu).
     for (final ourId in _ourNodeIdToFlId.keys.toList()) {
       final flId = _ourNodeIdToFlId[ourId]!;
@@ -404,10 +469,15 @@ class _PipelineCanvasState extends ConsumerState<_PipelineCanvas> {
     return Stack(
       children: [
         Positioned.fill(
-          child: fln.FlNodeEditorWidget(
-            controller: _flController,
-            overlay: () => const [],
-            fieldBuilder: _buildCanvasField,
+          child: Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (_) => _scheduleSelectionReconcile(),
+            onPointerUp: (_) => _scheduleSelectionReconcile(),
+            child: fln.FlNodeEditorWidget(
+              controller: _flController,
+              overlay: () => const [],
+              fieldBuilder: _buildCanvasField,
+            ),
           ),
         ),
         // arcane_nodes paints a hard-coded red viewport outline in debug

@@ -330,6 +330,8 @@ Future<NodeOutput> _materializeState(
   var warnings = <String>[];
   final targetPageSize = ctx.requestProfile.pageSize;
   var requestPageSize = targetPageSize;
+  final originalDatePreview =
+      ctx.preview && state.originalDate != null && !state.originalDate!.isEmpty;
   if (ctx.cache != null) {
     final cached = await ctx.cache!.getQuerySnapshot(signature);
     if (cached != null) {
@@ -391,6 +393,16 @@ Future<NodeOutput> _materializeState(
     ctx.onFetchProgress?.call(ctx.applyItemLimit(items).length, totalHits);
     if (!result.hasMore) {
       complete = true;
+      continueToken = null;
+      break;
+    }
+    if (originalDatePreview) {
+      // Original capture dates live in per-file metadata, so the preview
+      // cannot know whether later pages contain matches without scanning
+      // them. Keep the interactive preview to one provider page; full ETL
+      // continues normally below this branch.
+      warnings.add(
+          'Original-date filtering is metadata-based; preview checked one result page. Run full export to scan additional pages.');
       continueToken = null;
       break;
     }

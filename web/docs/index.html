@@ -251,6 +251,17 @@
     .section + .section { border-top: 1px solid #1d1d1d; }
     .section-intro { max-width: 790px; margin-bottom: 22px; color: #bfc2c9; font-size: 16px; }
     .section-kicker { margin: 0 0 8px; color: #686d77; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
+    .doc-figure { margin: 28px 0 30px; }
+    .doc-figure img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: var(--panel);
+    }
+    .doc-figure.portrait { max-width: 540px; }
+    .doc-figure figcaption { margin-top: 9px; color: var(--muted); font-size: 12px; line-height: 1.5; }
     .card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
     .card {
       padding: 18px;
@@ -707,6 +718,11 @@
           <div class="card"><h4>Progressive loading</h4><p>Results arrive in pages as you scroll. The number shown is the number currently loaded, and a trailing <code>+</code> means another page may be available.</p></div>
         </div>
 
+        <figure class="doc-figure wide-strip">
+          <img src="../assets/docs-images/searchbar_and_chips.png" width="1341" height="234" loading="lazy" decoding="async" alt="CommonsLens landing search bar with example chips for audio, video, location, SVG, documents, 3D, and GLAM searches">
+          <figcaption>The landing search field and example chips provide quick starting points for common media searches.</figcaption>
+        </figure>
+
         <h3>Step-by-step: run a useful search</h3>
         <ol>
           <li><strong>Describe the thing.</strong> Type a phrase such as <code>red fox</code>, <code>Apollo 11</code>, or <code>DNA helix</code>. Start broad enough to learn the vocabulary in the results.</li>
@@ -809,6 +825,10 @@
 
         <h3>What you see</h3>
         <p>On a wide screen, the filter panel is docked beside Search. On a smaller screen, open it from the Filters control as a drawer. The panel has a group rail and a group-specific editor:</p>
+        <figure class="doc-figure portrait">
+          <img src="../assets/docs-images/filter_sidebar.png" width="607" height="880" loading="lazy" decoding="async" alt="Classification filter panel with fields for depicted subjects, Wikidata properties, categories, nested subcategories, and templates">
+          <figcaption>The Classification panel combines depicted subjects, Wikidata properties, categories, nested categories, and templates.</figcaption>
+        </figure>
         <table>
           <thead><tr><th>Group</th><th>Use it for</th><th>How changes behave</th></tr></thead>
           <tbody>
@@ -844,6 +864,11 @@
           <li><strong>Read the main Search view.</strong> Check the result count, active chips, and query preview after each meaningful change. A filter is only useful if the result set still answers the question.</li>
           <li><strong>Remove or adjust.</strong> Delete an active chip to clear that value, switch Intersection to Union when the set is too narrow, or remove an exclusion when expected files disappear.</li>
         </ol>
+
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/workspace_after_a_search_and_filter.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens search workspace showing the Classification panel with a Smithsonian template filter and statue results">
+          <figcaption>A live search workspace keeps the active filter, result grid, and search state visible together.</figcaption>
+        </figure>
 
         <h3>Classification</h3>
         <p>This group is the most precise way to describe what a file is about when free-text search is too ambiguous.</p>
@@ -912,7 +937,7 @@
           <li>Applying filters rebuilds the search request in your browser and sends the active query and filter values to Wikimedia services. The map group can also open map-provider requests.</li>
           <li>Results, active filter state, and typed-but-not-yet-applied range values live in the current browser session. Applying a filter changes the current search; it does not create a bookmark or upload a dataset.</li>
           <li>The URL can preserve the active filter recipe. It may therefore reveal search terms, selected categories or subjects, dates, license choices, and coordinates when shared.</li>
-          <li>Some controls are applied after Wikimedia returns data. In particular, attribution requirement and original-media dates depend on metadata returned for each result, so the browser may need to inspect more result pages to fill the requested set.</li>
+          <li>Some controls are applied after Wikimedia returns data. In particular, attribution requirement and original-media dates depend on metadata returned for each result. An ordinary search may inspect more result pages to fill the requested set; a pipeline preview intentionally checks one result page to stay responsive, while a full export continues through additional pages.</li>
         </ul>
 
         <h3>Important limitations</h3>
@@ -1076,6 +1101,11 @@
           </tbody>
         </table>
 
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/swiss_alps_map.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Map view showing clustered geotagged media across the Swiss Alps with result cards at right">
+          <figcaption>Map mode clusters geotagged files while keeping their thumbnails available for inspection.</figcaption>
+        </figure>
+
         <h3>Step-by-step: browse an existing search on the map</h3>
         <ol>
           <li><strong>Run or reopen a search.</strong> Search results must exist before Map can plot a useful result set.</li>
@@ -1097,6 +1127,11 @@
         </ol>
 
         <p>A map tap replaces the previous coordinate search and clears a competing nearby-title location if one was present. Panning, zooming, and rotating only change what you see; they do not change the search location until you tap a new point.</p>
+
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/maps_to_search.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Map view showing a five-kilometre search circle over Los Angeles with result cards at right">
+          <figcaption>A map-radius search writes its location back into the active search while the result grid remains available.</figcaption>
+        </figure>
 
 
         <h3>Change the map layer</h3>
@@ -1172,6 +1207,11 @@
           </tbody>
         </table>
 
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/image_asset_viewer.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Asset Viewer showing a full-size car image, result position, related media, guide, and bookmark controls">
+          <figcaption>The Asset Viewer combines the full-size preview, result position, related media, and verification actions.</figcaption>
+        </figure>
+
         <h3>Step-by-step: verify a file</h3>
         <ol>
           <li><strong>Start with the title.</strong> Confirm the file name and read the description or object name. A search snippet is context, not necessarily the complete description.</li>
@@ -1205,6 +1245,11 @@
           </tbody>
         </table>
         <p>The WEB/FULL choice affects the image or vector displayed in the viewer, not the file’s license or the metadata. The viewer remembers that preference locally for future viewer sessions when browser storage is available.</p>
+
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/3d_mesh.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens 3D viewer showing an Aston Martin STL model with wireframe controls and a metadata panel">
+          <figcaption>3D files open in an interactive viewer with model controls, technical statistics, and reuse information.</figcaption>
+        </figure>
 
         <h3>Read the metadata without over-trusting it</h3>
         <div class="card-grid">
@@ -1397,6 +1442,11 @@
           </tbody>
         </table>
 
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/bookmarks.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Bookmarks page showing bookmark folders and a grid of saved media with bookmark, folder, and download controls">
+          <figcaption>Bookmarks organizes saved files into local folders with search, selection, and download actions.</figcaption>
+        </figure>
+
         <h3>Step-by-step: save a file</h3>
         <ol>
           <li><strong>Find a result.</strong> Search, browse a map, open a portfolio, or inspect a file in the viewer.</li>
@@ -1488,6 +1538,11 @@
           </tbody>
         </table>
 
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/author_portfolio.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Author Portfolio for Haaber~commonswiki showing 22 uploads in a media grid">
+          <figcaption>An uploader portfolio displays public uploads in a browsable media grid.</figcaption>
+        </figure>
+
         <h3>How the portfolio is ordered</h3>
         <p>CommonsLens asks Wikimedia for the username’s upload list, then loads the metadata and preview information needed for the grid. The first page starts with the newest uploads and later pages continue through older uploads. “Newest” refers to upload time, not necessarily the date the photograph, scan, recording, or document was created.</p>
 
@@ -1546,6 +1601,11 @@
           <li>Clear removes an idle queue. Minimize only collapses the tray into a floating button; it does not remove the selection or stop a job.</li>
           <li>Cancel stops an active ZIP job, prevents the current incomplete part from being emitted, and clears the queue. ZIP parts already handed to the browser cannot be recalled.</li>
         </ul>
+
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/downloading_from_grid.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens search grid with eight selected NASA files and the expanded download queue offering Minimize, Clear, CSV, and ZIP">
+          <figcaption>Selected files populate the download queue, where metadata CSV and verified ZIP downloads can be chosen.</figcaption>
+        </figure>
 
         <h3>Choose the right output</h3>
         <div class="card-grid">
@@ -1635,6 +1695,11 @@
         <p>Start with one source node, connect it to the condition or transformation you need, and finish with a preview or Dataset Manifest output. Read the graph from left to right: sources create media sets, filters narrow them, set operations combine branches, transforms shape them, and sinks finish the workflow.</p>
         <p>The fastest first experiment is <strong>Text Query → Format Filter → Dataset Manifest</strong>. Add the source from the palette, select each node to edit its settings in the inspector, connect the nodes in order, and run a preview before exporting. The rest of this section explains what each node means and how to diagnose a graph that does not produce the expected files.</p>
 
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/pipeline_nodes.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens pipeline canvas showing Text Query nodes feeding Quality filters and a Union into a Dataset Manifest CSV node with its inspector open">
+          <figcaption>A visual pipeline connects sources, filters, set operations, and a Dataset Manifest sink.</figcaption>
+        </figure>
+
         <h3>What a pipeline is</h3>
         <p>A pipeline is a directed graph. Each node receives a working collection of media records, changes it or starts a new branch, and passes the result through a visible connection. In this guide, a <strong>media set</strong> means the current list of Wikimedia files plus the metadata CommonsLens has loaded for those files.</p>
         <p>The application defines <strong>31 registered node types</strong>: 27 are available to add from the current palette, while four legacy sink types remain readable only so older saved graphs do not break. The complete reference below includes all 31.</p>
@@ -1649,6 +1714,7 @@
         <h3>The execution model: compile first, fetch later</h3>
         <p>On a simple source → filter → filter chain, CommonsLens does not fetch every intermediate list. It compiles the source and query-capable filters into one Wikimedia search request, then materializes the branch when a preview, transform, set operation, or sink needs actual records. This usually means fewer requests and more accurate server-side filtering.</p>
         <p>Once a branch has materialized, later work happens against the records already loaded in the browser. That distinction matters. Format, resolution, date, and excluded-term filters can still be evaluated locally from available fields. Licence, quality, language, and colour-depth conditions depend on structured query information that may not be present on each loaded record; if placed after a materialized branch such as Author Uploads or Geosearch Browse, CommonsLens warns and passes those items through rather than pretending the filter succeeded.</p>
+        <div class="warning"><strong>Original-date previews are intentionally bounded:</strong> “Originally made / photographed” is read from per-file metadata such as <code>DateTimeOriginal</code>, not from the indexed creation or edit dates. A pipeline preview checks one provider result page and may therefore show fewer than 100 records—or none—even when later pages contain matches. Use <em>Run full export</em> when the date-filtered dataset needs to continue through additional pages.</div>
 
         <h3>What a pipeline requests and downloads</h3>
         <p>There are two different kinds of work in a pipeline: requesting information about files, and downloading the files themselves.</p>
@@ -1704,7 +1770,7 @@
               <tr><td><strong>Resolution</strong></td><td><code>1 → 1</code></td><td>Filters by pixel dimensions, independently supporting minimum and maximum width and height.</td><td>Minimum and maximum width/height in pixels. A missing dimension in metadata cannot satisfy a strict comparison.</td></tr>
               <tr><td><strong>File Size</strong></td><td><code>1 → 1</code></td><td>Filters by the file’s byte size. It is useful for excluding tiny thumbnails or very large originals before an export.</td><td>Minimum and maximum size in bytes.</td></tr>
               <tr><td><strong>Color Depth</strong></td><td><code>1 → 1</code></td><td>Restricts image results by reported colour depth in bits.</td><td>Required bit depth. Do not assume that a missing or unusual technical field means the file has no colour information.</td></tr>
-              <tr><td><strong>Date Range</strong></td><td><code>1 → 1</code></td><td>Filters a selected date field between a start and end date. The field matters: when available, the original date describes when the depicted media was made, while edited/upload-related dates describe Wikimedia record activity.</td><td>Field: created, edited, or original date; optional From and To dates. Place it directly after a query-capable source when the distinction matters.</td></tr>
+              <tr><td><strong>Date Range</strong></td><td><code>1 → 1</code></td><td>Filters a selected date field between a start and end date. The field matters: when available, the original date describes when the depicted media was made, while edited/upload-related dates describe Wikimedia record activity.</td><td>Field: created, edited, or original date; optional From and To dates. The original field uses available per-file metadata such as <code>DateTimeOriginal</code>. A pipeline preview checks one provider page for this field; use full export when later pages must be scanned.</td></tr>
               <tr><td><strong>Language</strong></td><td><code>1 → 1</code></td><td>Restricts results to a language code where the underlying Commons search can apply that condition.</td><td>Language code such as <code>en</code>. This is about indexed language metadata, not a translation of the media itself.</td></tr>
               <tr><td><strong>Exclude Terms</strong></td><td><code>1 → 1</code></td><td>Removes results whose available title or search snippet contains any of the excluded terms. It is useful for cleaning up broad text searches.</td><td>Terms entered one at a time. Matching is case-insensitive in the local predicate.</td></tr>
             </tbody>
@@ -1767,6 +1833,11 @@
         <p>The rights and attribution option is checked by default because every image should be reviewed for reuse terms. Pulling it may increase run time. If you turn it off, the preview and CSV show a warning: a blank licence or attribution field does <strong>not</strong> mean that reuse is unrestricted. Verify the original Commons file page.</p>
         <p>If an upstream Enrich node requests rights/attribution metadata, the Dataset Manifest rights option stays enabled automatically. An Enrich node is not added automatically: use it only when you need its optional technical, rights, Structured Data, or global-usage bundles. If a Field Select node is upstream, Field Select controls the exported fields.</p>
         <p>When you add Enrich, <strong>Technical image metadata</strong> starts selected. <strong>Rights &amp; attribution</strong>, <strong>Structured Data on Commons</strong>, and <strong>Global Wikimedia usage</strong> are opt-in bundles. Enrich applies to every item that reaches it; there is no per-item enrichment cap. Put Sample / Limit before Enrich when you want a smaller test run.</p>
+
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/dataset_manifest.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Dataset Manifest CSV preview showing 122 materialized records in a raw table with title, URL, dimensions, artist HTML, and attribution fields">
+          <figcaption>A Dataset Manifest can be reviewed as a raw table before the metadata CSV is exported.</figcaption>
+        </figure>
 
         <h3>Preview, full export, and run limits</h3>
         <div class="data-table-wrap">
@@ -2010,6 +2081,10 @@
             <tr><td><strong>Download</strong></td><td>Requests made for an explicit media download.</td></tr>
           </tbody>
         </table>
+        <figure class="doc-figure">
+          <img src="../assets/docs-images/logs.png" width="1847" height="1049" loading="lazy" decoding="async" alt="CommonsLens Wikimedia Request Log modal listing autocomplete requests and HTTP 200 statuses over the search workspace">
+          <figcaption>The Wikimedia Request Log exposes the provider requests and status codes behind the current session.</figcaption>
+        </figure>
         <ul>
           <li>Each entry contains only the request URL and returned status. The category is supplied by the group heading.</li>
           <li>A <code>NO_RESPONSE</code> entry means the app attempted the request but did not receive an HTTP response.</li>
@@ -2093,6 +2168,7 @@
               <tr><td><strong>A filter warns that it may be passed through</strong></td><td>Some filters cannot be applied accurately after a materialized branch, so the run may preserve the records and report that the filter was not enforced.</td><td>Move the filter earlier into a query-capable branch where possible. Treat the output as unfiltered for that condition and verify the CSV before using it as a precise dataset.</td></tr>
               <tr><td><strong>Enrichment is slow or only partly complete</strong></td><td>Enrichment can make extra Wikimedia requests for every incoming item, and individual metadata bundles can fail independently for some records.</td><td>Use Preview first, put Sample / Limit before Enrich if you need a smaller test run, disable bundles you do not need, wait between runs, and read the warning. Partial enrichment should be treated as partial data, not as proof that no metadata exists.</td></tr>
               <tr><td><strong>Run is slow or appears stuck</strong></td><td>Requests are deliberately serialized and throttled; broad sources, many pages, enrichment, and large output can take time.</td><td>Wait for the current request, use Preview first, add a limit or sample, remove unnecessary enrichment, split a large job, and pause between batches. Do not open many copies of the same expensive pipeline.</td></tr>
+              <tr><td><strong>Original-date preview is short or empty</strong></td><td>“Originally made / photographed” is metadata-based, and preview mode checks only one provider result page so it does not block on a multi-page lookahead.</td><td>Confirm that the returned files have parseable <code>DateTimeOriginal</code> metadata, then use <em>Run full export</em> to continue scanning pages for the complete date-filtered dataset.</td></tr>
               <tr><td><strong>Cancel was pressed</strong></td><td>The current run is incomplete.</td><td>Keep the partial preview only for diagnosis. Re-run the full pipeline when ready and verify that the final manifest has the expected number of records.</td></tr>
               <tr><td><strong>Export says to run the pipeline first</strong></td><td>There is no completed output available for the requested export.</td><td>Connect a Dataset Manifest sink, run or preview the pipeline, wait for it to finish, then export the resulting manifest.</td></tr>
               <tr><td><strong>Imported pipeline JSON is rejected</strong></td><td>The file is not valid JSON exported by CommonsLens or was changed in a way the importer cannot understand.</td><td>Re-export from the Saved Pipelines area, verify that the file was not truncated, and import the unmodified JSON. Pipeline JSON is a graph definition, not a CSV result.</td></tr>

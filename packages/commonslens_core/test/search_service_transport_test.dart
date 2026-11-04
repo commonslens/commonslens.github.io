@@ -126,6 +126,45 @@ void main() {
     expect(result!.items, hasLength(1));
   });
 
+  test('pipeline preview does not scan five pages for original dates',
+      () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['gsroffset'], isNull);
+      return http.Response('''
+        {
+          "continue": {"gsroffset": 50, "continue": "gsroffset||"},
+          "query": {
+            "searchinfo": {"totalhits": 100},
+            "pages": {
+              "1": {
+                "title": "File:Undated.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/undated.jpg",
+                  "mime": "image/jpeg",
+                  "extmetadata": {}
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(
+        queryText: 'Manhattan',
+        originalDate: DateFilter(from: '1980-01-01', to: '2001-01-01'),
+      ),
+      continueParams: null,
+      requestProfile: SearchRequestProfile.pipelinePreview,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.items, isEmpty);
+    expect(result.continueParams, isNotNull);
+    expect(transport.requests, hasLength(1));
+  });
+
   test('rights-enabled pipeline profile requests Commons extmetadata',
       () async {
     final transport = _FixtureTransport((uri) async {

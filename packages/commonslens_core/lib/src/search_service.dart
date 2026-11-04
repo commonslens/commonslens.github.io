@@ -1000,15 +1000,17 @@ class SearchService with _SearchAssetOperations, _SearchAutocompleteOperations {
             .where((item) => _matchesOriginalDate(item, state.originalDate!))
             .toList();
 
-        // A metadata-date range cannot be sent to CirrusSearch. Do not make
-        // a perfectly valid historical query look like "no results" merely
-        // because the first relevance page had no dated matches. Scan up to
-        // five underlying pages (250 candidates) to find the first visible
-        // page, while keeping a hard cap so a sparse/undated corpus cannot
-        // turn one user action into unbounded API traffic.
+        // A metadata-date range cannot be sent to CirrusSearch. For the
+        // ordinary UI, do not make a perfectly valid historical query look
+        // like "no results" merely because the first relevance page had no
+        // dated matches: scan up to five underlying pages (250 candidates).
+        // Pipeline profiles set skipFailedPages, so they deliberately return
+        // one logical page and let the pipeline preview/export own its
+        // pagination policy instead of blocking a preview on this lookahead.
         if (filteredItems.isEmpty &&
             nextContinue != null &&
-            originalDateScanPages < 4) {
+            originalDateScanPages < 4 &&
+            !skipFailedPages) {
           return _fetchSingleAttempt(
             state,
             continueParams: nextContinue,

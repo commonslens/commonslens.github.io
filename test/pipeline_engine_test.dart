@@ -56,6 +56,74 @@ void main() {
     expect(progress, [450, 900, 1350]);
   });
 
+  test('original-date previews stop after one provider page', () async {
+    final backend = _PagedBackend(pageCount: 3, itemsPerPage: 1);
+    final graph = PipelineGraph(
+      id: 'original-date-preview',
+      name: 'Original date preview',
+      updatedAt: DateTime.utc(2026),
+      nodes: [
+        PipelineNode(
+          id: 'source',
+          type: PipelineNodeType.sourceTextQuery,
+          config: const {'query': 'Manhattan'},
+        ),
+        PipelineNode(
+          id: 'date',
+          type: PipelineNodeType.filterDateRange,
+          config: const {
+            'field': 'originalDate',
+            'from': '1980-01-01',
+            'to': '2001-01-01',
+          },
+        ),
+        PipelineNode(id: 'manifest', type: PipelineNodeType.sinkCsvExport),
+      ],
+      edges: const [
+        PipelineEdge(
+          id: 'source-date',
+          fromNodeId: 'source',
+          fromPortId: 'out',
+          toNodeId: 'date',
+          toPortId: 'in',
+        ),
+        PipelineEdge(
+          id: 'date-manifest',
+          fromNodeId: 'date',
+          fromPortId: 'out',
+          toNodeId: 'manifest',
+          toPortId: 'in',
+        ),
+      ],
+    );
+
+    final result = await PipelineEngine().run(
+      graph,
+      PipelineExecutionContext(
+        backend: backend,
+        preview: true,
+        requestProfile: SearchRequestProfile.pipelinePreview,
+      ),
+    );
+
+    expect(backend.calls, 1);
+    expect(
+      result.sinkOutputsByNodeId['manifest']!.warning,
+      contains('checked one result page'),
+    );
+
+    final fullBackend = _PagedBackend(pageCount: 3, itemsPerPage: 1);
+    await PipelineEngine().run(
+      graph,
+      PipelineExecutionContext(
+        backend: fullBackend,
+        maxItemsPerSource: null,
+        requestProfile: SearchRequestProfile.pipelineEtl,
+      ),
+    );
+    expect(fullBackend.calls, 3);
+  });
+
   test('custom manifest maximum is enforced at the sink', () async {
     final result = await PipelineEngine().run(
       _manifestGraph(config: const {

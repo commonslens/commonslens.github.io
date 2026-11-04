@@ -1331,8 +1331,11 @@ class _PipelinePageState extends ConsumerState<PipelinePage> {
                 const VerticalDivider(width: 1, color: _kBorder),
                 Expanded(
                   child: _PipelineCanvas(
-                    onSelectionChanged: (id) =>
-                        setState(() => _selectedNodeId = id),
+                    onSelectionChanged: (id) {
+                      if (_selectedNodeId != id) {
+                        setState(() => _selectedNodeId = id);
+                      }
+                    },
                   ),
                 ),
                 const VerticalDivider(width: 1, color: _kBorder),

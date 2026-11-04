@@ -784,21 +784,16 @@ class _ShowcaseRowState extends State<_ShowcaseRow> {
         ? ConstrainedBox(
             constraints: BoxConstraints(minHeight: widget.featureHeight),
             child: Column(
-              children: widget.reversed
-                  ? [
-                      copy,
-                      SizedBox(
-                        height: widget.featureHeight * 0.42,
-                        child: media,
-                      ),
-                    ]
-                  : [
-                      SizedBox(
-                        height: widget.featureHeight * 0.42,
-                        child: media,
-                      ),
-                      copy,
-                    ],
+              // Mobile keeps every feature in the same reading order:
+              // image first, then its explanatory widget. The desktop layout
+              // below still alternates based on `reversed`.
+              children: [
+                SizedBox(
+                  height: widget.featureHeight * 0.42,
+                  child: media,
+                ),
+                copy,
+              ],
             ),
           )
         : ConstrainedBox(

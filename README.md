@@ -33,6 +33,7 @@ CommonsLens brings those systems into one visual application. It is designed for
 - [Media viewer and metadata](#media-viewer-and-metadata)
 - [Reuse and attribution guidance](#reuse-and-attribution-guidance)
 - [Author portfolios](#author-portfolios)
+- [Bookmarks and folders](#bookmarks-and-folders)
 - [Downloads and metadata export](#downloads-and-metadata-export)
 - [Visual data pipelines](#visual-data-pipelines)
 - [Sharing, responsive design, and PWA support](#sharing-responsive-design-and-pwa-support)
@@ -59,6 +60,10 @@ CommonsLens provides a visual frontend for Wikimedia Commons and CirrusSearch.
 - Infinite pagination as the user approaches the end of the result grid.
 - Result counts that indicate when additional pages remain.
 - A selectable preview of the generated CirrusSearch query.
+
+![CommonsLens landing search bar with example search chips](assets/docs-images/searchbar_and_chips.png)
+
+*The landing search field offers focused starting points for common media workflows.*
 
 ### Media scopes
 
@@ -96,7 +101,15 @@ CommonsLens provides a visual frontend for Wikimedia Commons and CirrusSearch.
 - Long-press selection for a persistent cross-page download queue.
 - Full asset viewer on click.
 
+![CommonsLens search workspace with an active template filter and result grid](assets/docs-images/workspace_after_a_search_and_filter.png)
+
+*The search workspace keeps filters, active state, and results visible together.*
+
 ## Semantic and metadata filters
+
+![CommonsLens Classification filter panel](assets/docs-images/filter_sidebar.png)
+
+*The filter panel brings depicted subjects, Wikidata properties, categories, nested categories, and templates into one workflow.*
 
 ### Wikidata depicts search
 
@@ -241,9 +254,21 @@ CommonsLens supports geographic discovery as both a starting point and an extens
 - Open a geographic query in the main Search interface.
 - Open any map file in the full asset viewer without losing map context.
 
+![CommonsLens map-radius search with results beside the map](assets/docs-images/maps_to_search.png)
+
+*A point-and-radius map search updates the active Search state while keeping the result pane available.*
+
+![CommonsLens map view showing clustered media across the Swiss Alps](assets/docs-images/swiss_alps_map.png)
+
+*Map mode clusters geotagged results and keeps their thumbnails available for comparison.*
+
 ## Media viewer and metadata
 
 The asset viewer preserves the gallery that opened it, whether the file came from Search, Map, an author portfolio, filtered bookmarks, a pipeline preview, or related media. Viewer URLs identify the selected file and its list context; same-tab queue snapshots also preserve runtime lists across reloads.
+
+![CommonsLens Asset Viewer showing a full-size preview and related media](assets/docs-images/image_asset_viewer.png)
+
+*The Asset Viewer combines the media preview, result position, related media, and file actions.*
 
 ### Navigation
 
@@ -265,6 +290,10 @@ The asset viewer preserves the gallery that opened it, whether the file came fro
 - Open/download fallback for unsupported documents.
 - Web-optimised 1920px or full-resolution image preview.
 - Preview-quality preference stored locally in the browser.
+
+![CommonsLens interactive 3D viewer showing an STL model and metadata](assets/docs-images/3d_mesh.png)
+
+*Supported STL files open with model controls, technical statistics, and reuse metadata.*
 
 ### File metadata
 
@@ -318,6 +347,24 @@ The reuse panel is an aid, not legal advice. Users should verify the file page, 
 - Select portfolio media and download a contributor-named metadata CSV.
 - Reset selection cleanly when changing authors.
 
+![CommonsLens Author Portfolio showing an uploader’s media grid](assets/docs-images/author_portfolio.png)
+
+*An author portfolio presents public uploads newest first and continues as you scroll.*
+
+## Bookmarks and folders
+
+Bookmarks are browser-local references to public Wikimedia files. They can be grouped into folders without copying or re-hosting the media.
+
+- Create, rename, and delete folders.
+- Put one bookmarked file in multiple folders.
+- Search saved metadata by title, uploader, description, object name, URL, and categories.
+- Select several bookmarks and add them to folders in one action.
+- Keep bookmarked files available while moving between Search, Map, portfolios, and the viewer.
+
+![CommonsLens Bookmarks page with folders and saved media](assets/docs-images/bookmarks.png)
+
+*Bookmarks turns saved file references into local folders with search, selection, and download actions.*
+
 ## Downloads and metadata export
 
 ### Individual files
@@ -342,6 +389,10 @@ The reuse panel is an aid, not legal advice. Users should verify the file page, 
 - Include a verification manifest and warning inside every media ZIP part.
 - Export one comprehensive metadata CSV when a data-only output is preferred.
 - Pipeline Dataset Manifest exports remain metadata-only and never fetch media.
+
+![CommonsLens search grid with selected files and the expanded download queue](assets/docs-images/downloading_from_grid.png)
+
+*Selected files populate the persistent queue, which offers verified ZIP downloads and metadata CSV export.*
 
 ### Metadata manifest
 
@@ -386,6 +437,10 @@ readable in older saved graphs so existing pipeline definitions do not break.
 - Prevent multiple links into the same input.
 - Prevent cycles before they enter the graph.
 - Display node and edge counts.
+
+![CommonsLens visual pipeline canvas with filters, a Union node, and Dataset Manifest](assets/docs-images/pipeline_nodes.png)
+
+*The pipeline canvas makes source, filter, set-operation, and export stages visible at a glance.*
 
 ### Node inspector
 
@@ -449,6 +504,10 @@ readable in older saved graphs so existing pipeline definitions do not break.
   manifest rights request enabled automatically.
 - Browsable preview grid.
 - Transfer the final collection into the main Search result grid.
+
+![CommonsLens Dataset Manifest CSV preview](assets/docs-images/dataset_manifest.png)
+
+*A Dataset Manifest can be inspected as a raw metadata table before the CSV is exported.*
 
 ### Enrichment and manifest rights data
 
@@ -515,6 +574,10 @@ All application-managed Wikimedia requests share one coordination layer:
 - Retry handling for throttling, server failures, timeouts, and rejected responses.
 - Global cooldown after a throttling response.
 - Cancellation support for long-running work.
+
+![CommonsLens Wikimedia Request Log showing grouped requests and statuses](assets/docs-images/logs.png)
+
+*The request log exposes the Wikimedia operations and response statuses behind the current session.*
 
 For a normal single-category Search, CommonsLens sends one search request and
 then any image metadata/thumbnail continuation requests needed to complete the

@@ -20,16 +20,5 @@
     "JavaScript",
     "Three.js"
   ],
-  "keywords": [
-    "Wikimedia Commons",
-    "Wikidata",
-    "media discovery",
-    "advanced search",
-    "structured data",
-    "geospatial search",
-    "metadata export",
-    "dataset creation",
-    "visual pipelines",
-    "bulk downloads"
-  ]
+  "keywords": "Wikimedia Commons, Wikidata, media discovery, advanced search, structured data, geospatial search, metadata export, dataset creation, visual pipelines, bulk downloads"
 }

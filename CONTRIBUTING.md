@@ -2,13 +2,13 @@
 
 Thank you for your interest in improving CommonsLens. Contributions,
 well-scoped bug reports, documentation improvements, and thoughtful feature
-proposals are welcome.
+proposals are absolutely welcome and encouraged here!
 
 ## Before you start
 
 CommonsLens is a Flutter web application that reads public media and metadata
-from Wikimedia Commons. You do not need a Wikimedia account to develop or run
-the project.
+from Wikimedia Commons. Users do not need a Wikimedia account to develop or run
+the project. Think of the goal of the project as being the "Bloomberg Terminal for Wikimedia".
 
 Please check the existing issues and documentation before starting a large
 change. For substantial feature work, opening an issue first can help confirm
@@ -105,3 +105,5 @@ information in issue reports.
 Unless explicitly stated otherwise, contributions submitted for inclusion in
 CommonsLens are accepted under the Apache License 2.0. See [LICENSE](LICENSE)
 for the full terms.
+
+Thank you once again for visiting and contributing!

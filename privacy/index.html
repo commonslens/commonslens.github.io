@@ -132,7 +132,7 @@
       "mainEntity": {
         "@type": "ItemList",
         "name": "CommonsLens Privacy Policy features",
-        "numberOfItems": 24,
+        "numberOfItems": 28,
         "itemListElement": [
           {
             "@type": "ListItem",
@@ -152,106 +152,126 @@
           {
             "@type": "ListItem",
             "position": 4,
-            "name": "Saved pipelines, notes, caches, and image-preview preferences stay in browser storage."
+            "name": "Saved pipelines, notes, bookmarks, query caches, download-queue metadata, welcome preferences, and image-preview preferences stay in browser storage."
           },
           {
             "@type": "ListItem",
             "position": 5,
-            "name": "CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider."
+            "name": "The app keeps a temporary in-memory request log with request categories, URLs, and statuses for diagnostics; it is not uploaded to CommonsLens."
           },
           {
             "@type": "ListItem",
             "position": 6,
-            "name": "The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership."
+            "name": "PDF and other media previews request content directly from the relevant provider in the browser; CommonsLens has no application backend receiving those media bytes."
           },
           {
             "@type": "ListItem",
             "position": 7,
-            "name": "CommonsLens does not intentionally set tracking cookies."
+            "name": "CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider."
           },
           {
             "@type": "ListItem",
             "position": 8,
-            "name": "Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites."
+            "name": "The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership."
           },
           {
             "@type": "ListItem",
             "position": 9,
-            "name": "Local storage remembers web-optimised or full-resolution image preview preference."
+            "name": "CommonsLens does not intentionally set tracking cookies."
           },
           {
             "@type": "ListItem",
             "position": 10,
-            "name": "IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results."
+            "name": "Browser storage supports preferences, saved pipelines, bookmarks, download metadata, and caches only; it is not used to follow visitors across sites. The request log and browser console output are local diagnostics, not analytics."
           },
           {
             "@type": "ListItem",
             "position": 11,
-            "name": "Browser and service-worker caches may retain application files, images, media, tiles, and responses."
+            "name": "Local storage remembers image preview preference, the metadata-only media download queue, bookmarks and folders, and first-visit, welcome, and tips preferences."
           },
           {
             "@type": "ListItem",
             "position": 12,
-            "name": "Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses."
+            "name": "Session storage can hold temporary media-queue snapshots for the current tab."
           },
           {
             "@type": "ListItem",
             "position": 13,
-            "name": "Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted."
+            "name": "IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results."
           },
           {
             "@type": "ListItem",
             "position": 14,
-            "name": "GitHub Pages hosts the app and may log page requests and technical usage data."
+            "name": "Browser and service-worker caches may retain application files, images, media, tiles, and responses."
           },
           {
             "@type": "ListItem",
             "position": 15,
-            "name": "Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests."
+            "name": "Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses."
           },
           {
             "@type": "ListItem",
             "position": 16,
-            "name": "OpenStreetMap receives multilingual street-tile requests; Esri receives English street-map, satellite-imagery, and reference-tile requests when those layers are used."
+            "name": "The download queue stores metadata and references, not media bytes. Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted."
           },
           {
             "@type": "ListItem",
             "position": 17,
-            "name": "External source, licence, usage, and repository pages apply their own privacy policies."
+            "name": "GitHub Pages hosts the app and may log page requests and technical usage data."
           },
           {
             "@type": "ListItem",
             "position": 18,
-            "name": "No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads."
+            "name": "Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and thumbnail, original-file, PDF-preview, and other media requests made by the browser."
           },
           {
             "@type": "ListItem",
             "position": 19,
-            "name": "No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard."
+            "name": "OpenStreetMap receives multilingual street-tile requests; Esri receives English street-map, satellite-imagery, and reference-tile requests when those layers are used."
           },
           {
             "@type": "ListItem",
             "position": 20,
-            "name": "No device precise-location permission; map searches use user-chosen locations and public file coordinates."
+            "name": "External source, licence, usage, and repository pages apply their own privacy policies. Browser-native viewers and download controls can make direct provider requests outside CommonsLens application storage."
           },
           {
             "@type": "ListItem",
             "position": 21,
-            "name": "No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity."
+            "name": "No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads."
           },
           {
             "@type": "ListItem",
             "position": 22,
-            "name": "No internet transmission or browser storage is perfectly secure, and providers may process data in other countries."
+            "name": "No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard."
           },
           {
             "@type": "ListItem",
             "position": 23,
-            "name": "This policy is updated when collection or providers materially change."
+            "name": "No device precise-location permission; map searches use user-chosen locations and public file coordinates."
           },
           {
             "@type": "ListItem",
             "position": 24,
+            "name": "No page-view or interaction analytics, CommonsLens-owned server-side request log, cloud database, advertising profile, data-broker feed, or cross-device identity."
+          },
+          {
+            "@type": "ListItem",
+            "position": 25,
+            "name": "Avoid opening unfamiliar media previews or downloads if you do not want the browser to request them from the provider."
+          },
+          {
+            "@type": "ListItem",
+            "position": 26,
+            "name": "No internet transmission or browser storage is perfectly secure. Preview and download checks do not guarantee that complex files are safe, and providers may process data in other countries."
+          },
+          {
+            "@type": "ListItem",
+            "position": 27,
+            "name": "This policy is updated when collection or providers materially change."
+          },
+          {
+            "@type": "ListItem",
+            "position": 28,
             "name": "Questions and corrections can be raised in the public source repository without posting sensitive information."
           }
         ]
@@ -296,25 +316,29 @@
         "No name, email address, password, payment method, or profile is requested.",
         "No visitor analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.",
         "Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.",
-        "Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.",
+        "Saved pipelines, notes, bookmarks, query caches, download-queue metadata, welcome preferences, and image-preview preferences stay in browser storage.",
+        "The app keeps a temporary in-memory request log with request categories, URLs, and statuses for diagnostics; it is not uploaded to CommonsLens.",
+        "PDF and other media previews request content directly from the relevant provider in the browser; CommonsLens has no application backend receiving those media bytes.",
         "CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.",
         "The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.",
         "CommonsLens does not intentionally set tracking cookies.",
-        "Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites.",
-        "Local storage remembers web-optimised or full-resolution image preview preference.",
+        "Browser storage supports preferences, saved pipelines, bookmarks, download metadata, and caches only; it is not used to follow visitors across sites. The request log and browser console output are local diagnostics, not analytics.",
+        "Local storage remembers image preview preference, the metadata-only media download queue, bookmarks and folders, and first-visit, welcome, and tips preferences.",
+        "Session storage can hold temporary media-queue snapshots for the current tab.",
         "IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results.",
         "Browser and service-worker caches may retain application files, images, media, tiles, and responses.",
         "Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses.",
-        "Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.",
+        "The download queue stores metadata and references, not media bytes. Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.",
         "GitHub Pages hosts the app and may log page requests and technical usage data.",
-        "Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests.",
+        "Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and thumbnail, original-file, PDF-preview, and other media requests made by the browser.",
         "OpenStreetMap receives multilingual street-tile requests; Esri receives English street-map, satellite-imagery, and reference-tile requests when those layers are used.",
-        "External source, licence, usage, and repository pages apply their own privacy policies.",
+        "External source, licence, usage, and repository pages apply their own privacy policies. Browser-native viewers and download controls can make direct provider requests outside CommonsLens application storage.",
         "No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.",
         "No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.",
         "No device precise-location permission; map searches use user-chosen locations and public file coordinates.",
-        "No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.",
-        "No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.",
+        "No page-view or interaction analytics, CommonsLens-owned server-side request log, cloud database, advertising profile, data-broker feed, or cross-device identity.",
+        "Avoid opening unfamiliar media previews or downloads if you do not want the browser to request them from the provider.",
+        "No internet transmission or browser storage is perfectly secure. Preview and download checks do not guarantee that complex files are safe, and providers may process data in other countries.",
         "This policy is updated when collection or providers materially change.",
         "Questions and corrections can be raised in the public source repository without posting sensitive information."
       ],
@@ -341,7 +365,7 @@
   <!-- Semantic fallback for crawlers and no-JavaScript clients. -->
   <main id="seo-fallback">
     <h1>CommonsLens Privacy Policy</h1>
-    <p>Effective and last reviewed 22 October 2026. CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in the browser. Only the outside services needed for hosting, Wikimedia content, and map tiles receive ordinary web requests.</p>
+    <p>Effective and last reviewed 4 November 2026. CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in the browser. Only the outside services needed for hosting, Wikimedia content, map tiles, and linked resources receive ordinary web requests. The app keeps a temporary in-memory request log for diagnostics, which is not uploaded to CommonsLens.</p>
 
     <nav aria-label="CommonsLens tools">
       <a href="/">Advanced media search</a>
@@ -363,7 +387,9 @@
         <li>No name, email address, password, payment method, or profile is requested.</li>
         <li>No visitor analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.</li>
         <li>Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.</li>
-        <li>Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.</li>
+        <li>Saved pipelines, notes, bookmarks, query caches, download-queue metadata, welcome preferences, and image-preview preferences stay in browser storage.</li>
+        <li>The app keeps a temporary in-memory request log with request categories, URLs, and statuses for diagnostics; it is not uploaded to CommonsLens.</li>
+        <li>PDF and other media previews request content directly from the relevant provider in the browser; CommonsLens has no application backend receiving those media bytes.</li>
         <li>CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.</li>
       </ul>
     </section>
@@ -374,7 +400,7 @@
       <ul>
         <li>The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.</li>
         <li>CommonsLens does not intentionally set tracking cookies.</li>
-        <li>Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites.</li>
+        <li>Browser storage supports preferences, saved pipelines, bookmarks, download metadata, and caches only; it is not used to follow visitors across sites. The request log and browser console output are local diagnostics, not analytics.</li>
       </ul>
     </section>
 
@@ -382,22 +408,23 @@
       <h2>Information stored only on the device</h2>
       <p>CommonsLens does not sync this browser data to an account or application server.</p>
       <ul>
-        <li>Local storage remembers web-optimised or full-resolution image preview preference.</li>
+        <li>Local storage remembers image preview preference, the metadata-only media download queue, bookmarks and folders, and first-visit, welcome, and tips preferences.</li>
+        <li>Session storage can hold temporary media-queue snapshots for the current tab.</li>
         <li>IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results.</li>
         <li>Browser and service-worker caches may retain application files, images, media, tiles, and responses.</li>
         <li>Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses.</li>
-        <li>Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.</li>
+        <li>The download queue stores metadata and references, not media bytes. Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.</li>
       </ul>
     </section>
 
     <section>
       <h2>Direct requests to outside providers</h2>
-      <p>The browser contacts providers directly. They normally receive the IP address, user agent, requested resource, time, referrer where supplied, and standard request information under their own policies.</p>
+      <p>The browser contacts providers directly. They normally receive the IP address, user agent, requested resource, time, referrer where supplied, and standard request information under their own policies. The app also records a request category, URL, and status in memory for its API log and may print the same diagnostic entry to the browser console; CommonsLens does not upload that log.</p>
       <ul>
         <li>GitHub Pages hosts the app and may log page requests and technical usage data.</li>
-        <li>Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests.</li>
+        <li>Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and thumbnail, original-file, PDF-preview, and other media requests made by the browser.</li>
         <li>OpenStreetMap receives multilingual street-tile requests; Esri receives English street-map, satellite-imagery, and reference-tile requests when those layers are used.</li>
-        <li>External source, licence, usage, and repository pages apply their own privacy policies.</li>
+        <li>External source, licence, usage, and repository pages apply their own privacy policies. Browser-native viewers and download controls can make direct provider requests outside CommonsLens application storage.</li>
       </ul>
     </section>
 
@@ -408,15 +435,16 @@
         <li>No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.</li>
         <li>No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.</li>
         <li>No device precise-location permission; map searches use user-chosen locations and public file coordinates.</li>
-        <li>No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.</li>
+        <li>No page-view or interaction analytics, CommonsLens-owned server-side request log, cloud database, advertising profile, data-broker feed, or cross-device identity.</li>
       </ul>
     </section>
 
     <section>
       <h2>Privacy choices, security, and contact</h2>
-      <p>Users can clear browser site data to remove preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.</p>
+      <p>Users can clear browser site data to remove preferences, bookmarks, download metadata, caches, and saved pipelines, or clear only the pipeline cache. The API log can be cleared in its dialog or by reloading the app. Browser downloads and console history are managed separately by the browser. Avoiding a map layer avoids requests to that provider.</p>
       <ul>
-        <li>No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.</li>
+        <li>Avoid opening unfamiliar media previews or downloads if you do not want the browser to request them from the provider.</li>
+        <li>No internet transmission or browser storage is perfectly secure. Preview and download checks do not guarantee that complex files are safe, and providers may process data in other countries.</li>
         <li>This policy is updated when collection or providers materially change.</li>
         <li>Questions and corrections can be raised in the public source repository without posting sensitive information.</li>
       </ul>

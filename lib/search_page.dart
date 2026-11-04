@@ -1309,16 +1309,32 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           top: 8,
           right: 12,
           child: SafeArea(
-            child: Tooltip(
-              message: 'Wikimedia request log',
-              child: IconButton(
-                onPressed: () => showWikimediaRequestLog(context),
-                icon: const Icon(
-                  Icons.receipt_long_outlined,
-                  color: Colors.white70,
-                  size: 20,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Tooltip(
+                  message: 'Browse tips',
+                  child: IconButton(
+                    onPressed: () => context.push('/tips'),
+                    icon: const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                  ),
                 ),
-              ),
+                Tooltip(
+                  message: 'Wikimedia request log',
+                  child: IconButton(
+                    onPressed: () => showWikimediaRequestLog(context),
+                    icon: const Icon(
+                      Icons.receipt_long_outlined,
+                      color: Colors.white70,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

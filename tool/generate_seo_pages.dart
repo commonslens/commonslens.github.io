@@ -324,12 +324,12 @@ const _pages = <_SeoPage>[
         'Read the CommonsLens terms for Wikimedia media attribution, licensing, responsible API use, third-party services, and legal responsibilities.',
     heading: 'CommonsLens Terms of Use',
     intro:
-        'Effective and last reviewed 22 October 2026. CommonsLens helps people find and understand reusable media, but every file keeps its own licence and attribution requirements. Users are responsible for checking and following them.',
+        'Effective and last reviewed 4 November 2026. CommonsLens helps people find and understand reusable media, but every file keeps its own licence and attribution requirements. Users are responsible for checking and following them.',
     sections: [
       _SeoSection(
         heading: 'Agreement, scope, and independence',
         intro:
-            'These terms apply to the website, search tools, map, viewer, downloads, exports, and visual pipelines. CommonsLens is independent and is not operated, sponsored, endorsed, or warranted by Wikimedia or any connected provider.',
+            'These terms apply to the website, search tools, map, viewer, tips, bookmarks, downloads, exports, and visual pipelines. CommonsLens is independent and is not operated, sponsored, endorsed, or warranted by Wikimedia or any connected provider.',
         items: [
           'By using CommonsLens, you agree to these Terms; if you do not agree, do not use the service.',
           'CommonsLens does not own displayed files and does not grant a new licence when a file is viewed or downloaded.',
@@ -367,12 +367,30 @@ const _pages = <_SeoPage>[
         ],
       ),
       _SeoSection(
-        heading: 'Acceptable use and third-party services',
+        heading: 'Acceptable use',
         intro:
             'Use CommonsLens lawfully without disrupting or attempting unauthorized access to CommonsLens or connected services. Users are responsible for their searches, exports, publications, and downstream media use.',
         items: [
-          'Wikimedia, Wikidata, OpenStreetMap, Esri, GitHub Pages, and linked sites apply their own terms and policies.',
           'Do not infringe rights, distribute unlawful material, misrepresent authorship, evade access controls, or introduce malicious code.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Downloads, previews, and security checks',
+        intro:
+            'The browser stores download references and public metadata locally. Selecting a file does not fetch or persist its media bytes; an explicit download or export action does that.',
+        items: [
+          'Supported downloads check the expected Wikimedia origin, file type, size, signature, MIME type, content length, and available integrity values.',
+          'Complex formats such as PDF, SVG, DjVu, XCF, and STL may be handled conservatively or as opaque archive entries.',
+          'These checks are not antivirus scanning, malware detection, sandboxing, content disarm and reconstruction, or a guarantee that a file is harmless. Browser-native previews may invoke software outside CommonsLens.',
+          'Do not change extensions or bypass a refusal to force an export. Keep your browser, operating system, viewers, and security tools current.',
+        ],
+      ),
+      _SeoSection(
+        heading: 'Third-party services and links',
+        intro:
+            'Wikimedia, Wikidata, OpenStreetMap, Esri, GitHub Pages, browser-provided viewers, and linked sites apply their own terms and policies. CommonsLens cannot control their content, availability, or practices.',
+        items: [
+          'Opening an external source page or using a browser download control is controlled by the external site and browser, not CommonsLens verification.',
         ],
       ),
       _SeoSection(
@@ -394,7 +412,7 @@ const _pages = <_SeoPage>[
         'Learn how CommonsLens works without analytics or advertising trackers, what stays on your device, which providers receive necessary requests, and what is not collected.',
     heading: 'CommonsLens Privacy Policy',
     intro:
-        'Effective and last reviewed 22 October 2026. CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in the browser. Only the outside services needed for hosting, Wikimedia content, and map tiles receive ordinary web requests.',
+        'Effective and last reviewed 4 November 2026. CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in the browser. Only the outside services needed for hosting, Wikimedia content, map tiles, and linked resources receive ordinary web requests. The app keeps a temporary in-memory request log for diagnostics, which is not uploaded to CommonsLens.',
     sections: [
       _SeoSection(
         heading: 'The short version',
@@ -404,7 +422,9 @@ const _pages = <_SeoPage>[
           'No name, email address, password, payment method, or profile is requested.',
           'No visitor analytics, advertising, fingerprinting, session-recording, or behavioural-tracking service is used.',
           'Searches go to Wikimedia; map views request visible tiles from OpenStreetMap or Esri.',
-          'Saved pipelines, notes, caches, and image-preview preferences stay in browser storage.',
+          'Saved pipelines, notes, bookmarks, query caches, download-queue metadata, welcome preferences, and image-preview preferences stay in browser storage.',
+          'The app keeps a temporary in-memory request log with request categories, URLs, and statuses for diagnostics; it is not uploaded to CommonsLens.',
+          'PDF and other media previews request content directly from the relevant provider in the browser; CommonsLens has no application backend receiving those media bytes.',
           'CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.',
         ],
       ),
@@ -415,7 +435,7 @@ const _pages = <_SeoPage>[
         items: [
           'The static Google Search Console ownership file contains no executable code and is not loaded by ordinary pages; it only lets Google periodically confirm ownership.',
           'CommonsLens does not intentionally set tracking cookies.',
-          'Browser storage supports preferences, saved pipelines, and caches only; it is not used to follow visitors across sites.',
+          'Browser storage supports preferences, saved pipelines, bookmarks, download metadata, and caches only; it is not used to follow visitors across sites. The request log and browser console output are local diagnostics, not analytics.',
         ],
       ),
       _SeoSection(
@@ -423,22 +443,23 @@ const _pages = <_SeoPage>[
         intro:
             'CommonsLens does not sync this browser data to an account or application server.',
         items: [
-          'Local storage remembers web-optimised or full-resolution image preview preference.',
+          'Local storage remembers image preview preference, the metadata-only media download queue, bookmarks and folders, and first-visit, welcome, and tips preferences.',
+          'Session storage can hold temporary media-queue snapshots for the current tab.',
           'IndexedDB stores saved pipeline graphs, node settings, positions, names and notes, and cached public Wikimedia query results.',
           'Browser and service-worker caches may retain application files, images, media, tiles, and responses.',
           'Downloaded files, ZIPs, CSV or JSON exports, and pipeline definitions are saved only where the user chooses.',
-          'Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.',
+          'The download queue stores metadata and references, not media bytes. Cached results are fresh for one hour but can remain locally until cleared, overwritten, evicted, or removed with site data; saved graphs remain until deleted.',
         ],
       ),
       _SeoSection(
         heading: 'Direct requests to outside providers',
         intro:
-            'The browser contacts providers directly. They normally receive the IP address, user agent, requested resource, time, referrer where supplied, and standard request information under their own policies.',
+            'The browser contacts providers directly. They normally receive the IP address, user agent, requested resource, time, referrer where supplied, and standard request information under their own policies. The app also records a request category, URL, and status in memory for its API log and may print the same diagnostic entry to the browser console; CommonsLens does not upload that log.',
         items: [
           'GitHub Pages hosts the app and may log page requests and technical usage data.',
-          'Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and media requests.',
+          'Wikimedia Commons and Wikidata receive search terms, filters, file names, API requests, and thumbnail, original-file, PDF-preview, and other media requests made by the browser.',
           'OpenStreetMap receives multilingual street-tile requests; Esri receives English street-map, satellite-imagery, and reference-tile requests when those layers are used.',
-          'External source, licence, usage, and repository pages apply their own privacy policies.',
+          'External source, licence, usage, and repository pages apply their own privacy policies. Browser-native viewers and download controls can make direct provider requests outside CommonsLens application storage.',
         ],
       ),
       _SeoSection(
@@ -449,15 +470,16 @@ const _pages = <_SeoPage>[
           'No accounts, contact details, passwords, identity documents, profiles, payment information, contacts, messages, or private uploads.',
           'No camera, microphone, or clipboard-content access; the reuse tool only writes requested text to the clipboard.',
           'No device precise-location permission; map searches use user-chosen locations and public file coordinates.',
-          'No page-view or interaction analytics, CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
+          'No page-view or interaction analytics, CommonsLens-owned server-side request log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
         ],
       ),
       _SeoSection(
         heading: 'Privacy choices, security, and contact',
         intro:
-            'Users can clear browser site data to remove preferences, caches, and saved pipelines, or clear only the pipeline cache. Avoiding a map layer avoids requests to that provider.',
+            'Users can clear browser site data to remove preferences, bookmarks, download metadata, caches, and saved pipelines, or clear only the pipeline cache. The API log can be cleared in its dialog or by reloading the app. Browser downloads and console history are managed separately by the browser. Avoiding a map layer avoids requests to that provider.',
         items: [
-          'No internet transmission or browser storage is perfectly secure, and providers may process data in other countries.',
+          'Avoid opening unfamiliar media previews or downloads if you do not want the browser to request them from the provider.',
+          'No internet transmission or browser storage is perfectly secure. Preview and download checks do not guarantee that complex files are safe, and providers may process data in other countries.',
           'This policy is updated when collection or providers materially change.',
           'Questions and corrections can be raised in the public source repository without posting sensitive information.',
         ],

@@ -250,7 +250,7 @@ class TermsOfUsePage extends StatelessWidget {
       eyebrow: 'TERMS OF USE',
       title: 'Use CommonsLens responsibly',
       summary:
-          'CommonsLens helps you find and understand reusable media, but every file keeps its own licence and attribution requirements. You—not CommonsLens—are responsible for checking and following them.',
+          'CommonsLens helps you find and understand reusable media, but every file keeps its own licence and attribution requirements. You, not CommonsLens, are responsible for checking and following them.',
       sections: [
         const _LegalSection(
           title: '1. Agreement and scope',
@@ -260,14 +260,14 @@ class TermsOfUsePage extends StatelessWidget {
           ],
         ),
         _LegalSection(
-          title: '2. Media licences and attribution—your responsibility',
+          title: '2. Media licences and attribution: your responsibility',
           paragraphs: [
             'CommonsLens does not own the files it displays and does not grant you a new licence. Downloading a file does not mean that it is unrestricted or free of obligations.',
             'You MUST follow every attribution, credit, source-link, licence notice, share-alike, modification disclosure, author-requested credit line, and other reuse requirement set by the file’s licence, its Wikimedia Commons description page, and its author or other rightsholder. If CommonsLens shows incomplete or conflicting information, the original file page and the applicable licence control.',
           ],
           bullets: const [
             'Open the original Commons file page before publishing or distributing a file.',
-            'Credit the creator—not merely the uploader—unless the source specifically says otherwise.',
+            'Credit the creator, not merely the uploader, unless the source specifically says otherwise.',
             'Name or link the licence when required and indicate modifications when required.',
             'Apply the same or a compatible licence to derivatives when a share-alike licence requires it.',
             'Do not remove credit, rights statements, watermarks, or notices in a way the licence forbids.',
@@ -309,26 +309,40 @@ class TermsOfUsePage extends StatelessWidget {
           ],
         ),
         const _LegalSection(
-          title: '6. Third-party services and links',
+          title: '6. Downloads, previews, and security checks',
           paragraphs: [
-            'CommonsLens connects to Wikimedia Commons, Wikidata, Wikimedia-hosted media, OpenStreetMap and Esri map tiles, GitHub Pages, and external source or licence pages. Their own terms, privacy policies, licences, availability rules, and usage policies apply when your browser contacts them. CommonsLens cannot control their content or practices.',
+            'The download queue stores references and public metadata in your browser. Selecting a file does not by itself fetch or persist the media bytes. An explicit download or export action fetches the current resource and writes the result to the destination you choose.',
+            'For supported downloads, CommonsLens checks the expected Wikimedia origin, file type, size, file signature, MIME type, content length, and available integrity values before creating a verified download or archive. Complex formats such as PDF, SVG, DjVu, XCF, STL, and similar formats may be handled more conservatively or as opaque archive entries.',
+            'These checks are not antivirus scanning, malware detection, sandboxing, content disarm and reconstruction, a vulnerability assessment, or a guarantee that a file is harmless. Browser-native PDF and other media previews may invoke software outside CommonsLens. Keep your browser, operating system, document viewers, and security tools current, and inspect unfamiliar files with tools you trust.',
+            'If you open an external source page, use the browser download control, copy a URL, or download outside CommonsLens, that action is controlled by the external site and browser and is not covered by CommonsLens verification.',
+          ],
+          bullets: [
+            'Do not change a file extension or bypass a refusal to force an export.',
+            'Treat media and metadata as potentially sensitive even when they are publicly available.',
+            'Keep your own copy of important files and verify that an export completed before relying on it.',
           ],
         ),
         const _LegalSection(
-          title: '7. Availability, accuracy, and warranties',
+          title: '7. Third-party services and links',
+          paragraphs: [
+            'CommonsLens connects to Wikimedia Commons, Wikidata, Wikimedia-hosted media, OpenStreetMap and Esri map tiles, GitHub Pages, browser-provided viewers, and external source or licence pages. Their own terms, privacy policies, licences, availability rules, and usage policies apply when your browser contacts them. CommonsLens cannot control their content or practices.',
+          ],
+        ),
+        const _LegalSection(
+          title: '8. Availability, accuracy, and warranties',
           paragraphs: [
             'CommonsLens is provided free of charge on an “as is” and “as available” basis. Search results, metadata, rights fields, translations, generated snippets, map positions, exports, and third-party APIs may be incomplete, inaccurate, delayed, changed, or unavailable. Features can change or stop without notice.',
             'To the extent permitted by law, no warranty is made about accuracy, fitness for a particular purpose, non-infringement, uninterrupted availability, or preservation of locally saved data. Keep your own copy of anything important.',
           ],
         ),
         const _LegalSection(
-          title: '8. Limitation of responsibility',
+          title: '9. Limitation of responsibility',
           paragraphs: [
             'To the extent permitted by applicable law, CommonsLens and its maintainers are not liable for losses arising from your use of the service, reliance on metadata or licence summaries, third-party content or services, unavailable or corrupted data, or your reuse of a file. Nothing here excludes a right or liability that the law does not allow to be excluded.',
           ],
         ),
         const _LegalSection(
-          title: '9. Source code, changes, and questions',
+          title: '10. Source code, changes, and questions',
           paragraphs: [
             'The CommonsLens software source code is open source under the Apache License 2.0, except for third-party material identified under its own licence notices. The Apache licence permits use, modification, and distribution subject to its conditions. It does not change or replace the separate licences and rights attached to Wikimedia media or data displayed through CommonsLens.',
             'These Terms may be updated as CommonsLens changes. The effective date below identifies this version. Questions or corrections can be raised in the public GitHub repository; do not post private or sensitive information in a public issue.',
@@ -350,9 +364,9 @@ class PrivacyPolicyPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return _LegalPageScaffold(
       eyebrow: 'PRIVACY POLICY',
-      title: 'What CommonsLens collects—and what it does not',
+      title: 'What CommonsLens collects and what it does not',
       summary:
-          'CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in your browser. Only the outside services needed to deliver hosting, Wikimedia content, and map tiles receive ordinary web requests.',
+          'CommonsLens has no analytics, advertising trackers, accounts, or private application database. Most work happens in your browser. Only the outside services needed to deliver hosting, Wikimedia content, map tiles, and linked resources receive ordinary web requests. The app also keeps a temporary in-memory request log for diagnostics, which is not uploaded to CommonsLens.',
       sections: [
         const _LegalSection(
           title: 'The short version',
@@ -360,7 +374,9 @@ class PrivacyPolicyPage extends StatelessWidget {
             'You do not give CommonsLens a name, email address, password, payment method, or profile.',
             'CommonsLens does not use visitor analytics, advertising, fingerprinting, session-recording, or behavioural-tracking services.',
             'Searches go from your browser to Wikimedia services; map views request tiles from OpenStreetMap or Esri.',
-            'Saved pipelines, notes, query caches, and your image-preview preference stay in storage in your browser.',
+            'Saved pipelines, notes, bookmarks, query caches, download-queue metadata, welcome preferences, and your image-preview preference stay in storage in your browser.',
+            'The app keeps a temporary in-memory request log with request categories, URLs, and statuses for diagnostics. It is not uploaded to CommonsLens and is cleared when the app is reloaded or the log is cleared.',
+            'PDF and other media previews request content directly from the relevant provider in your browser. CommonsLens does not receive those media bytes through an application backend.',
             'CommonsLens does not sell personal information, run ads, create user profiles, or transmit interaction events to an analytics provider.',
           ],
         ),
@@ -369,32 +385,33 @@ class PrivacyPolicyPage extends StatelessWidget {
           paragraphs: [
             'CommonsLens does not load visitor analytics, tag managers, advertising pixels, telemetry SDKs, session replay tools, or behavioural-tracking services. The application does not send page views, searches, filters, file titles, downloads, clicks, map activity, device identifiers, or interaction events to CommonsLens or an analytics provider.',
             'A static Google Search Console ownership-verification file is published with the site. It contains no script, cookie, pixel, or executable code, and it is not loaded by ordinary pages. Google may request that file periodically to confirm site ownership; it does not track visitors.',
-            'CommonsLens does not intentionally set tracking cookies. Browser storage used for application preferences, saved pipelines, and caches is described below and is not used to follow you across sites.',
+            'CommonsLens does not intentionally set tracking cookies. Browser storage used for application preferences, saved pipelines, bookmarks, download metadata, and caches is described below and is not used to follow you across sites. The in-memory request log and browser console output are local diagnostics, not analytics, and are not sent to CommonsLens.',
           ],
         ),
         const _LegalSection(
           title: '2. Information kept only on your device',
           bullets: [
-            'Local storage: whether the asset viewer should preview web-optimised or full-resolution images, plus the metadata-only media download queue.',
+            'Local storage: whether the asset viewer should preview web-optimised or full-resolution images, the metadata-only media download queue, bookmarks and folders, and first-visit, welcome, and tips preferences.',
+            'Session storage: temporary media-queue snapshots used to preserve the current tab’s viewer context during navigation or reloads.',
             'IndexedDB: saved visual pipeline graphs, node settings, positions, names and notes, plus cached Wikimedia query results and their public file metadata.',
             'Browser and service-worker caches: application files, images, media, and map/API responses as managed by your browser and the providers’ cache rules.',
             'Downloads and exports: individual files, locally-created verified media ZIP parts and their per-part verification manifests, metadata-only CSV data, and exported pipeline definitions go to the location you choose on your device.',
           ],
           paragraphs: [
-            'This local data is not synced to a CommonsLens account or uploaded to a CommonsLens server. Pipeline query results are treated as fresh for one hour, but a local record can remain until it is overwritten, cleared inside the pipeline tools, evicted by the browser, or removed when you clear site data. Saved graphs remain until you delete them or clear site data.',
+            'This local data is not synced to a CommonsLens account or uploaded to a CommonsLens server. The download queue stores metadata and references, not media bytes; bytes are fetched only after an explicit download or export action. Pipeline query results are treated as fresh for one hour, but a local record can remain until it is overwritten, cleared inside the pipeline tools, evicted by the browser, or removed when you clear site data. Saved graphs remain until you delete them or clear site data.',
           ],
         ),
         _LegalSection(
           title: '3. Requests made to other services',
           paragraphs: const [
-            'CommonsLens is a browser client, so your browser contacts providers directly. Those providers normally receive the IP address, user agent, requested URL/resource, time, referrer where supplied, and other standard request information. They handle that information under their own policies.',
+            'CommonsLens is a browser client, so your browser contacts providers directly. Those providers normally receive the IP address, user agent, requested URL/resource, time, referrer where supplied, and other standard request information. They handle that information under their own policies. The app also records a request category, URL, and status in memory for its API log and may print the same diagnostic entry to the browser console. CommonsLens does not upload that log, and it normally disappears when the app is reloaded or the log is cleared.',
           ],
           bullets: const [
             'GitHub Pages hosts and delivers the application and may log page requests and technical usage data.',
-            'Wikimedia Commons and Wikidata receive search terms, filters, file/page names, and API requests. Wikimedia media hosts receive thumbnail and original-file requests.',
+            'Wikimedia Commons and Wikidata receive search terms, filters, file/page names, and API requests. Wikimedia media hosts receive thumbnail, original-file, PDF-preview, and other media requests made by your browser.',
             'OpenStreetMap receives requests for visible multilingual street-map tiles when that layer is used.',
             'Esri receives requests for visible English street-map, satellite-imagery, and reference tiles when those layers are used.',
-            'Opening a source, licence, global-usage, or repository link takes you to that external site, which then applies its own policy.',
+            'Opening a source, licence, global-usage, or repository link takes you to that external site, which then applies its own policy. Browser-native viewers and browser download controls can also make direct provider requests outside CommonsLens application storage.',
           ],
           links: const [
             _PolicyLink('Wikimedia Privacy Policy', _wikimediaPrivacyUrl),
@@ -414,22 +431,24 @@ class PrivacyPolicyPage extends StatelessWidget {
             'Payment or financial information.',
             'Your contacts, messages, camera, microphone, uploaded private files, or clipboard contents. The attribution tool only writes text you request to your clipboard.',
             'Your device’s precise live location. Map searches use coordinates or places you choose; displayed file coordinates are public media metadata.',
-            'Page-view or interaction analytics, a CommonsLens-owned server log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
+            'Page-view or interaction analytics, a CommonsLens-owned server-side request log, cloud database, advertising profile, data-broker feed, or cross-device identity.',
           ],
         ),
         const _LegalSection(
           title: '5. Why this design is more private',
           paragraphs: [
             'No account means there is no CommonsLens identity profile to leak, sell, or connect to your searches. Local pipelines and exports avoid sending your research workflow to an application backend. Direct, visible provider requests make the service boundaries inspectable, and the full source code lets anyone verify the implementation.',
-            'This does not make web use invisible: hosting, Wikimedia, map providers, and external sites still receive the requests described above. The privacy advantage is the absence of behavioural analytics plus data minimisation and local processing—not a claim of total anonymity.',
+            'This does not make web use invisible: hosting, Wikimedia, map providers, and external sites still receive the requests described above. The privacy advantage is the absence of behavioural analytics plus data minimisation and local processing, not a claim of total anonymity.',
           ],
         ),
         const _LegalSection(
           title: '6. Your choices and data deletion',
           bullets: [
-            'Clear CommonsLens site data in your browser to remove local preferences, caches, and saved pipelines.',
+            'Clear CommonsLens site data in your browser to remove local preferences, bookmarks, download metadata, caches, and saved pipelines. Browser downloads and browser download history are separate and must be managed in the browser or file system.',
             'Use the pipeline Clear Cache control to remove cached results while keeping saved graphs.',
+            'Clear the API log in its dialog, or reload the app, to remove the in-memory request log. Browser console entries are controlled by your browser and may remain until its console is cleared or closed.',
             'Avoid the map or a particular layer if you do not want requests sent to its tile provider.',
+            'Avoid opening unfamiliar media previews or downloads if you do not want your browser to request them from the provider.',
             'Avoid entering personal, confidential, or sensitive material into searches, URLs, pipeline labels, or notes.',
           ],
         ),
@@ -437,7 +456,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           title: '7. Children, security, and international processing',
           paragraphs: [
             'CommonsLens is a general research tool and is not designed to collect information from children. Because there are no accounts or direct submissions, CommonsLens does not knowingly maintain a child’s profile. If a minor uses the site, a parent or guardian should help them avoid entering personal information in searches.',
-            'The site uses HTTPS, but no internet transmission or browser storage is perfectly secure. Providers may process requests in countries other than your own under their policies and applicable law.',
+            'The site uses HTTPS, but no internet transmission or browser storage is perfectly secure. Download and preview checks are not a guarantee that complex files are safe, and the browser or an external viewer may process them. Providers may process requests in countries other than your own under their policies and applicable law.',
           ],
         ),
         const _LegalSection(
@@ -529,7 +548,7 @@ class _LegalPageScaffold extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   const Text(
-                    'Effective and last reviewed: 22 October 2026',
+                    'Effective and last reviewed: 4 November 2026',
                     style: TextStyle(
                       color: Color(0xFF727272),
                       fontSize: 12,

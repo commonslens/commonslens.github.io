@@ -35,7 +35,10 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     final isDjVu = widget.item.extension.toLowerCase() == 'djvu' ||
         widget.item.mime.toLowerCase() == 'image/vnd.djvu';
 
-    return isPdf && !isDjVu && !_isSafariWeb();
+    return isPdf &&
+        !isDjVu &&
+        !_isSafariWeb() &&
+        _isSafeWikimediaPdfUrl(widget.item.url);
   }
 
   @override
@@ -100,10 +103,11 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
         } else if (shouldRenderPdf) {
           return html.IFrameElement()
             ..src = widget.item.url
-            // Do not grant an embedded provider PDF scripts, forms, or top
-            // navigation privileges. Complex files remain user-open-at-own-
-            // risk content even inside this restricted preview.
-            ..setAttribute('sandbox', 'allow-downloads')
+            // Do not add an iframe sandbox here: Chromium blocks its native
+            // PDF viewer inside sandboxed frames, including frames that grant
+            // allow-scripts or allow-downloads. Safety comes from admitting
+            // only exact Wikimedia upload URLs; the browser's native PDF
+            // viewer handles the document rather than embedding provider HTML.
             ..setAttribute('referrerpolicy', 'no-referrer')
             ..style.width = '100%'
             ..style.height = '100%'
@@ -148,6 +152,15 @@ class _NativeMediaRendererState extends State<_NativeMediaRenderer> {
     try {
       final uri = DownloadSecurityPolicy.requireTrustedMediaUri(value);
       return DownloadSecurityPolicy.extensionFromUri(uri) == 'stl';
+    } on DownloadSecurityException {
+      return false;
+    }
+  }
+
+  bool _isSafeWikimediaPdfUrl(String value) {
+    try {
+      final uri = DownloadSecurityPolicy.requireTrustedMediaUri(value);
+      return DownloadSecurityPolicy.extensionFromUri(uri) == 'pdf';
     } on DownloadSecurityException {
       return false;
     }

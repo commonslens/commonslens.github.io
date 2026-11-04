@@ -10,6 +10,7 @@ import 'asset_viewer.dart';
 import 'author_portfolio_page.dart';
 import 'pipeline_page.dart';
 import 'features_page.dart';
+import 'tips_page.dart';
 import 'bookmarks_page.dart';
 import 'legal_pages.dart';
 import 'seo_service.dart';
@@ -69,6 +70,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/features',
       builder: (context, state) => const FeaturesPage(),
+    ),
+    GoRoute(
+      path: '/tips',
+      builder: (context, state) => const TipsPage(),
     ),
     GoRoute(
       path: '/docs',

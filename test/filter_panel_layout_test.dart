@@ -254,6 +254,8 @@ void main() {
     final loggerButton = find.byTooltip('Wikimedia request log');
     expect(loggerButton, findsOneWidget);
     expect(loggerButton.hitTestable(), findsOneWidget);
+    expect(find.byTooltip('Browse tips'), findsOneWidget);
+    expect(find.byTooltip('Browse tips').hitTestable(), findsOneWidget);
     await tester.tap(loggerButton);
     await tester.pumpAndSettle();
 

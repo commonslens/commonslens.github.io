@@ -1,0 +1,35 @@
+{
+  "_schema": "/toolinfo/1.2.2",
+  "name": "commonslens",
+  "title": "CommonsLens",
+  "description": "CommonsLens is a free, open-source web application for discovering, exploring, organizing, and reusing Wikimedia Commons media. It combines advanced search, structured-data filtering, geographic exploration, multimedia inspection, licensing assistance, browser-local collections, and verified bulk downloads. A visual, no-code pipeline builder enables researchers to construct and export structured media metadata datasets. CommonsLens requires no account and is independently developed.",
+  "url": "https://commonslens.github.io/",
+  "tool_type": "web app",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/commonslens/commonslens.github.io",
+  "bugtracker_url": "https://github.com/commonslens/commonslens.github.io/issues",
+  "user_docs_url": "https://commonslens.github.io/docs/index.html",
+  "privacy_policy_url": "https://commonslens.github.io/privacy/",
+  "feedback_url": "https://github.com/commonslens/commonslens.github.io/issues",
+  "available_ui_languages": [
+    "en"
+  ],
+  "technology_used": [
+    "Flutter",
+    "Dart",
+    "JavaScript",
+    "Three.js"
+  ],
+  "keywords": [
+    "Wikimedia Commons",
+    "Wikidata",
+    "media discovery",
+    "advanced search",
+    "structured data",
+    "geospatial search",
+    "metadata export",
+    "dataset creation",
+    "visual pipelines",
+    "bulk downloads"
+  ]
+}

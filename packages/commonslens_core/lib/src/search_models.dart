@@ -261,6 +261,26 @@ class DateFilter {
   int get hashCode => Object.hash(from, to);
 }
 
+/// Formats a distance in kilometres for user-facing labels. Keep fractional
+/// kilometres intact: rounding here would silently change the requested
+/// search radius shown to the user.
+String formatRadiusKm(double radiusKm) {
+  if (!radiusKm.isFinite) return '0';
+  final fixed = radiusKm.toStringAsFixed(6);
+  return fixed.replaceFirst(RegExp(r'\.?0+$'), '');
+}
+
+/// Formats a distance using the integer-unit syntax accepted by GeoData's
+/// CirrusSearch parser. Fractional kilometre values must be sent as metres,
+/// e.g. `0.5 km` becomes `500m` rather than `0.5km`.
+String formatGeoSearchRadius(double radiusKm) {
+  if (!radiusKm.isFinite) return '0m';
+  if (radiusKm == radiusKm.roundToDouble()) {
+    return '${radiusKm.toStringAsFixed(0)}km';
+  }
+  return '${(radiusKm * 1000).round()}m';
+}
+
 @immutable
 class NearCoordFilter {
   final double lat;

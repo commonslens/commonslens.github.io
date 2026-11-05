@@ -13,10 +13,10 @@ class SearchQueryCompiler {
   // applied partly or wholly after Commons returns a page. When one of
   // those is used without free text or another indexed clause, give
   // CirrusSearch a bounded media-only starting point instead of sending an
-  // empty search.
-  static const String _allMediaClause =
-      '(filetype:bitmap OR filetype:drawing OR filetype:audio OR '
-      'filetype:video OR filetype:office OR filetype:3D)';
+  // empty search. `prefix:file:` is the documented namespace-wide prefix
+  // search; unlike an OR of filetype filters it also keeps the all-media
+  // language-only case from depending on Cirrus' boolean parsing.
+  static const String _allMediaClause = 'prefix:file:';
 
   static const Map<LicensePreset, String> _licenseClauses = {
     LicensePreset.cc0: 'haswbstatement:P275=Q6938433',
@@ -81,10 +81,18 @@ class SearchQueryCompiler {
     }
 
     final queryText = state.queryText.trim();
+    final captionLanguage = _normalizedCaptionLanguage(state.languageCode);
+    final captionQueryScoped =
+        captionLanguage != null && queryText.isNotEmpty && !state.titleOnly;
     if (queryText.isNotEmpty) {
       if (state.titleOnly) {
         parts.add('intitle:"$queryText"');
         chips.add(const QueryChipData(id: 'titleOnly', label: 'Title only'));
+      } else if (captionQueryScoped) {
+        // `incaption` is the language-aware text predicate for MediaInfo
+        // labels. Keep the user's text inside that field instead of merely
+        // requiring a caption in the selected language with `hascaption`.
+        parts.add(_captionSearchClause(queryText, captionLanguage));
       } else {
         parts.add(queryText);
       }
@@ -179,10 +187,15 @@ class SearchQueryCompiler {
       }
     }
 
-    if (state.languageCode != null && state.languageCode!.trim().isNotEmpty) {
-      final lang = state.languageCode!.trim();
-      parts.add('inlanguage:$lang');
-      chips.add(QueryChipData(id: 'language', label: 'Language: $lang'));
+    // Commons' `inlanguage:` keyword filters the MediaWiki page's content
+    // language, not a file's multilingual MediaInfo caption. Wikibase
+    // CirrusSearch exposes `hascaption:` for language-only existence filters,
+    // and `incaption:` for text constrained to a specific caption language.
+    // Both are evaluated by Commons before pagination.
+    if (captionLanguage != null) {
+      if (!captionQueryScoped) parts.add('hascaption:$captionLanguage');
+      chips.add(QueryChipData(
+          id: 'language', label: 'Caption language: $captionLanguage'));
     }
 
     if (state.contentModel != null && state.contentModel!.trim().isNotEmpty) {
@@ -474,8 +487,9 @@ class SearchQueryCompiler {
 
     if (state.nearCoord != null) {
       final coord = state.nearCoord!;
-      final radius = coord.radiusKm.toStringAsFixed(0);
-      parts.add('nearcoord:${radius}km,${coord.lat},${coord.lng}');
+      final radius = formatRadiusKm(coord.radiusKm);
+      final searchRadius = formatGeoSearchRadius(coord.radiusKm);
+      parts.add('nearcoord:$searchRadius,${coord.lat},${coord.lng}');
       chips.add(QueryChipData(
         id: 'nearCoord',
         label: 'Near ${coord.lat.toStringAsFixed(3)}, '
@@ -483,8 +497,9 @@ class SearchQueryCompiler {
       ));
     } else if (state.nearTitle != null) {
       final nt = state.nearTitle!;
-      final radius = nt.radiusKm.toStringAsFixed(0);
-      parts.add('neartitle:"${radius}km,${nt.title}"');
+      final radius = formatRadiusKm(nt.radiusKm);
+      final searchRadius = formatGeoSearchRadius(nt.radiusKm);
+      parts.add('neartitle:"$searchRadius,${nt.title}"');
       chips.add(QueryChipData(
         id: 'nearTitle',
         label: 'Near "${nt.title}" (${radius}km)',
@@ -554,6 +569,54 @@ class SearchQueryCompiler {
         state.attributionRequired != null ||
         (originalDate != null && !originalDate.isEmpty);
   }
+
+  String? _normalizedCaptionLanguage(String? raw) {
+    final value = raw?.trim().toLowerCase() ?? '';
+    if (value.isEmpty) return null;
+    final languages = value
+        .split(',')
+        .map((language) => language.trim())
+        .where((language) => language.isNotEmpty)
+        .toSet()
+        .toList();
+    return languages.isEmpty ? null : languages.join(',');
+  }
+
+  String _captionSearchClause(String query, String language) {
+    final trimmed = query.trim();
+    final languageSuffix = '@$language';
+
+    // Preserve an explicitly quoted phrase. For ordinary plain text, emit
+    // one incaption clause per word so the existing AND-like search behavior
+    // is retained instead of silently turning a multi-word query into an
+    // exact phrase.
+    if (trimmed.length >= 2 &&
+        trimmed.startsWith('"') &&
+        trimmed.endsWith('"')) {
+      final phrase = trimmed.substring(1, trimmed.length - 1);
+      return 'incaption:"${_escapeCaptionPhrase(phrase)}$languageSuffix"';
+    }
+
+    final words = trimmed.split(RegExp(r'\s+'));
+    if (words.length == 1 && _isPlainCaptionWord(words.single)) {
+      return 'incaption:${words.single}$languageSuffix';
+    }
+    if (words.length > 1 && words.every(_isPlainCaptionWord)) {
+      return words.map((word) => 'incaption:$word$languageSuffix').join(' ');
+    }
+
+    return 'incaption:"${_escapeCaptionPhrase(trimmed)}$languageSuffix"';
+  }
+
+  bool _isPlainCaptionWord(String value) {
+    if (value.isEmpty || RegExp(r'''["'():*]''').hasMatch(value)) {
+      return false;
+    }
+    return !const {'AND', 'OR', 'NOT'}.contains(value.toUpperCase());
+  }
+
+  String _escapeCaptionPhrase(String value) =>
+      value.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
 
   String _getMimeString(FileFormat format) {
     switch (format) {

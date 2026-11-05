@@ -133,10 +133,7 @@ class _SearchMapViewState extends State<SearchMapView> {
       widget.session.items.where((item) => item.hasCoordinates).toList();
 
   String _formatRadius(double radiusKm) {
-    if (radiusKm == radiusKm.roundToDouble()) {
-      return radiusKm.toStringAsFixed(0);
-    }
-    return radiusKm.toStringAsFixed(1);
+    return formatRadiusKm(radiusKm);
   }
 
   double get _radiusKm {

@@ -13,18 +13,60 @@ void main() {
     expect(built.chips.map((chip) => chip.id), contains('tab'));
   });
 
-  test('format-only and client-side-only filters get a media search anchor',
-      () {
+  test('format-only and language filters compile to valid media queries', () {
     final formatOnly = service.buildQuery(
       const SearchState(formats: {FileFormat.png}),
     );
     final clientOnly = service.buildQuery(
       const SearchState(attributionRequired: true),
     );
+    final captionLanguageOnly = service.buildQuery(
+      const SearchState(languageCode: 'fr'),
+    );
 
-    expect(formatOnly.srsearch, contains('filetype:bitmap'));
-    expect(formatOnly.srsearch, contains('filetype:3D'));
-    expect(clientOnly.srsearch, contains('filetype:audio'));
+    expect(formatOnly.srsearch, 'prefix:file:');
+    expect(clientOnly.srsearch, 'prefix:file:');
+    expect(captionLanguageOnly.srsearch, 'hascaption:fr');
+  });
+
+  test('scopes text search to the selected caption language', () {
+    final singleWord = service.buildQuery(
+      const SearchState(queryText: 'DNA', languageCode: 'fr'),
+    );
+    final multipleWords = service.buildQuery(
+      const SearchState(queryText: 'historic building', languageCode: 'fr'),
+    );
+    final phrase = service.buildQuery(
+      const SearchState(queryText: '"tour Eiffel"', languageCode: 'fr'),
+    );
+    final titleOnly = service.buildQuery(
+      const SearchState(
+        queryText: 'DNA',
+        languageCode: 'fr',
+        titleOnly: true,
+      ),
+    );
+
+    expect(singleWord.srsearch, 'incaption:DNA@fr');
+    expect(
+      multipleWords.srsearch,
+      'incaption:historic@fr incaption:building@fr',
+    );
+    expect(phrase.srsearch, 'incaption:"tour Eiffel@fr"');
+    expect(titleOnly.srsearch, 'intitle:"DNA" hascaption:fr');
+  });
+
+  test('accepts comma-separated caption languages', () {
+    final built = service.buildQuery(const SearchState(
+      queryText: 'cat',
+      languageCode: 'fr, EN, fr',
+    ));
+
+    expect(built.srsearch, 'incaption:cat@fr,en');
+    expect(
+      built.chips.map((chip) => chip.label),
+      contains('Caption language: fr,en'),
+    );
   });
 
   test('combines multiple quality types with OR semantics', () {
@@ -133,7 +175,8 @@ void main() {
       'filemime:"image/jpeg"',
       'incategory:"Architecture" OR incategory:"Paris"',
       '-incategory:"Modern architecture"',
-      'inlanguage:fr',
+      'incaption:historic@fr',
+      'incaption:building@fr',
       'contentmodel:wikitext',
       'creationdate:>=1900-01-01',
       'creationdate:<1950-01-01',
@@ -190,6 +233,10 @@ void main() {
     ]) {
       expect(chipIds, contains(chipId), reason: 'Missing chip: $chipId');
     }
+    expect(
+      built.chips.map((chip) => chip.label),
+      contains('Caption language: fr'),
+    );
   });
 
   test('near-title is used when coordinate search is absent', () {
@@ -200,6 +247,33 @@ void main() {
         .srsearch;
 
     expect(query, contains('neartitle:"7km,Eiffel Tower"'));
+  });
+
+  test('preserves fractional geolocation radii in queries and chips', () {
+    final nearCoord = service.buildQuery(const SearchState(
+      nearCoord: NearCoordFilter(
+        lat: 48.8583701,
+        lng: 2.2944813,
+        radiusKm: 0.5,
+      ),
+    ));
+    final nearTitle = service.buildQuery(const SearchState(
+      nearTitle: NearTitleFilter(title: 'Eiffel Tower', radiusKm: 0.5),
+    ));
+
+    expect(
+      nearCoord.srsearch,
+      contains('nearcoord:500m,48.8583701,2.2944813'),
+    );
+    expect(
+      nearCoord.chips.map((chip) => chip.label),
+      contains('Near 48.858, 2.294 (0.5km)'),
+    );
+    expect(nearTitle.srsearch, contains('neartitle:"500m,Eiffel Tower"'));
+    expect(
+      nearTitle.chips.map((chip) => chip.label),
+      contains('Near "Eiffel Tower" (0.5km)'),
+    );
   });
 
   test('shared Ogg and WebM containers are searchable in both media tabs', () {

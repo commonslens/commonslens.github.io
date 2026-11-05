@@ -94,6 +94,104 @@ void main() {
     expect(result.continueParams?['gsroffset'], 50);
   });
 
+  test('pushes caption language into Commons indexed search', () async {
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['generator'], 'search');
+      expect(uri.queryParameters['gsrsearch'], 'hascaption:fr');
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "101": {
+                "title": "File:French.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/french.jpg",
+                  "mime": "image/jpeg"
+                }]
+              },
+              "102": {
+                "title": "File:AnotherFrench.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/another-french.jpg",
+                  "mime": "image/jpeg"
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(languageCode: 'fr'),
+      continueParams: null,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.items.map((item) => item.title),
+        ['French.jpg', 'AnotherFrench.jpg']);
+    expect(transport.requests, hasLength(1));
+  });
+
+  test('caption language uses ordinary server pagination', () async {
+    var page = 0;
+    final transport = _FixtureTransport((uri) async {
+      expect(uri.queryParameters['gsrsearch'], 'incaption:DNA@fr');
+      page++;
+      if (page == 1) {
+        return http.Response('''
+          {
+            "continue": {"gsroffset": 50, "continue": "gsroffset||"},
+            "query": {
+              "pages": {
+                "201": {
+                  "title": "File:French-first.jpg",
+                  "imageinfo": [{
+                    "url": "https://upload.wikimedia.org/french-first.jpg",
+                    "mime": "image/jpeg"
+                  }]
+                }
+              }
+            }
+          }
+        ''', 200);
+      }
+
+      return http.Response('''
+        {
+          "query": {
+            "pages": {
+              "301": {
+                "title": "File:French-second.jpg",
+                "imageinfo": [{
+                  "url": "https://upload.wikimedia.org/french-second.jpg",
+                  "mime": "image/jpeg"
+                }]
+              }
+            }
+          }
+        }
+      ''', 200);
+    });
+
+    final result = await SearchService(transport: transport).fetchPage(
+      const SearchState(queryText: 'DNA', languageCode: 'fr'),
+      continueParams: null,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.items.map((item) => item.title), ['French-first.jpg']);
+    expect(result.continueParams?['gsroffset'], 50);
+    expect(transport.requests, hasLength(1));
+
+    final next = await SearchService(transport: transport).fetchPage(
+      const SearchState(queryText: 'DNA', languageCode: 'fr'),
+      continueParams: result.continueParams,
+    );
+    expect(next!.items.map((item) => item.title), ['French-second.jpg']);
+    expect(transport.requests, hasLength(2));
+  });
+
   test('pipeline ETL profile requests 200-record logical pages', () async {
     final transport = _FixtureTransport((uri) async {
       expect(uri.queryParameters['gsrlimit'], '200');

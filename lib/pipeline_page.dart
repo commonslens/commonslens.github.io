@@ -368,8 +368,8 @@ String _nodeSummary(PipelineNode node) {
       return c['bits'] == null ? 'Any color depth' : '${c['bits']}-bit';
     case PipelineNodeType.filterLanguage:
       return c['language'] == null
-          ? 'Any language'
-          : 'Language: ${c['language']}';
+          ? 'Any caption language'
+          : 'Caption language: ${c['language']}';
     case PipelineNodeType.filterExcludeTerms:
       return joined('terms').isEmpty ? 'No excluded terms' : joined('terms');
     case PipelineNodeType.transformSample:
@@ -733,7 +733,7 @@ List<ConfigFieldSpec> configSpecFor(PipelineNodeType type) {
       return [
         cf(
             key: 'language',
-            label: 'Language code',
+            label: 'Caption language code',
             kind: ConfigFieldKind.text,
             hint: 'en')
       ];

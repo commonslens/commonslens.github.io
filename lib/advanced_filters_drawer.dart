@@ -97,11 +97,10 @@ class AdvancedFiltersDrawer extends StatelessWidget {
 //   straight from searchControllerProvider's current filterState and
 //   writes back through applyFilterUpdate, same pattern License/Quality's
 //   dropdowns already used before this refactor.
-// - Typed ranges (resolution, file size, color depth, geolocation, dates)
-//   keep local TextEditingControllers — a half-typed number isn't a valid
-//   filter yet — but each group gets its OWN small "Apply" button, scoped
-//   to just that group's fields, instead of one 60-line dump covering all
-//   25 fields at once.
+// - Typed ranges and metadata (resolution, file size, color depth, language,
+//   content model, geolocation, dates) keep local TextEditingControllers — a
+//   half-typed value isn't a valid filter yet — and each group gets its own
+//   apply action scoped to that group's fields.
 //
 // This widget is instantiated exactly once and stays alive for the app's
 // lifetime on desktop (docked, not recreated per open/close) — so unlike
@@ -385,7 +384,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
       case _FilterGroup.metadata:
         return [
           if (state.languageCode?.isNotEmpty == true)
-            'Language: ${state.languageCode}',
+            'Caption language: ${state.languageCode}',
           if (state.contentModel?.isNotEmpty == true)
             'Model: ${state.contentModel}',
           if (state.minWidth != null ||
@@ -402,7 +401,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
         return [
           if (state.nearTitle != null) 'Near ${state.nearTitle!.title}',
           if (state.nearCoord != null)
-            'Near coordinates (${state.nearCoord!.radiusKm} km)',
+            'Near coordinates (${formatRadiusKm(state.nearCoord!.radiusKm)} km)',
         ];
     }
   }
@@ -891,9 +890,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     );
   }
 
-  // ---- Resolution / file size / color depth ----
+  // ---- Metadata ----
 
-  void _applyResolutionAndSize() {
+  void _applyMetadataFilters() {
+    final lang = _langCtrl.text.trim();
+    final model = _modelCtrl.text.trim();
     final w = int.tryParse(_minWidthCtrl.text);
     final h = int.tryParse(_minHeightCtrl.text);
     final maxW = int.tryParse(_maxWidthCtrl.text);
@@ -909,6 +910,10 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
     final maxFileSize = parseFileSize(_maxFileSizeCtrl.text);
 
     _update((c) => c.copyWith(
+          languageCode: lang.isEmpty ? null : lang,
+          clearLanguageCode: lang.isEmpty,
+          contentModel: model.isEmpty ? null : model,
+          clearContentModel: model.isEmpty,
           minWidth: w,
           clearMinWidth: w == null,
           minHeight: h,
@@ -953,22 +958,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
           originalDate: original,
           clearOriginalDate: original == null,
         ));
-  }
-
-  // ---- Language / content model — single free-text fields, applied
-  // instantly on submit rather than batched, since there's nothing
-  // multi-step about typing one code and hitting enter. ----
-
-  void _applyLanguage(String text) {
-    final lang = text.trim().isEmpty ? null : text.trim();
-    _update(
-        (c) => c.copyWith(languageCode: lang, clearLanguageCode: lang == null));
-  }
-
-  void _applyContentModel(String text) {
-    final model = text.trim().isEmpty ? null : text.trim();
-    _update((c) =>
-        c.copyWith(contentModel: model, clearContentModel: model == null));
   }
 
   // ---- Categories (instant) ----
@@ -1581,6 +1570,11 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 _sectionDivider('METADATA'),
                 const SizedBox(height: 20),
                 _sectionHeader('LANGUAGE & CONTENT'),
+                const Text(
+                  'Text searches stay inside structured captions in the selected language(s); without text, this finds files with a caption in one of them. Separate codes with commas.',
+                  style: TextStyle(color: Color(0xFF777777), fontSize: 11),
+                ),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -1588,9 +1582,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         keyboardType: _urlKeyboardType(),
                         controller: _langCtrl,
                         style: const TextStyle(color: Colors.white),
-                        decoration: _fieldDecoration(hint: 'Lang (en)'),
-                        onSubmitted: _applyLanguage,
-                        onTapOutside: (_) => _applyLanguage(_langCtrl.text),
+                        decoration: _fieldDecoration(hint: 'Caption lang (fr)'),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1600,9 +1592,6 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                         controller: _modelCtrl,
                         style: const TextStyle(color: Colors.white),
                         decoration: _fieldDecoration(hint: 'Model (wikitext)'),
-                        onSubmitted: _applyContentModel,
-                        onTapOutside: (_) =>
-                            _applyContentModel(_modelCtrl.text),
                       ),
                     ),
                   ],
@@ -1752,7 +1741,7 @@ class _FilterPanelContentState extends ConsumerState<FilterPanelContent> {
                 ),
                 const SizedBox(height: 12),
                 _groupApplyButton(
-                    'Apply Resolution & Size', _applyResolutionAndSize),
+                    'Apply Metadata Filters', _applyMetadataFilters),
                 const SizedBox(height: 24),
               ],
               const SizedBox(height: 8),

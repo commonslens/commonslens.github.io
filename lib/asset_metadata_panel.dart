@@ -104,10 +104,6 @@ class _MetadataInspector extends StatelessWidget {
 
         // 8. RELATED MEDIA — CirrusSearch's own similarity engine
         // (morelike:), for "find me more like this" discovery.
-        if (item.hasCoordinates) ...[
-          const SizedBox(height: 10),
-          _NearbyMediaButton(item: item),
-        ],
         _RelatedMediaSection(fileTitle: item.title),
 
         // 9. GLOBAL USAGE — a real-world "is this used anywhere" signal,
@@ -299,8 +295,30 @@ class _MetadataInspector extends StatelessWidget {
           _buildPropertyRow('DIMENSIONS', dimensions),
           _buildCategoriesSection(),
           _buildPropertyRow('ASSESSMENTS', item.assessments.trim()),
-          _buildPropertyRow('GPS COORDINATES', coordinates),
+          _buildLocationSection(coordinates),
+          _CaptionsSection(fileTitle: item.title),
           _StructuredDataSection(fileTitle: item.title),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLocationSection(String coordinates) {
+    if (coordinates.isEmpty && !item.hasCoordinates) {
+      return const SizedBox.shrink();
+    }
+
+    final displayCoordinates = coordinates.isNotEmpty
+        ? coordinates
+        : '${item.resolvedLatitude}, ${item.resolvedLongitude}';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildPropertyRow('GPS COORDINATES', displayCoordinates),
+          if (item.hasCoordinates) _NearbyMediaButton(item: item),
         ],
       ),
     );
@@ -535,6 +553,7 @@ class _StructuredDataSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return _LazyMetadataSection(
       title: 'STRUCTURED DATA (WIKIDATA)',
+      showDivider: true,
       contentBuilder: (_) => Consumer(
         builder: (context, ref, _) {
           final sdcAsync = ref.watch(structuredDataProvider(fileTitle));
@@ -574,6 +593,72 @@ class _StructuredDataSection extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Collapsed-by-default multilingual MediaInfo captions. This deliberately
+/// watches the same [structuredDataProvider] as the existing Structured Data
+/// section; Riverpod deduplicates the family request, so adding this view does
+/// not create a second Commons API call for the file.
+class _CaptionsSection extends StatelessWidget {
+  final String fileTitle;
+  const _CaptionsSection({required this.fileTitle});
+
+  @override
+  Widget build(BuildContext context) {
+    return _LazyMetadataSection(
+      title: 'MULTILINGUAL CAPTIONS',
+      showDivider: true,
+      contentBuilder: (_) => Consumer(
+        builder: (context, ref, _) {
+          final structuredData = ref.watch(structuredDataProvider(fileTitle));
+
+          return structuredData.when(
+            loading: _metadataLoading,
+            error: (_, __) => _metadataMessage('Could not load captions.'),
+            data: (result) {
+              final captions = result?.captions.entries
+                      .where((entry) => entry.value.trim().isNotEmpty)
+                      .toList() ??
+                  <MapEntry<String, String>>[];
+              captions.sort((a, b) => a.key.compareTo(b.key));
+
+              if (captions.isEmpty) {
+                return _metadataMessage(
+                  'No multilingual captions on this file.',
+                  muted: true,
+                );
+              }
+
+              return Column(
+                children: captions.map((entry) {
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    minLeadingWidth: 34,
+                    leading: Text(
+                      entry.key,
+                      style: const TextStyle(
+                        color: Color(0xFF9A9A9A),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    title: Text(
+                      entry.value,
+                      style: const TextStyle(
+                        color: Color(0xFFE0E0E0),
+                        fontSize: 13,
                       ),
                     ),
                   );

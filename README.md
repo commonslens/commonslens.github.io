@@ -166,7 +166,7 @@ Attribution filtering is applied against returned rights metadata. CommonsLens d
 
 ### Technical metadata
 
-- Language code.
+- MediaInfo caption language code; with text, search is scoped to that caption language.
 - Wikimedia content model.
 - Creation-date range.
 - Last-edited-date range.
@@ -419,7 +419,7 @@ The `/pipeline` workspace is a no-code visual ETL and research environment for W
 | Category | Nodes |
 | --- | --- |
 | Sources | Text Query, Category, Depicted Subject, Wikidata Statement, Template, Geosearch, Author Uploads, Related-to File |
-| Filters | Licence, Quality, Format, Resolution, File Size, Colour Depth, Date Range, Language, Exclude Terms |
+| Filters | Licence, Quality, Format, Resolution, File Size, Colour Depth, Date Range, Caption Language, Exclude Terms |
 | Set operations | Combine Constraints, Union, Intersect, Difference A−B |
 | Transforms | Dedupe by URL, Sort, Sample/Limit, Field Select, Enrich |
 | Outputs | Dataset Manifest (CSV), Preview, Send to Search |

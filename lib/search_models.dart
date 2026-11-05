@@ -26,6 +26,7 @@ export 'package:commonslens_core/commonslens_core.dart'
         configForTab,
         defaultQualityFilters,
         fileFormatLabel,
+        formatRadiusKm,
         licensePresetLabel,
         mediaTabs,
         qualityFilterLabel,

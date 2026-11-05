@@ -73,6 +73,25 @@ void main() {
     expect(SearchUrlCodec.toQueryParams(restored), params);
   });
 
+  test('preserves fractional location radii in share URLs', () {
+    const state = SearchState(
+      nearCoord: NearCoordFilter(
+        lat: 48.8583701,
+        lng: 2.2944813,
+        radiusKm: 0.5,
+      ),
+    );
+
+    final params = SearchUrlCodec.toQueryParams(state);
+    final restored = SearchUrlCodec.fromQueryParams(
+      params,
+      const SearchState(),
+    );
+
+    expect(params['radius'], '0.5');
+    expect(restored, state);
+  });
+
   test('decodes legacy singular license links', () {
     final restored = SearchUrlCodec.fromQueryParams(
       {'q': 'example', 'license': 'ccBySa4'},

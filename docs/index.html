@@ -769,6 +769,8 @@
               <tr><td>Search a category</td><td><code>incategory:"Architecture"</code></td><td>Finds files directly in the named Commons category. Use the Categories filter when you need the app’s direct or nested category controls.</td></tr>
               <tr><td>Search a template</td><td><code>hastemplate:"Quality image"</code></td><td>Finds pages/files that use the named Commons template.</td></tr>
               <tr><td>Search structured data</td><td><code>haswbstatement:P180=Q146</code></td><td>Matches a Wikidata statement; this example searches for files whose Structured Data says they depict Q146.</td></tr>
+              <tr><td>Search a caption in one language</td><td><code>incaption:"tour Eiffel@fr"</code></td><td>Matches structured MediaInfo caption text in French. The language suffix scopes the text match; it does not translate the query or result titles.</td></tr>
+              <tr><td>Require a caption language</td><td><code>hascaption:fr</code></td><td>Finds files with a structured French caption even when no caption text is being searched.</td></tr>
               <tr><td>Search raw wikitext</td><td><code>insource:"{{Information"</code><br><code>insource:/pattern/</code></td><td>Searches the file description page’s source text. The quoted form is literal; the slash-delimited form is a regular expression and can be expensive.</td></tr>
               <tr><td>Use a wildcard</td><td><code>cat*</code></td><td>Matches a word beginning with <code>cat</code> and continuing with zero or more characters. The wildcard cannot begin a word.</td></tr>
               <tr><td>Use fuzzy or proximity matching</td><td><code>colour~</code><br><code>"red fox"~2</code></td><td>Allows approximate spelling for a word, or up to the specified word distance for a phrase.</td></tr>
@@ -785,7 +787,7 @@
 
         <h3>What happens to your data</h3>
         <ul>
-          <li>Your query text, selected filters, sort order, language choice, and location values are used in the browser to build the search request.</li>
+          <li>Your query text, selected filters, sort order, caption-language choice, and location values are used in the browser to build the search request.</li>
           <li>The request goes directly from the browser to Wikimedia services and, when the map is used, to the selected map providers. CommonsLens displays and combines the responses.</li>
           <li>Loaded result metadata and thumbnails are held in the current browser session. They are not automatically added to your bookmarks or uploaded to a CommonsLens account.</li>
           <li>When you copy or share the URL, it can contain search terms, filters, usernames, and coordinates. Anyone with that URL can read those values.</li>
@@ -836,7 +838,7 @@
             <tr><td>Quality</td><td>Quality Media, Valued Media, Featured Media, or no quality restriction.</td><td>Selections apply immediately. The match mode changes how selected assessments are combined.</td></tr>
             <tr><td>License</td><td>Reported license presets and attribution requirement.</td><td>Selections apply immediately. Multiple license presets match any selected license.</td></tr>
             <tr><td>Dates</td><td>Submission date, last page edit, and original creation/photograph date.</td><td>Type ranges, then choose Apply Date Filters for the group.</td></tr>
-            <tr><td>Metadata</td><td>Language, content model, resolution, file size, and color depth.</td><td>Text fields apply on Enter or when you leave them; numeric fields apply with Apply Resolution &amp; Size.</td></tr>
+            <tr><td>Metadata</td><td>MediaInfo caption language, content model, resolution, file size, and color depth.</td><td>Stage the fields together, then choose Apply Metadata Filters to apply the whole metadata group.</td></tr>
             <tr><td>Location</td><td>Nearby searches and map-based location work.</td><td>Opens the Map workflow. Location is explained in <a href="#map">Search by map</a>.</td></tr>
           </tbody>
         </table>
@@ -908,13 +910,30 @@
 
         <h3>Metadata and technical properties</h3>
         <ul>
-          <li><strong>Language:</strong> enter a language code such as <code>en</code>. Submit it or leave the field to apply it.</li>
+          <li><strong>Caption language:</strong> enter a language code such as <code>en</code>, or comma-separated codes such as <code>fr,en</code>. With a text query, CommonsLens searches structured MediaInfo captions in one of those languages; without text, it finds files that have a caption in one of them.</li>
           <li><strong>Content model:</strong> enter a Commons content model such as <code>wikitext</code>. This describes the page’s content model, not the media’s file format.</li>
           <li><strong>Resolution bounds:</strong> set minimum or maximum width and height in pixels. Use this when the output must meet a display, print, or processing size.</li>
-          <li><strong>File size:</strong> enter minimum or maximum size in MB or KB. CommonsLens converts the chosen unit to bytes for the search.</li>
+          <li><strong>File size:</strong> enter minimum or maximum size in MB or KB. CommonsLens converts the chosen unit to bytes for the search. Apply the complete metadata group with <strong>Apply Metadata Filters</strong>.</li>
           <li><strong>Color depth:</strong> choose a bit depth such as 1-bit, 8-bit, 16-bit, 24-bit, or 32-bit when that technical distinction matters.</li>
         </ul>
-        <p>Numeric fields are intentionally applied as a group. This lets you finish typing a lower and upper bound without sending a new search after every keystroke. Clearing a field and applying the group removes that bound.</p>
+        <p>Metadata fields are intentionally applied as a group. This lets you finish typing caption-language, model, resolution, and size values without sending a new search after every keystroke. Clearing a field and applying the group removes that bound.</p>
+
+        <h3>Multilingual caption search</h3>
+        <p>CommonsLens searches Wikimedia Commons’ structured MediaInfo captions. A caption is a language-tagged label attached to the file’s MediaInfo entity; it is different from the filename, the file-page title, and legacy free-text description wikitext.</p>
+        <table>
+          <thead><tr><th>Setup</th><th>Indexed behavior</th><th>What to expect</th></tr></thead>
+          <tbody>
+            <tr><td>Caption language only</td><td><code>hascaption:fr</code></td><td>Finds files that have at least one French caption. It does not require the visible filename or card title to be French.</td></tr>
+            <tr><td>Text plus caption language</td><td><code>incaption:DNA@fr</code></td><td>Searches for the text inside French captions rather than across the general file-page search text.</td></tr>
+            <tr><td>Several caption languages</td><td><code>incaption:cat@fr,en</code></td><td>Matches a caption in French or English. The same comma-separated language form works for language-only filtering.</td></tr>
+            <tr><td>Title only plus caption language</td><td><code>intitle:"DNA" hascaption:fr</code></td><td>Keeps the text match restricted to the file title while still requiring a caption in the selected language.</td></tr>
+          </tbody>
+        </table>
+        <ul>
+          <li><strong>It is not translation.</strong> A French caption filter does not translate English filenames, object names, legacy descriptions, or result-card labels. An English-looking card can still have a valid French caption.</li>
+          <li><strong>Use the Asset Viewer to verify the captions.</strong> Expand <strong>Multilingual Captions</strong> under File Details to see the exact language codes and caption text stored on Commons.</li>
+          <li><strong>Apply the group deliberately.</strong> Caption language, content model, resolution, file size, and color depth remain staged until you press <strong>Apply Metadata Filters</strong>. Pressing Enter or leaving a field does not apply the metadata group.</li>
+        </ul>
 
         <h3>How filters combine</h3>
         <p>Different filter groups normally combine as <strong>AND</strong>: a result must satisfy the text query, media scope, category/subject rules, date rules, and technical requirements that are all active. Inside some groups, the control you choose changes the relationship among included values:</p>
@@ -935,7 +954,7 @@
         <ul>
           <li>Autocomplete text and selected category, template, subject, and property values are requested from Wikimedia or Wikidata services as you use the pickers.</li>
           <li>Applying filters rebuilds the search request in your browser and sends the active query and filter values to Wikimedia services. The map group can also open map-provider requests.</li>
-          <li>Results, active filter state, and typed-but-not-yet-applied range values live in the current browser session. Applying a filter changes the current search; it does not create a bookmark or upload a dataset.</li>
+          <li>Results, active filter state, and typed-but-not-yet-applied metadata values live in the current browser session. Applying a filter changes the current search; it does not create a bookmark or upload a dataset.</li>
           <li>The URL can preserve the active filter recipe. It may therefore reveal search terms, selected categories or subjects, dates, license choices, and coordinates when shared.</li>
           <li>Some controls are applied after Wikimedia returns data. In particular, attribution requirement and original-media dates depend on metadata returned for each result. An ordinary search may inspect more result pages to fill the requested set; a pipeline preview intentionally checks one result page to stay responsive, while a full export continues through additional pages.</li>
         </ul>
@@ -1201,9 +1220,9 @@
           <tbody>
             <tr><td>Media stage</td><td>Displays the image, vector, audio, video, document, or supported 3D file using the best available browser presentation.</td></tr>
             <tr><td>Viewer header</td><td>Closes the viewer, shows the position in the current result queue, toggles the bookmark, and exposes the mobile information panel when the screen is narrow.</td></tr>
-            <tr><td>Metadata inspector</td><td>Shows the title, creator, uploader, descriptions, dates, file details, reuse information, structured data, related media, nearby search, and global usage.</td></tr>
+            <tr><td>Metadata inspector</td><td>Shows the title, creator, uploader, descriptions, dates, file details, multilingual captions, reuse information, structured data, related media, nearby search, and global usage.</td></tr>
             <tr><td>Download &amp; actions</td><td>Downloads the original or image/vector derivatives and opens the authoritative Commons source page.</td></tr>
-            <tr><td>Lazy sections</td><td>Structured data, related media, and global usage load when expanded, so simply opening a file does not request every optional panel.</td></tr>
+            <tr><td>Expandable sections</td><td>Multilingual Captions and Structured Data are collapsed until you expand them. They reuse the cached MediaInfo entity; Related Media and Global Usage make their own requests only when expanded.</td></tr>
           </tbody>
         </table>
 
@@ -1218,6 +1237,7 @@
           <li><strong>Separate creator from uploader.</strong> The creator/author field describes the person or institution associated with the work; the uploader is the Wikimedia account that uploaded the file. They may be different.</li>
           <li><strong>Read the dates carefully.</strong> Created/original dates describe the work or capture when metadata exists; uploaded describes when the file reached Commons. Page edit dates are a separate search concept.</li>
           <li><strong>Check the file details.</strong> Confirm type, extension, dimensions, categories, assessments, and GPS coordinates when those facts matter to your task.</li>
+          <li><strong>Expand Multilingual Captions.</strong> Read the exact language-tagged captions stored on Commons. These captions are evidence about the file’s structured metadata, not translations of every title or description shown elsewhere in the viewer.</li>
           <li><strong>Expand Structured Data.</strong> Review Commons structured statements such as creator, institution, depicts, location, or license claims. No statement is also meaningful: it means that panel has no structured claims to display.</li>
           <li><strong>Review reuse information.</strong> Read the reported license, creator/credit line, usage terms, restrictions, and attribution status. Then open the source page and full license before publishing.</li>
           <li><strong>Check context when useful.</strong> Expand Related Media for another discovery path, Nearby Media for a coordinate-based search, or Global Usage to see Wikimedia pages that currently embed the file.</li>
@@ -1261,6 +1281,7 @@
 
         <h3>Use the optional context sections</h3>
         <ul>
+          <li><strong>Multilingual Captions:</strong> expands on demand and lists the exact structured MediaInfo caption text grouped by language code. The rows are informational and are not links.</li>
           <li><strong>Structured Data (Wikidata):</strong> expands on demand and displays statements stored for the file on Commons, such as depicts, creator, institution, and license.</li>
           <li><strong>Related Media:</strong> expands on demand and asks Wikimedia for files considered similar to the current file. Selecting one opens a new viewer queue.</li>
           <li><strong>Search All Media Near This File:</strong> appears when usable coordinates are present and opens a 2 km Map search centered on the file.</li>
@@ -1271,7 +1292,7 @@
         <h3>What happens to your data</h3>
         <ul>
           <li>Opening a result requests the media preview and public metadata needed for the viewer from Wikimedia services or Wikimedia-hosted media.</li>
-          <li>Expanding Structured Data, Related Media, or Global Usage triggers the corresponding additional public request. Those panels are not fetched just because the viewer opened.</li>
+          <li>Multilingual Captions and Structured Data reuse the viewer’s cached MediaInfo entity, so expanding both does not create one request per language or a duplicate file request. Related Media and Global Usage trigger their own additional public requests only when expanded.</li>
           <li>Changing WEB/FULL changes which image URL the browser displays. The preference is stored in this browser’s local storage when possible; the viewer does not upload the file or create a private copy.</li>
           <li>Opening the source, full license, related page, portfolio, or usage page navigates your browser to that external/public page. Those providers receive their ordinary web request.</li>
           <li>Opening a result from Search creates a temporary queue context so next/previous navigation and returning to the source search work. A same-tab session-storage snapshot may preserve the loaded queue across a reload; it is not an account, cloud library, or media backup.</li>
@@ -1705,7 +1726,7 @@
         <p>The application defines <strong>31 registered node types</strong>: 27 are available to add from the current palette, while four legacy sink types remain readable only so older saved graphs do not break. The complete reference below includes all 31.</p>
         <div class="card-grid">
           <div class="card"><h3>Sources start branches</h3><p>A source has no input. It creates a media set from a text query, category, subject, statement, template, location, uploader, or related file.</p></div>
-          <div class="card"><h3>Filters narrow branches</h3><p>A filter has one input and one output. It adds a condition such as licence, format, dimensions, date, language, or excluded terms.</p></div>
+          <div class="card"><h3>Filters narrow branches</h3><p>A filter has one input and one output. It adds a condition such as licence, format, dimensions, date, caption language, or excluded terms.</p></div>
           <div class="card"><h3>Set operations join branches</h3><p>A set node has two inputs, A and B. It combines two branches as a server-side constraint or as a URL-based union, intersection, or difference.</p></div>
           <div class="card"><h3>Transforms shape results</h3><p>A transform has one input and one output. It deduplicates, sorts, samples, selects export fields, or fetches optional enrichment.</p></div>
           <div class="card"><h3>Sinks finish a branch</h3><p>A sink is terminal. The current supported output is Dataset Manifest (CSV). Preview is exposed through that workflow, while older sink types remain readable for migration.</p></div>
@@ -1713,7 +1734,7 @@
 
         <h3>The execution model: compile first, fetch later</h3>
         <p>On a simple source → filter → filter chain, CommonsLens does not fetch every intermediate list. It compiles the source and query-capable filters into one Wikimedia search request, then materializes the branch when a preview, transform, set operation, or sink needs actual records. This usually means fewer requests and more accurate server-side filtering.</p>
-        <p>Once a branch has materialized, later work happens against the records already loaded in the browser. That distinction matters. Format, resolution, date, and excluded-term filters can still be evaluated locally from available fields. Licence, quality, language, and colour-depth conditions depend on structured query information that may not be present on each loaded record; if placed after a materialized branch such as Author Uploads or Geosearch Browse, CommonsLens warns and passes those items through rather than pretending the filter succeeded.</p>
+        <p>Once a branch has materialized, later work happens against the records already loaded in the browser. That distinction matters. Format, resolution, date, and excluded-term filters can still be evaluated locally from available fields. Licence, quality, caption-language, and colour-depth conditions depend on structured query information that may not be present on each loaded record; if placed after a materialized branch such as Author Uploads or Geosearch Browse, CommonsLens warns and passes those items through rather than pretending the filter succeeded.</p>
         <div class="warning"><strong>Original-date previews are intentionally bounded:</strong> “Originally made / photographed” is read from per-file metadata such as <code>DateTimeOriginal</code>, not from the indexed creation or edit dates. A pipeline preview checks one provider result page and may therefore show fewer than 100 records—or none—even when later pages contain matches. Use <em>Run full export</em> when the date-filtered dataset needs to continue through additional pages.</div>
 
         <h3>What a pipeline requests and downloads</h3>
@@ -1771,7 +1792,7 @@
               <tr><td><strong>File Size</strong></td><td><code>1 → 1</code></td><td>Filters by the file’s byte size. It is useful for excluding tiny thumbnails or very large originals before an export.</td><td>Minimum and maximum size in bytes.</td></tr>
               <tr><td><strong>Color Depth</strong></td><td><code>1 → 1</code></td><td>Restricts image results by reported colour depth in bits.</td><td>Required bit depth. Do not assume that a missing or unusual technical field means the file has no colour information.</td></tr>
               <tr><td><strong>Date Range</strong></td><td><code>1 → 1</code></td><td>Filters a selected date field between a start and end date. The field matters: when available, the original date describes when the depicted media was made, while edited/upload-related dates describe Wikimedia record activity.</td><td>Field: created, edited, or original date; optional From and To dates. The original field uses available per-file metadata such as <code>DateTimeOriginal</code>. A pipeline preview checks one provider page for this field; use full export when later pages must be scanned.</td></tr>
-              <tr><td><strong>Language</strong></td><td><code>1 → 1</code></td><td>Restricts results to a language code where the underlying Commons search can apply that condition.</td><td>Language code such as <code>en</code>. This is about indexed language metadata, not a translation of the media itself.</td></tr>
+              <tr><td><strong>Caption Language</strong></td><td><code>1 → 1</code></td><td>Scopes text matches to structured MediaInfo captions in the requested language, or finds files with such a caption when no text is supplied.</td><td>Language code such as <code>en</code>. Commons’ indexed <code>incaption:</code> and <code>hascaption:</code> predicates apply this before pagination; legacy file-description wikitext is not language-scoped.</td></tr>
               <tr><td><strong>Exclude Terms</strong></td><td><code>1 → 1</code></td><td>Removes results whose available title or search snippet contains any of the excluded terms. It is useful for cleaning up broad text searches.</td><td>Terms entered one at a time. Matching is case-insensitive in the local predicate.</td></tr>
             </tbody>
           </table>
@@ -1869,7 +1890,7 @@
         <h3>Common pipeline mistakes</h3>
         <div class="card-grid">
           <div class="card"><h3>Using AND when you need an overlap</h3><p>Combine Constraints (AND) only works before both branches are fetched. For an uploader list plus a browse-mode geosearch, use Intersect.</p></div>
-          <div class="card"><h3>Putting a semantic filter too late</h3><p>License, Quality, Language, and Color Depth may pass through after a materialized branch with a warning. Put them directly after a query-capable source whenever possible.</p></div>
+          <div class="card"><h3>Putting a semantic filter too late</h3><p>License, Quality, Caption Language, and Color Depth may pass through after a materialized branch with a warning. Put them directly after a query-capable source whenever possible.</p></div>
           <div class="card"><h3>Assuming preview is complete</h3><p>Preview is deliberately capped. A successful preview proves that the graph can produce records; it does not prove that every match has been fetched.</p></div>
           <div class="card"><h3>Expecting Field Select to change the images</h3><p>Field Select changes export records, not the media bytes or the visual identity of the result items.</p></div>
           <div class="card"><h3>Enriching a large result</h3><p>Enrichment can create many additional requests because it can run for every incoming item. Enable only the bundles you need, and put Sample / Limit before Enrich when you intentionally want a smaller test run.</p></div>
@@ -1911,7 +1932,7 @@
         </ol>
 
         <h3>What a search URL can contain</h3>
-        <p>Search links can carry far more than a simple text query. Depending on the search, the address may include categories, excluded terms, Wikidata subjects or statements, licence presets, quality settings, dimensions, file sizes, dates, language, location coordinates, a nearby-title search, templates, sort order, and the map/grid view. Collection values are encoded into query parameters so the app can reconstruct them after a reload.</p>
+        <p>Search links can carry far more than a simple text query. Depending on the search, the address may include categories, excluded terms, Wikidata subjects or statements, licence presets, quality settings, dimensions, file sizes, dates, caption language, location coordinates, a nearby-title search, templates, sort order, and the map/grid view. Collection values are encoded into query parameters so the app can reconstruct them after a reload.</p>
         <div class="warning"><strong>URLs are not private notes.</strong> Query strings can appear in browser history, copied messages, screenshots, referrer data, or server/provider request logs. Do not put passwords, private names, confidential project identifiers, unpublished research terms, or sensitive locations into a search, pipeline name, note, or shared URL.</div>
 
         <h3>How to share a file or viewer context</h3>
